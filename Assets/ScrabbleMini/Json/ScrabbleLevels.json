@@ -1,0 +1,134 @@
+{
+  "levels": [
+    {
+      "levelId": 1,
+      "letters": "GAME",
+      "rows": 6,
+      "columns": 6,
+      "words": [
+        {
+          "word": "GAME",
+          "startRow": 2,
+          "startColumn": 1,
+          "direction": 0
+        },
+        {
+          "word": "GEM",
+          "startRow": 2,
+          "startColumn": 1,
+          "direction": 1
+        },
+        {
+          "word": "AGE",
+          "startRow": 2,
+          "startColumn": 2,
+          "direction": 1
+        }
+      ]
+    },
+    {
+      "levelId": 2,
+      "letters": "RATE",
+      "rows": 6,
+      "columns": 6,
+      "words": [
+        {
+          "word": "RATE",
+          "startRow": 2,
+          "startColumn": 1,
+          "direction": 0
+        },
+        {
+          "word": "ART",
+          "startRow": 1,
+          "startColumn": 1,
+          "direction": 1
+        },
+        {
+          "word": "TEA",
+          "startRow": 2,
+          "startColumn": 3,
+          "direction": 1
+        }
+      ]
+    },
+    {
+      "levelId": 3,
+      "letters": "TEAM",
+      "rows": 7,
+      "columns": 7,
+      "words": [
+        {
+          "word": "TEAM",
+          "startRow": 3,
+          "startColumn": 1,
+          "direction": 0
+        },
+        {
+          "word": "MEAT",
+          "startRow": 1,
+          "startColumn": 3,
+          "direction": 1
+        },
+        {
+          "word": "TEA",
+          "startRow": 3,
+          "startColumn": 1,
+          "direction": 1
+        }
+      ]
+    },
+    {
+      "levelId": 4,
+      "letters": "STOP",
+      "rows": 7,
+      "columns": 7,
+      "words": [
+        {
+          "word": "STOP",
+          "startRow": 3,
+          "startColumn": 1,
+          "direction": 0
+        },
+        {
+          "word": "TOP",
+          "startRow": 3,
+          "startColumn": 2,
+          "direction": 1
+        },
+        {
+          "word": "POT",
+          "startRow": 2,
+          "startColumn": 3,
+          "direction": 1
+        }
+      ]
+    },
+    {
+      "levelId": 5,
+      "letters": "CARE",
+      "rows": 7,
+      "columns": 7,
+      "words": [
+        {
+          "word": "CARE",
+          "startRow": 3,
+          "startColumn": 1,
+          "direction": 0
+        },
+        {
+          "word": "CAR",
+          "startRow": 3,
+          "startColumn": 1,
+          "direction": 1
+        },
+        {
+          "word": "EAR",
+          "startRow": 2,
+          "startColumn": 2,
+          "direction": 1
+        }
+      ]
+    }
+  ]
+}

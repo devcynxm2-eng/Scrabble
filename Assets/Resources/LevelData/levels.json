@@ -1,0 +1,220 @@
+{
+  "levels": [
+    {
+      "levelNumber": 1,
+      "rows": 5,
+      "columns": 6,
+      "totalLetterOptions": 6,
+      "distractorAlphabet": "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+      "words": [
+        {
+          "word": "CAT",
+          "imageName": "cat",
+          "startRow": 2,
+          "startColumn": 2,
+          "direction": "Horizontal",
+          "blankLetterNumbers": [
+            2
+          ]
+        },
+        {
+          "word": "TREE",
+          "imageName": "tree",
+          "startRow": 2,
+          "startColumn": 4,
+          "direction": "Vertical",
+          "blankLetterNumbers": [
+            3,
+            4
+          ]
+        },
+        {
+          "word": "RED",
+          "imageName": "red",
+          "startRow": 3,
+          "startColumn": 4,
+          "direction": "Horizontal",
+          "blankLetterNumbers": [
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "levelNumber": 2,
+      "rows": 5,
+      "columns": 6,
+      "totalLetterOptions": 6,
+      "distractorAlphabet": "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+      "words": [
+        {
+          "word": "DOG",
+          "imageName": "dog",
+          "startRow": 2,
+          "startColumn": 2,
+          "direction": "Horizontal",
+          "blankLetterNumbers": [
+            2
+          ]
+        },
+        {
+          "word": "GOAT",
+          "imageName": "goat",
+          "startRow": 2,
+          "startColumn": 4,
+          "direction": "Vertical",
+          "blankLetterNumbers": [
+            2,
+            3
+          ]
+        },
+        {
+          "word": "TOY",
+          "imageName": "toy",
+          "startRow": 5,
+          "startColumn": 4,
+          "direction": "Horizontal",
+          "blankLetterNumbers": [
+            2,
+            3
+          ]
+        }
+      ]
+    },
+    {
+      "levelNumber": 3,
+      "rows": 5,
+      "columns": 6,
+      "totalLetterOptions": 7,
+      "distractorAlphabet": "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+      "words": [
+        {
+          "word": "TREE",
+          "imageName": "tree",
+          "startRow": 3,
+          "startColumn": 2,
+          "direction": "Horizontal",
+          "blankLetterNumbers": [
+            1,
+            3
+          ]
+        },
+        {
+          "word": "RED",
+          "imageName": "red",
+          "startRow": 3,
+          "startColumn": 3,
+          "direction": "Vertical",
+          "blankLetterNumbers": [
+            2
+          ]
+        },
+        {
+          "word": "EGG",
+          "imageName": "egg",
+          "startRow": 3,
+          "startColumn": 5,
+          "direction": "Vertical",
+          "blankLetterNumbers": [
+            2,
+            3
+          ]
+        }
+      ]
+    },
+    {
+      "levelNumber": 4,
+      "rows": 5,
+      "columns": 5,
+      "totalLetterOptions": 7,
+      "distractorAlphabet": "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+      "words": [
+        {
+          "word": "FISH",
+          "imageName": "fish",
+          "startRow": 2,
+          "startColumn": 3,
+          "direction": "Vertical",
+          "blankLetterNumbers": [
+            2,
+            4
+          ]
+        },
+        {
+          "word": "SUN",
+          "imageName": "sun",
+          "startRow": 4,
+          "startColumn": 3,
+          "direction": "Horizontal",
+          "blankLetterNumbers": [
+            2
+          ]
+        },
+        {
+          "word": "HEN",
+          "imageName": "hen",
+          "startRow": 5,
+          "startColumn": 3,
+          "direction": "Horizontal",
+          "blankLetterNumbers": [
+            2,
+            3
+          ]
+        }
+      ]
+    },
+    {
+      "levelNumber": 5,
+      "rows": 6,
+      "columns": 6,
+      "totalLetterOptions": 8,
+      "distractorAlphabet": "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+      "words": [
+        {
+          "word": "APPLE",
+          "imageName": "apple",
+          "startRow": 2,
+          "startColumn": 2,
+          "direction": "Horizontal",
+          "blankLetterNumbers": [
+            2,
+            4
+          ]
+        },
+        {
+          "word": "PLANE",
+          "imageName": "plane",
+          "startRow": 2,
+          "startColumn": 3,
+          "direction": "Vertical",
+          "blankLetterNumbers": [
+            2,
+            4
+          ]
+        },
+        {
+          "word": "NEST",
+          "imageName": "nest",
+          "startRow": 5,
+          "startColumn": 3,
+          "direction": "Horizontal",
+          "blankLetterNumbers": [
+            2,
+            4
+          ]
+        },
+        {
+          "word": "EGG",
+          "imageName": "egg",
+          "startRow": 2,
+          "startColumn": 6,
+          "direction": "Vertical",
+          "blankLetterNumbers": [
+            2,
+            3
+          ]
+        }
+      ]
+    }
+  ]
+}

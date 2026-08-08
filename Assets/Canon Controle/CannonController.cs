@@ -1,0 +1,2401 @@
+//using UnityEngine;
+//using UnityEngine.InputSystem;
+//using UnityEngine.EventSystems;
+
+///*
+// * IMPORTANT SETUP NOTE:
+// * Ye script ab kisi UI Image/Canvas element par attach karne ki zaroorat
+// * NAHI hai. Isay kisi bhi plain GameObject (jaise "GameManagers" ya khud
+// * cannon ke root) par attach karein. Ye ab UI Event System (IPointerDownHandler
+// * waghera) use nahi karti — is liye Canvas kabhi bhi aim/shoot ko intercept
+// * nahi kar sakta.
+// *
+// * Requires: Project Settings > Player > Active Input Handling =
+// * "Input System Package (New)" ya "Both", aur com.unity.inputsystem package
+// * installed hona chahiye.
+// */
+//public sealed class CannonController : MonoBehaviour
+//{
+//    [Header("Cannon References")]
+//    [SerializeField] private Transform yawPivot;
+//    [SerializeField] private Transform pitchPivot;
+//    [SerializeField] private Transform muzzle;
+
+//    [Tooltip("Complete cannon root. Ball cannon colliders ko ignore karegi.")]
+//    [SerializeField] private Transform cannonRoot;
+
+//    [Header("Camera And Exact Targeting")]
+//    [SerializeField] private Camera aimCamera;
+
+//    [Tooltip(
+//        "TowerCan layer select karein. Block par click hone par isi mask ko " +
+//        "sab se pehle check kiya jayega."
+//    )]
+//    [SerializeField] private LayerMask towerTargetMask;
+
+//    [Tooltip(
+//        "Table, Ground aur Environment layers. TowerCan ko bhi include kar sakte hain. " +
+//        "UI layer yahan KABHI include na karein."
+//    )]
+//    [SerializeField] private LayerMask fallbackAimMask = ~0;
+
+//    [SerializeField, Min(1f)]
+//    private float maxAimDistance = 500f;
+
+//    [Tooltip(
+//        "Ray kisi collider ko hit na kare to tower ki depth par point calculate hoga. " +
+//        "Tower center par empty Transform bana kar assign karein."
+//    )]
+//    [SerializeField] private Transform fallbackAimPlaneReference;
+
+//    [SerializeField, Min(1f)]
+//    private float fallbackAimDistance = 100f;
+
+//    [Header("UI Interaction Guard")]
+//    [Tooltip(
+//        "ON hone par agar pointer kisi UI element (button, panel, HUD) ke " +
+//        "upar ho to cannon aim/shoot bilkul trigger nahi hoga. Isay ON rakhein " +
+//        "taake HUD buttons dabane par galti se shot na chal jaye."
+//    )]
+//    [SerializeField] private bool ignoreInputOverUI = true;
+
+//    [Header("Forward Only")]
+//    [SerializeField] private bool preventBackwardAim = true;
+
+//    [Header("Aim Limits")]
+//    [SerializeField] private float minimumPitch = -10f;
+//    [SerializeField] private float maximumPitch = 70f;
+
+//    [Header("Shooting")]
+//    [SerializeField] private GameObject cannonBallPrefab;
+//    [SerializeField, Min(0f)] private float launchSpeed = 30f;
+
+//    [Tooltip("Ball muzzle se itna aage spawn hogi.")]
+//    [SerializeField, Min(0f)]
+//    private float spawnForwardOffset = 0.20f;
+
+//    [SerializeField, Min(0f)]
+//    private float cannonBallLifetime = 5f;
+
+//    [SerializeField, Min(0f)]
+//    private float minimumShotInterval = 0f;
+
+//    [Header("Trajectory")]
+//    [Tooltip(
+//        "ON: gravity off, ball seedhi line mein exact clicked point tak jayegi. " +
+//        "OFF: gravity on rahegi aur script khud sahi arc/angle calculate karke " +
+//        "wahi exact clicked point hit karegi (agar us speed se pohonchna possible ho)."
+//    )]
+//    [SerializeField] private bool exactStraightShot = true;
+
+//    [Tooltip(
+//        "Arc mode mein 2 possible trajectories hoti hain (low arc / high arc). " +
+//        "True = neechi seedhi trajectory (fast, cannon jaisi). False = oonchi lobbed trajectory."
+//    )]
+//    [SerializeField] private bool preferLowArcTrajectory = true;
+
+//    [Tooltip(
+//        "Arc mode mein agar target current Launch Speed se physically reach hi na ho " +
+//        "(bohat door ya bohat oopar), to fallback ke taur par seedhi line mein shot chalegi " +
+//        "taake ball kabhi bhi target miss na kare."
+//    )]
+//    [SerializeField] private bool fallbackToStraightIfUnreachable = true;
+
+//    [Header("Bottom Dead Space")]
+//    [SerializeField, Min(0f)]
+//    private float bottomDeadSpaceHeight = 250f;
+
+//    [Header("Debug")]
+//    [SerializeField] private bool showDebugLogs = true;
+//    [SerializeField] private bool showDebugLines = true;
+
+//    private Vector3 currentAimPoint;
+//    private bool hasAimPoint;
+//    private bool pointerStartedInDeadSpace;
+//    private bool pointerStartedOverUI;
+//    private bool isPointerHeld;
+//    private float nextAllowedShotTime;
+
+//    private Collider[] cannonColliders;
+
+//    private void Awake()
+//    {
+//        if (aimCamera == null)
+//        {
+//            aimCamera = Camera.main;
+//        }
+
+//        if (cannonRoot == null)
+//        {
+//            cannonRoot = transform;
+//        }
+
+//        CacheCannonColliders();
+
+
+//        QualitySettings.vSyncCount = 0;
+//        Application.targetFrameRate = 60;
+
+
+//    }
+
+//    private void CacheCannonColliders()
+//    {
+//        cannonColliders =
+//            cannonRoot != null
+//                ? cannonRoot.GetComponentsInChildren<Collider>(true)
+//                : new Collider[0];
+//    }
+
+//    private void Update()
+//    {
+//        Pointer activePointer =
+//            Pointer.current;
+
+//        if (activePointer == null)
+//        {
+//            return;
+//        }
+
+//        Vector2 screenPosition =
+//            activePointer.position.ReadValue();
+
+//        if (activePointer.press.wasPressedThisFrame)
+//        {
+//            HandlePointerDown(screenPosition);
+//        }
+//        else if (activePointer.press.isPressed &&
+//                 isPointerHeld)
+//        {
+//            HandlePointerDrag(screenPosition);
+//        }
+
+//        if (activePointer.press.wasReleasedThisFrame &&
+//            isPointerHeld)
+//        {
+//            HandlePointerUp(screenPosition);
+//        }
+//    }
+
+//    private void HandlePointerDown(Vector2 screenPosition)
+//    {
+//        isPointerHeld = true;
+
+//        pointerStartedOverUI =
+//            ignoreInputOverUI &&
+//            IsPointerOverUI();
+
+//        pointerStartedInDeadSpace =
+//            IsInsideDeadSpace(screenPosition);
+
+//        if (pointerStartedOverUI ||
+//            pointerStartedInDeadSpace)
+//        {
+//            hasAimPoint = false;
+//            return;
+//        }
+
+//        UpdateAim(screenPosition);
+//    }
+
+//    private void HandlePointerDrag(Vector2 screenPosition)
+//    {
+//        if (pointerStartedOverUI ||
+//            pointerStartedInDeadSpace ||
+//            IsInsideDeadSpace(screenPosition))
+//        {
+//            return;
+//        }
+
+//        UpdateAim(screenPosition);
+//    }
+
+//    private void HandlePointerUp(Vector2 screenPosition)
+//    {
+//        isPointerHeld = false;
+
+//        bool blocked =
+//            pointerStartedOverUI ||
+//            pointerStartedInDeadSpace ||
+//            IsInsideDeadSpace(screenPosition);
+
+//        pointerStartedOverUI = false;
+//        pointerStartedInDeadSpace = false;
+
+//        if (blocked)
+//        {
+//            hasAimPoint = false;
+//            return;
+//        }
+
+//        /*
+//         * Release position se exact ray dobara banegi.
+//         */
+//        if (UpdateAim(screenPosition))
+//        {
+//            Shoot();
+//        }
+//    }
+
+//    /// <summary>
+//    /// Pointer kisi UI element (Canvas Graphic jispar Raycast Target on ho)
+//    /// ke upar hai ya nahi — is check ki wajah se HUD/buttons ke upar
+//    /// tap karne par cannon galti se fire nahi karega, aur UI se koi
+//    /// interference bhi nahi hogi kyunke ye sirf ek guard hai, 3D aim
+//    /// calculation UI raycast par depend nahi karti.
+//    /// </summary>
+//    private bool IsPointerOverUI()
+//    {
+//        if (EventSystem.current == null)
+//        {
+//            return false;
+//        }
+
+//        return EventSystem.current.IsPointerOverGameObject();
+//    }
+
+//    private bool IsInsideDeadSpace(Vector2 screenPosition)
+//    {
+//        return screenPosition.y <= bottomDeadSpaceHeight;
+//    }
+
+//    private bool UpdateAim(Vector2 screenPosition)
+//    {
+//        if (!ValidateReferences())
+//        {
+//            hasAimPoint = false;
+//            return false;
+//        }
+
+//        Ray screenRay =
+//            aimCamera.ScreenPointToRay(screenPosition);
+
+//        /*
+//         * Sab se pehle sirf TowerCan layer check hoti hai.
+//         * Is se table, backdrop ya kisi large collider ka hit block ke hit ko
+//         * replace nahi karega.
+//         */
+//        if (!TryGetClosestValidHit(
+//                screenRay,
+//                towerTargetMask,
+//                true,
+//                out RaycastHit chosenHit))
+//        {
+//            /*
+//             * Tower hit na ho to normal environment hit use karo.
+//             */
+//            if (!TryGetClosestValidHit(
+//                    screenRay,
+//                    fallbackAimMask,
+//                    false,
+//                    out chosenHit))
+//            {
+//                currentAimPoint =
+//                    GetFallbackAimPoint(screenRay);
+//            }
+//            else
+//            {
+//                currentAimPoint = chosenHit.point;
+//            }
+//        }
+//        else
+//        {
+//            currentAimPoint = chosenHit.point;
+//        }
+
+//        if (preventBackwardAim &&
+//            IsPointBehindCannon(currentAimPoint))
+//        {
+//            hasAimPoint = false;
+
+//            if (showDebugLogs)
+//            {
+//                Debug.Log(
+//                    "Rear-side click ignored. Cannon forward side mein hi aim karega.",
+//                    this
+//                );
+//            }
+
+//            return false;
+//        }
+
+//        /*
+//         * Original turning formulas unchanged.
+//         */
+//        RotateCannonTowards(currentAimPoint);
+
+//        Physics.SyncTransforms();
+
+//        Vector3 finalDirection =
+//            currentAimPoint - muzzle.position;
+
+//        if (finalDirection.sqrMagnitude < 0.0001f)
+//        {
+//            hasAimPoint = false;
+//            return false;
+//        }
+
+//        hasAimPoint = true;
+
+//        if (showDebugLines)
+//        {
+//            Debug.DrawLine(
+//                muzzle.position,
+//                currentAimPoint,
+//                Color.red,
+//                0.25f
+//            );
+//        }
+
+//        if (showDebugLogs)
+//        {
+//            string hitName =
+//                chosenHit.collider != null
+//                    ? chosenHit.collider.name
+//                    : "Fallback point";
+
+//            Debug.Log(
+//                $"Aim target: {hitName} | Point: {currentAimPoint}",
+//                this
+//            );
+//        }
+
+//        return true;
+//    }
+
+//    private bool TryGetClosestValidHit(
+//        Ray ray,
+//        LayerMask mask,
+//        bool requireTowerTarget,
+//        out RaycastHit closestHit)
+//    {
+//        closestHit = default;
+
+//        if (mask.value == 0)
+//        {
+//            return false;
+//        }
+
+//        RaycastHit[] hits =
+//            Physics.RaycastAll(
+//                ray,
+//                maxAimDistance,
+//                mask,
+//                QueryTriggerInteraction.Ignore
+//            );
+
+//        bool found = false;
+//        float closestDistance = float.MaxValue;
+
+//        foreach (RaycastHit hit in hits)
+//        {
+//            if (hit.collider == null ||
+//                IsCannonCollider(hit.collider))
+//            {
+//                continue;
+//            }
+
+//            if (requireTowerTarget &&
+//                !IsTowerTarget(hit.collider))
+//            {
+//                continue;
+//            }
+
+//            if (hit.distance >= closestDistance)
+//            {
+//                continue;
+//            }
+
+//            closestDistance = hit.distance;
+//            closestHit = hit;
+//            found = true;
+//        }
+
+//        return found;
+//    }
+
+//    private bool IsTowerTarget(Collider hitCollider)
+//    {
+//        if (hitCollider == null)
+//        {
+//            return false;
+//        }
+
+//        /*
+//         * Generated tower root par ye receiver automatically add hota hai.
+//         * Is check ki wajah se child collider hit bhi correct can target banega.
+//         */
+//        if (hitCollider.GetComponentInParent<
+//                GeneratedTowerCanHitReceiver>() != null)
+//        {
+//            return true;
+//        }
+
+//        int layerBit = 1 << hitCollider.gameObject.layer;
+
+//        return (towerTargetMask.value & layerBit) != 0;
+//    }
+
+//    private bool IsCannonCollider(Collider candidate)
+//    {
+//        if (candidate == null ||
+//            cannonRoot == null)
+//        {
+//            return false;
+//        }
+
+//        Transform candidateTransform =
+//            candidate.transform;
+
+//        return
+//            candidateTransform == cannonRoot ||
+//            candidateTransform.IsChildOf(cannonRoot);
+//    }
+
+//    private Vector3 GetFallbackAimPoint(Ray screenRay)
+//    {
+//        if (fallbackAimPlaneReference != null)
+//        {
+//            /*
+//             * Camera-facing plane tower ki depth par banta hai.
+//             */
+//            Plane aimPlane =
+//                new Plane(
+//                    -aimCamera.transform.forward,
+//                    fallbackAimPlaneReference.position
+//                );
+
+//            if (aimPlane.Raycast(
+//                    screenRay,
+//                    out float enterDistance) &&
+//                enterDistance > 0f)
+//            {
+//                return screenRay.GetPoint(enterDistance);
+//            }
+//        }
+
+//        return screenRay.GetPoint(fallbackAimDistance);
+//    }
+
+//    private bool IsPointBehindCannon(Vector3 targetPoint)
+//    {
+//        Transform forwardSpace =
+//            yawPivot.parent != null
+//                ? yawPivot.parent
+//                : transform;
+
+//        Vector3 flatDirection =
+//            targetPoint - yawPivot.position;
+
+//        flatDirection.y = 0f;
+
+//        Vector3 flatForward =
+//            forwardSpace.forward;
+
+//        flatForward.y = 0f;
+
+//        if (flatDirection.sqrMagnitude < 0.0001f ||
+//            flatForward.sqrMagnitude < 0.0001f)
+//        {
+//            return false;
+//        }
+
+//        return Vector3.Dot(
+//            flatForward.normalized,
+//            flatDirection.normalized
+//        ) <= 0f;
+//    }
+
+//    private void RotateCannonTowards(Vector3 targetPoint)
+//    {
+//        if (yawPivot == null ||
+//            pitchPivot == null)
+//        {
+//            return;
+//        }
+
+//        RotateYawTowards(targetPoint);
+//        RotatePitchTowards(targetPoint);
+//    }
+
+//    /*
+//     * User ki original left/right turning logic unchanged.
+//     */
+//    private void RotateYawTowards(Vector3 targetPoint)
+//    {
+//        Vector3 worldDirection =
+//            targetPoint - yawPivot.position;
+
+//        worldDirection.y = 0f;
+
+//        if (worldDirection.sqrMagnitude < 0.001f)
+//        {
+//            return;
+//        }
+
+//        Vector3 localDirection;
+
+//        if (yawPivot.parent != null)
+//        {
+//            localDirection =
+//                yawPivot.parent.InverseTransformDirection(
+//                    worldDirection
+//                );
+//        }
+//        else
+//        {
+//            localDirection = worldDirection;
+//        }
+
+//        float yawAngle =
+//            Mathf.Atan2(
+//                localDirection.x,
+//                localDirection.z
+//            ) * Mathf.Rad2Deg;
+
+//        yawPivot.localRotation =
+//            Quaternion.Euler(
+//                0f,
+//                yawAngle,
+//                0f
+//            );
+//    }
+
+//    /*
+//     * User ki original up/down turning logic unchanged.
+//     * Note: ye sirf VISUAL barrel angle set karti hai. Actual launch velocity
+//     * (seedhi line ya ballistic arc) Shoot() mein alag se calculate hoti hai,
+//     * is liye visual pitch clamp se exact-hit trajectory affect nahi hoti.
+//     */
+//    private void RotatePitchTowards(Vector3 targetPoint)
+//    {
+//        Vector3 worldDirection =
+//            targetPoint - pitchPivot.position;
+
+//        Vector3 localDirection =
+//            yawPivot.InverseTransformDirection(
+//                worldDirection
+//            );
+
+//        float horizontalDistance =
+//            new Vector2(
+//                localDirection.x,
+//                localDirection.z
+//            ).magnitude;
+
+//        float pitchAngle =
+//            Mathf.Atan2(
+//                localDirection.y,
+//                horizontalDistance
+//            ) * Mathf.Rad2Deg;
+
+//        pitchAngle =
+//            Mathf.Clamp(
+//                pitchAngle,
+//                minimumPitch,
+//                maximumPitch
+//            );
+
+//        pitchPivot.localRotation =
+//            Quaternion.Euler(
+//                -pitchAngle,
+//                0f,
+//                0f
+//            );
+//    }
+
+//    public void Shoot()
+//    {
+//        if (!hasAimPoint ||
+//            Time.time < nextAllowedShotTime)
+//        {
+//            return;
+//        }
+
+//        if (cannonBallPrefab == null ||
+//            muzzle == null)
+//        {
+//            return;
+//        }
+
+//        Physics.SyncTransforms();
+
+//        Vector3 spawnOrigin =
+//            muzzle.position;
+
+//        bool useGravityForShot =
+//            !exactStraightShot;
+
+//        Vector3 shotVelocity;
+
+//        if (useGravityForShot)
+//        {
+//            /*
+//             * Gravity ON: fixed launchSpeed ke sath exact clicked point tak
+//             * pohonchne wala angle/direction calculate karo.
+//             */
+//            bool solved =
+//                TryCalculateBallisticVelocity(
+//                    spawnOrigin,
+//                    currentAimPoint,
+//                    launchSpeed,
+//                    out shotVelocity
+//                );
+
+//            if (!solved)
+//            {
+//                if (!fallbackToStraightIfUnreachable)
+//                {
+//                    if (showDebugLogs)
+//                    {
+//                        Debug.LogWarning(
+//                            "Target is current Launch Speed se reach nahi ho sakta " +
+//                            "(bohat door/oopar hai). Shot cancel.",
+//                            this
+//                        );
+//                    }
+
+//                    return;
+//                }
+
+//                /*
+//                 * Reach na ho to seedhi line shot fallback (guaranteed hit).
+//                 */
+//                useGravityForShot = false;
+
+//                Vector3 straightDirection =
+//                    currentAimPoint - spawnOrigin;
+
+//                if (straightDirection.sqrMagnitude < 0.0001f)
+//                {
+//                    return;
+//                }
+
+//                shotVelocity =
+//                    straightDirection.normalized *
+//                    launchSpeed;
+
+//                if (showDebugLogs)
+//                {
+//                    Debug.LogWarning(
+//                        "Target unreachable with current arc/speed. " +
+//                        "Straight-line fallback shot fired instead.",
+//                        this
+//                    );
+//                }
+//            }
+//        }
+//        else
+//        {
+//            Vector3 straightDirection =
+//                currentAimPoint - spawnOrigin;
+
+//            if (straightDirection.sqrMagnitude < 0.0001f)
+//            {
+//                return;
+//            }
+
+//            shotVelocity =
+//                straightDirection.normalized *
+//                launchSpeed;
+//        }
+
+//        Vector3 shotDirection =
+//            shotVelocity.sqrMagnitude > 0.0001f
+//                ? shotVelocity.normalized
+//                : (currentAimPoint - spawnOrigin).normalized;
+
+//        if (preventBackwardAim &&
+//            IsDirectionBehindCannon(shotDirection))
+//        {
+//            return;
+//        }
+
+//        nextAllowedShotTime =
+//            Time.time + minimumShotInterval;
+
+//        Vector3 spawnPosition =
+//            spawnOrigin +
+//            shotDirection * spawnForwardOffset;
+
+//        Quaternion spawnRotation =
+//            Quaternion.LookRotation(
+//                shotDirection,
+//                GetSafeUpDirection(shotDirection)
+//            );
+
+//        GameObject cannonBall =
+//            Instantiate(
+//                cannonBallPrefab,
+//                spawnPosition,
+//                spawnRotation
+//            );
+
+//        Rigidbody ballRigidbody =
+//            cannonBall.GetComponent<Rigidbody>();
+
+//        if (ballRigidbody == null)
+//        {
+//            Debug.LogError(
+//                "Cannonball prefab par Rigidbody missing hai.",
+//                cannonBall
+//            );
+
+//            Destroy(cannonBall);
+//            return;
+//        }
+
+//        ballRigidbody.isKinematic = false;
+//        ballRigidbody.useGravity = useGravityForShot;
+//        ballRigidbody.angularVelocity = Vector3.zero;
+//        ballRigidbody.collisionDetectionMode =
+//            CollisionDetectionMode.ContinuousDynamic;
+
+//        SetBodyVelocity(ballRigidbody, Vector3.zero);
+
+//        IgnoreBallCollisionWithCannon(cannonBall);
+
+//        SetBodyVelocity(
+//            ballRigidbody,
+//            shotVelocity
+//        );
+
+//        if (showDebugLines)
+//        {
+//            Debug.DrawLine(
+//                spawnPosition,
+//                currentAimPoint,
+//                Color.green,
+//                2f
+//            );
+//        }
+
+//        Destroy(
+//            cannonBall,
+//            cannonBallLifetime
+//        );
+//    }
+
+//    /// <summary>
+//    /// Fixed launch speed par, gravity ke sath, exact target tak pohonchne wali
+//    /// launch velocity calculate karta hai (standard projectile motion formula).
+//    /// Do solutions hoti hain (low arc / high arc); preferLowArcTrajectory se
+//    /// select hoti hai. Agar target current speed se reach hi na ho (discriminant
+//    /// negative) to false return hoti hai.
+//    /// </summary>
+//    private bool TryCalculateBallisticVelocity(
+//        Vector3 startPosition,
+//        Vector3 targetPosition,
+//        float speed,
+//        out Vector3 launchVelocity)
+//    {
+//        launchVelocity = Vector3.zero;
+
+//        if (speed <= 0.01f)
+//        {
+//            return false;
+//        }
+
+//        float gravity =
+//            Mathf.Abs(Physics.gravity.y);
+
+//        if (gravity <= 0.001f)
+//        {
+//            return false;
+//        }
+
+//        Vector3 toTarget =
+//            targetPosition - startPosition;
+
+//        Vector3 horizontalToTarget =
+//            new Vector3(
+//                toTarget.x,
+//                0f,
+//                toTarget.z
+//            );
+
+//        float horizontalDistance =
+//            horizontalToTarget.magnitude;
+
+//        float verticalDistance =
+//            toTarget.y;
+
+//        if (horizontalDistance < 0.0001f)
+//        {
+//            /*
+//             * Target seedha upar/neeche hai — horizontal solve nahi hota.
+//             * Straight vertical shot bhej do.
+//             */
+//            launchVelocity =
+//                new Vector3(
+//                    0f,
+//                    Mathf.Sign(verticalDistance == 0f ? 1f : verticalDistance) * speed,
+//                    0f
+//                );
+
+//            return true;
+//        }
+
+//        float speedSquared =
+//            speed * speed;
+
+//        float discriminant =
+//            (speedSquared * speedSquared) -
+//            gravity *
+//            (gravity * horizontalDistance * horizontalDistance +
+//             2f * verticalDistance * speedSquared);
+
+//        if (discriminant < 0f)
+//        {
+//            /*
+//             * Is speed se target physically reach nahi ho sakta.
+//             */
+//            return false;
+//        }
+
+//        float sqrtDiscriminant =
+//            Mathf.Sqrt(discriminant);
+
+//        float lowArcAngle =
+//            Mathf.Atan2(
+//                speedSquared - sqrtDiscriminant,
+//                gravity * horizontalDistance
+//            );
+
+//        float highArcAngle =
+//            Mathf.Atan2(
+//                speedSquared + sqrtDiscriminant,
+//                gravity * horizontalDistance
+//            );
+
+//        float chosenAngle =
+//            preferLowArcTrajectory
+//                ? lowArcAngle
+//                : highArcAngle;
+
+//        Vector3 horizontalDirection =
+//            horizontalToTarget.normalized;
+
+//        float horizontalSpeed =
+//            speed * Mathf.Cos(chosenAngle);
+
+//        float verticalSpeed =
+//            speed * Mathf.Sin(chosenAngle);
+
+//        launchVelocity =
+//            horizontalDirection * horizontalSpeed +
+//            Vector3.up * verticalSpeed;
+
+//        return true;
+//    }
+
+//    private bool IsDirectionBehindCannon(Vector3 direction)
+//    {
+//        Transform forwardSpace =
+//            yawPivot.parent != null
+//                ? yawPivot.parent
+//                : transform;
+
+//        Vector3 flatDirection = direction;
+//        flatDirection.y = 0f;
+
+//        Vector3 flatForward = forwardSpace.forward;
+//        flatForward.y = 0f;
+
+//        if (flatDirection.sqrMagnitude < 0.0001f ||
+//            flatForward.sqrMagnitude < 0.0001f)
+//        {
+//            return false;
+//        }
+
+//        return Vector3.Dot(
+//            flatForward.normalized,
+//            flatDirection.normalized
+//        ) <= 0f;
+//    }
+
+//    private Vector3 GetSafeUpDirection(Vector3 shotDirection)
+//    {
+//        Vector3 upDirection =
+//            muzzle != null
+//                ? muzzle.up
+//                : Vector3.up;
+
+//        if (Mathf.Abs(
+//                Vector3.Dot(
+//                    shotDirection,
+//                    upDirection.normalized
+//                )) > 0.999f)
+//        {
+//            upDirection = Vector3.up;
+//        }
+
+//        return upDirection;
+//    }
+
+//    private void IgnoreBallCollisionWithCannon(GameObject cannonBall)
+//    {
+//        if (cannonBall == null)
+//        {
+//            return;
+//        }
+
+//        if (cannonColliders == null ||
+//            cannonColliders.Length == 0)
+//        {
+//            CacheCannonColliders();
+//        }
+
+//        Collider[] ballColliders =
+//            cannonBall.GetComponentsInChildren<Collider>(true);
+
+//        foreach (Collider ballCollider in ballColliders)
+//        {
+//            if (ballCollider == null)
+//            {
+//                continue;
+//            }
+
+//            foreach (Collider cannonCollider in cannonColliders)
+//            {
+//                if (cannonCollider == null)
+//                {
+//                    continue;
+//                }
+
+//                Physics.IgnoreCollision(
+//                    ballCollider,
+//                    cannonCollider,
+//                    true
+//                );
+//            }
+//        }
+//    }
+
+//    private bool ValidateReferences()
+//    {
+//        if (aimCamera == null)
+//        {
+//            Debug.LogError("Aim Camera missing hai.", this);
+//            return false;
+//        }
+
+//        if (yawPivot == null ||
+//            pitchPivot == null ||
+//            muzzle == null)
+//        {
+//            Debug.LogError(
+//                "Yaw Pivot, Pitch Pivot ya Muzzle missing hai.",
+//                this
+//            );
+
+//            return false;
+//        }
+
+//        return true;
+//    }
+
+//    private static void SetBodyVelocity(
+//        Rigidbody body,
+//        Vector3 velocity)
+//    {
+//#if UNITY_6000_0_OR_NEWER
+//        body.linearVelocity = velocity;
+//#else
+//        body.velocity = velocity;
+//#endif
+//    }
+
+//#if UNITY_EDITOR
+//    private void OnDrawGizmosSelected()
+//    {
+//        if (!showDebugLines ||
+//            !hasAimPoint ||
+//            muzzle == null)
+//        {
+//            return;
+//        }
+
+//        Gizmos.DrawLine(
+//            muzzle.position,
+//            currentAimPoint
+//        );
+
+//        Gizmos.DrawSphere(
+//            currentAimPoint,
+//            0.08f
+//        );
+//    }
+//#endif
+//}
+
+
+
+
+
+
+using UnityEngine;
+using UnityEngine.InputSystem;
+using UnityEngine.EventSystems;
+
+public sealed class CannonController : MonoBehaviour
+{
+    [Header("Cannon References")]
+    [SerializeField] private Transform yawPivot;
+    [SerializeField] private Transform pitchPivot;
+    [SerializeField] private Transform muzzle;
+
+    [Tooltip(
+        "Complete cannon root. Ball cannon colliders ko ignore karegi."
+    )]
+    [SerializeField] private Transform cannonRoot;
+
+
+    [Header("Camera And Exact Targeting")]
+    [SerializeField] private Camera aimCamera;
+
+    [Tooltip(
+        "TowerTarget layer select karein. " +
+        "Block par click hone par isi mask ko sab se pehle check kiya jayega."
+    )]
+    [SerializeField] private LayerMask towerTargetMask;
+
+    [Tooltip(
+        "Table, Ground aur Environment layers. " +
+        "UI layer yahan include na karein."
+    )]
+    [SerializeField] private LayerMask fallbackAimMask = ~0;
+
+    [SerializeField, Min(1f)]
+    private float maxAimDistance = 500f;
+
+    [Tooltip(
+        "Ray kisi collider ko hit na kare to tower ki depth par " +
+        "point calculate hoga."
+    )]
+    [SerializeField]
+    private Transform fallbackAimPlaneReference;
+
+    [SerializeField, Min(1f)]
+    private float fallbackAimDistance = 100f;
+
+
+    [Header("UI Interaction Guard")]
+
+    [Tooltip(
+        "Pointer UI ke upar ho to cannon aim/shoot trigger nahi hoga."
+    )]
+    [SerializeField]
+    private bool ignoreInputOverUI = true;
+
+
+    [Header("Forward Only")]
+    [SerializeField]
+    private bool preventBackwardAim = true;
+
+
+    [Header("Aim Limits")]
+    [SerializeField] private float minimumPitch = -10f;
+    [SerializeField] private float maximumPitch = 70f;
+
+
+    [Header("Shooting")]
+    [SerializeField] private GameObject cannonBallPrefab;
+
+    [SerializeField, Min(0f)]
+    private float launchSpeed = 30f;
+
+    [Tooltip("Ball muzzle se itna aage spawn hogi.")]
+    [SerializeField, Min(0f)]
+    private float spawnForwardOffset = 0.20f;
+
+    [SerializeField, Min(0f)]
+    private float cannonBallLifetime = 5f;
+
+    [SerializeField, Min(0f)]
+    private float minimumShotInterval = 0f;
+
+
+    [Header("Trajectory")]
+
+    [Tooltip(
+        "ON: gravity off aur straight exact shot. " +
+        "OFF: gravity ke sath ballistic trajectory."
+    )]
+    [SerializeField]
+    private bool exactStraightShot = true;
+
+    [Tooltip(
+        "True = low arc. False = high arc."
+    )]
+    [SerializeField]
+    private bool preferLowArcTrajectory = true;
+
+    [Tooltip(
+        "Arc se target unreachable ho to straight shot fallback."
+    )]
+    [SerializeField]
+    private bool fallbackToStraightIfUnreachable = true;
+
+
+    [Header("Bottom Dead Space")]
+
+    [Tooltip(
+        "Screen ke bottom se pixels. " +
+        "Is area mein aim/shoot nahi chalega. " +
+        "DeadZoneVisual automatically isi value ke sath sync hogi."
+    )]
+    [SerializeField, Min(0f)]
+    private float bottomDeadSpaceHeight = 250f;
+
+
+    [Header("Debug")]
+    [SerializeField] private bool showDebugLogs = true;
+    [SerializeField] private bool showDebugLines = true;
+
+
+    /*
+     * DeadZoneVisual isi property ko read karegi.
+     *
+     * Isliye dead-zone height sirf CannonController
+     * mein maintain karni hai.
+     */
+    public float BottomDeadSpaceHeight =>
+        bottomDeadSpaceHeight;
+
+
+    private Vector3 currentAimPoint;
+
+    private bool hasAimPoint;
+    private bool pointerStartedInDeadSpace;
+    private bool pointerStartedOverUI;
+    private bool isPointerHeld;
+
+    private float nextAllowedShotTime;
+
+    private Collider[] cannonColliders;
+
+
+    private void Awake()
+    {
+        if (aimCamera == null)
+        {
+            aimCamera = Camera.main;
+        }
+
+        if (cannonRoot == null)
+        {
+            cannonRoot = transform;
+        }
+
+        CacheCannonColliders();
+    }
+
+
+    private void CacheCannonColliders()
+    {
+        cannonColliders =
+            cannonRoot != null
+                ? cannonRoot.GetComponentsInChildren<Collider>(true)
+                : new Collider[0];
+    }
+
+
+    private void Update()
+    {
+        Pointer activePointer =
+            Pointer.current;
+
+        if (activePointer == null)
+        {
+            return;
+        }
+
+        Vector2 screenPosition =
+            activePointer.position.ReadValue();
+
+        if (activePointer.press.wasPressedThisFrame)
+        {
+            HandlePointerDown(
+                screenPosition
+            );
+        }
+        else if (
+            activePointer.press.isPressed &&
+            isPointerHeld)
+        {
+            HandlePointerDrag(
+                screenPosition
+            );
+        }
+
+        if (
+            activePointer.press.wasReleasedThisFrame &&
+            isPointerHeld)
+        {
+            HandlePointerUp(
+                screenPosition
+            );
+        }
+    }
+
+
+    private void HandlePointerDown(
+        Vector2 screenPosition)
+    {
+        isPointerHeld =
+            true;
+
+        pointerStartedOverUI =
+            ignoreInputOverUI &&
+            IsPointerOverUI();
+
+        pointerStartedInDeadSpace =
+            IsInsideDeadSpace(
+                screenPosition
+            );
+
+        if (
+            pointerStartedOverUI ||
+            pointerStartedInDeadSpace)
+        {
+            hasAimPoint =
+                false;
+
+            return;
+        }
+
+        UpdateAim(
+            screenPosition
+        );
+    }
+
+
+    private void HandlePointerDrag(
+        Vector2 screenPosition)
+    {
+        if (
+            pointerStartedOverUI ||
+            pointerStartedInDeadSpace ||
+            IsInsideDeadSpace(screenPosition))
+        {
+            return;
+        }
+
+        UpdateAim(
+            screenPosition
+        );
+    }
+
+
+    private void HandlePointerUp(
+        Vector2 screenPosition)
+    {
+        isPointerHeld =
+            false;
+
+        bool blocked =
+            pointerStartedOverUI ||
+            pointerStartedInDeadSpace ||
+            IsInsideDeadSpace(
+                screenPosition
+            );
+
+        pointerStartedOverUI =
+            false;
+
+        pointerStartedInDeadSpace =
+            false;
+
+        if (blocked)
+        {
+            hasAimPoint =
+                false;
+
+            return;
+        }
+
+        /*
+         * Release position se exact aim
+         * dobara calculate.
+         */
+        if (UpdateAim(screenPosition))
+        {
+            Shoot();
+        }
+    }
+
+
+    private bool IsPointerOverUI()
+    {
+        if (EventSystem.current == null)
+        {
+            return false;
+        }
+
+        return
+            EventSystem.current
+                .IsPointerOverGameObject();
+    }
+
+
+    private bool IsInsideDeadSpace(
+        Vector2 screenPosition)
+    {
+        return
+            screenPosition.y <=
+            bottomDeadSpaceHeight;
+    }
+
+
+    private bool UpdateAim(
+        Vector2 screenPosition)
+    {
+        if (!ValidateReferences())
+        {
+            hasAimPoint =
+                false;
+
+            return false;
+        }
+
+        Ray screenRay =
+            aimCamera.ScreenPointToRay(
+                screenPosition
+            );
+
+        RaycastHit chosenHit;
+
+        /*
+         * First preference:
+         * tower target.
+         */
+        if (!TryGetClosestValidHit(
+                screenRay,
+                towerTargetMask,
+                true,
+                out chosenHit))
+        {
+            /*
+             * Tower hit na ho to
+             * environment fallback.
+             */
+            if (!TryGetClosestValidHit(
+                    screenRay,
+                    fallbackAimMask,
+                    false,
+                    out chosenHit))
+            {
+                currentAimPoint =
+                    GetFallbackAimPoint(
+                        screenRay
+                    );
+            }
+            else
+            {
+                currentAimPoint =
+                    chosenHit.point;
+            }
+        }
+        else
+        {
+            currentAimPoint =
+                chosenHit.point;
+        }
+
+
+        if (
+            preventBackwardAim &&
+            IsPointBehindCannon(
+                currentAimPoint
+            ))
+        {
+            hasAimPoint =
+                false;
+
+            if (showDebugLogs)
+            {
+                Debug.Log(
+                    "Rear-side click ignored.",
+                    this
+                );
+            }
+
+            return false;
+        }
+
+
+        RotateCannonTowards(
+            currentAimPoint
+        );
+
+        Physics.SyncTransforms();
+
+
+        Vector3 finalDirection =
+            currentAimPoint -
+            muzzle.position;
+
+        if (
+            finalDirection.sqrMagnitude <
+            0.0001f)
+        {
+            hasAimPoint =
+                false;
+
+            return false;
+        }
+
+        hasAimPoint =
+            true;
+
+
+        if (showDebugLines)
+        {
+            Debug.DrawLine(
+                muzzle.position,
+                currentAimPoint,
+                Color.red,
+                0.25f
+            );
+        }
+
+
+        if (showDebugLogs)
+        {
+            string hitName =
+                chosenHit.collider != null
+                    ? chosenHit.collider.name
+                    : "Fallback point";
+
+            Debug.Log(
+                $"Aim target: {hitName} | " +
+                $"Point: {currentAimPoint}",
+                this
+            );
+        }
+
+        return true;
+    }
+
+
+    private bool TryGetClosestValidHit(
+        Ray ray,
+        LayerMask mask,
+        bool requireTowerTarget,
+        out RaycastHit closestHit)
+    {
+        closestHit =
+            default;
+
+        if (mask.value == 0)
+        {
+            return false;
+        }
+
+
+        RaycastHit[] hits =
+            Physics.RaycastAll(
+                ray,
+                maxAimDistance,
+                mask,
+                QueryTriggerInteraction.Ignore
+            );
+
+
+        bool found =
+            false;
+
+        float closestDistance =
+            float.MaxValue;
+
+
+        foreach (RaycastHit hit in hits)
+        {
+            if (
+                hit.collider == null ||
+                IsCannonCollider(
+                    hit.collider
+                ))
+            {
+                continue;
+            }
+
+
+            if (
+                requireTowerTarget &&
+                !IsTowerTarget(
+                    hit.collider
+                ))
+            {
+                continue;
+            }
+
+
+            if (
+                hit.distance >=
+                closestDistance)
+            {
+                continue;
+            }
+
+
+            closestDistance =
+                hit.distance;
+
+            closestHit =
+                hit;
+
+            found =
+                true;
+        }
+
+        return found;
+    }
+
+
+    private bool IsTowerTarget(
+        Collider hitCollider)
+    {
+        if (hitCollider == null)
+        {
+            return false;
+        }
+
+
+        /*
+         * New generic tower system mein
+         * PhysicsTowerObject check.
+         */
+        if (hitCollider.GetComponentInParent<
+                PhysicsTowerObject>() != null)
+        {
+            return true;
+        }
+
+
+        int layerBit =
+            1 <<
+            hitCollider.gameObject.layer;
+
+
+        return
+            (towerTargetMask.value &
+             layerBit) != 0;
+    }
+
+
+    private bool IsCannonCollider(
+        Collider candidate)
+    {
+        if (
+            candidate == null ||
+            cannonRoot == null)
+        {
+            return false;
+        }
+
+
+        Transform candidateTransform =
+            candidate.transform;
+
+
+        return
+            candidateTransform ==
+                cannonRoot ||
+            candidateTransform.IsChildOf(
+                cannonRoot
+            );
+    }
+
+
+    private Vector3 GetFallbackAimPoint(
+        Ray screenRay)
+    {
+        if (
+            fallbackAimPlaneReference !=
+            null)
+        {
+            Plane aimPlane =
+                new Plane(
+                    -aimCamera.transform.forward,
+                    fallbackAimPlaneReference.position
+                );
+
+
+            if (
+                aimPlane.Raycast(
+                    screenRay,
+                    out float enterDistance) &&
+                enterDistance > 0f)
+            {
+                return
+                    screenRay.GetPoint(
+                        enterDistance
+                    );
+            }
+        }
+
+
+        return
+            screenRay.GetPoint(
+                fallbackAimDistance
+            );
+    }
+
+
+    private bool IsPointBehindCannon(
+        Vector3 targetPoint)
+    {
+        Transform forwardSpace =
+            yawPivot.parent != null
+                ? yawPivot.parent
+                : transform;
+
+
+        Vector3 flatDirection =
+            targetPoint -
+            yawPivot.position;
+
+        flatDirection.y =
+            0f;
+
+
+        Vector3 flatForward =
+            forwardSpace.forward;
+
+        flatForward.y =
+            0f;
+
+
+        if (
+            flatDirection.sqrMagnitude <
+                0.0001f ||
+            flatForward.sqrMagnitude <
+                0.0001f)
+        {
+            return false;
+        }
+
+
+        return
+            Vector3.Dot(
+                flatForward.normalized,
+                flatDirection.normalized
+            ) <= 0f;
+    }
+
+
+    private void RotateCannonTowards(
+        Vector3 targetPoint)
+    {
+        if (
+            yawPivot == null ||
+            pitchPivot == null)
+        {
+            return;
+        }
+
+        RotateYawTowards(
+            targetPoint
+        );
+
+        RotatePitchTowards(
+            targetPoint
+        );
+    }
+
+
+    private void RotateYawTowards(
+        Vector3 targetPoint)
+    {
+        Vector3 worldDirection =
+            targetPoint -
+            yawPivot.position;
+
+        worldDirection.y =
+            0f;
+
+
+        if (
+            worldDirection.sqrMagnitude <
+            0.001f)
+        {
+            return;
+        }
+
+
+        Vector3 localDirection;
+
+
+        if (yawPivot.parent != null)
+        {
+            localDirection =
+                yawPivot.parent
+                    .InverseTransformDirection(
+                        worldDirection
+                    );
+        }
+        else
+        {
+            localDirection =
+                worldDirection;
+        }
+
+
+        float yawAngle =
+            Mathf.Atan2(
+                localDirection.x,
+                localDirection.z
+            ) *
+            Mathf.Rad2Deg;
+
+
+        yawPivot.localRotation =
+            Quaternion.Euler(
+                0f,
+                yawAngle,
+                0f
+            );
+    }
+
+
+    private void RotatePitchTowards(
+        Vector3 targetPoint)
+    {
+        Vector3 worldDirection =
+            targetPoint -
+            pitchPivot.position;
+
+
+        Vector3 localDirection =
+            yawPivot
+                .InverseTransformDirection(
+                    worldDirection
+                );
+
+
+        float horizontalDistance =
+            new Vector2(
+                localDirection.x,
+                localDirection.z
+            ).magnitude;
+
+
+        float pitchAngle =
+            Mathf.Atan2(
+                localDirection.y,
+                horizontalDistance
+            ) *
+            Mathf.Rad2Deg;
+
+
+        pitchAngle =
+            Mathf.Clamp(
+                pitchAngle,
+                minimumPitch,
+                maximumPitch
+            );
+
+
+        pitchPivot.localRotation =
+            Quaternion.Euler(
+                -pitchAngle,
+                0f,
+                0f
+            );
+    }
+
+
+    public void Shoot()
+    {
+        if (
+            !hasAimPoint ||
+            Time.time <
+            nextAllowedShotTime)
+        {
+            return;
+        }
+
+
+        if (
+            cannonBallPrefab == null ||
+            muzzle == null)
+        {
+            return;
+        }
+
+
+        Physics.SyncTransforms();
+
+
+        Vector3 spawnOrigin =
+            muzzle.position;
+
+
+        bool useGravityForShot =
+            !exactStraightShot;
+
+
+        Vector3 shotVelocity;
+
+
+        if (useGravityForShot)
+        {
+            bool solved =
+                TryCalculateBallisticVelocity(
+                    spawnOrigin,
+                    currentAimPoint,
+                    launchSpeed,
+                    out shotVelocity
+                );
+
+
+            if (!solved)
+            {
+                if (
+                    !fallbackToStraightIfUnreachable)
+                {
+                    if (showDebugLogs)
+                    {
+                        Debug.LogWarning(
+                            "Target current Launch Speed " +
+                            "se reach nahi ho sakta.",
+                            this
+                        );
+                    }
+
+                    return;
+                }
+
+
+                useGravityForShot =
+                    false;
+
+
+                Vector3 straightDirection =
+                    currentAimPoint -
+                    spawnOrigin;
+
+
+                if (
+                    straightDirection.sqrMagnitude <
+                    0.0001f)
+                {
+                    return;
+                }
+
+
+                shotVelocity =
+                    straightDirection.normalized *
+                    launchSpeed;
+
+
+                if (showDebugLogs)
+                {
+                    Debug.LogWarning(
+                        "Target unreachable. " +
+                        "Straight fallback shot.",
+                        this
+                    );
+                }
+            }
+        }
+        else
+        {
+            Vector3 straightDirection =
+                currentAimPoint -
+                spawnOrigin;
+
+
+            if (
+                straightDirection.sqrMagnitude <
+                0.0001f)
+            {
+                return;
+            }
+
+
+            shotVelocity =
+                straightDirection.normalized *
+                launchSpeed;
+        }
+
+
+        Vector3 shotDirection =
+            shotVelocity.sqrMagnitude >
+            0.0001f
+                ? shotVelocity.normalized
+                : (
+                    currentAimPoint -
+                    spawnOrigin
+                ).normalized;
+
+
+        if (
+            preventBackwardAim &&
+            IsDirectionBehindCannon(
+                shotDirection
+            ))
+        {
+            return;
+        }
+
+
+        nextAllowedShotTime =
+            Time.time +
+            minimumShotInterval;
+
+
+        Vector3 spawnPosition =
+            spawnOrigin +
+            shotDirection *
+            spawnForwardOffset;
+
+
+        Quaternion spawnRotation =
+            Quaternion.LookRotation(
+                shotDirection,
+                GetSafeUpDirection(
+                    shotDirection
+                )
+            );
+
+
+        GameObject cannonBall =
+            Instantiate(
+                cannonBallPrefab,
+                spawnPosition,
+                spawnRotation
+            );
+
+
+        Rigidbody ballRigidbody =
+            cannonBall
+                .GetComponent<Rigidbody>();
+
+
+        if (ballRigidbody == null)
+        {
+            Debug.LogError(
+                "Cannonball prefab par Rigidbody missing hai.",
+                cannonBall
+            );
+
+            Destroy(
+                cannonBall
+            );
+
+            return;
+        }
+
+
+        ballRigidbody.isKinematic =
+            false;
+
+        ballRigidbody.useGravity =
+            useGravityForShot;
+
+        ballRigidbody.angularVelocity =
+            Vector3.zero;
+
+        ballRigidbody.collisionDetectionMode =
+            CollisionDetectionMode
+                .ContinuousDynamic;
+
+
+        SetBodyVelocity(
+            ballRigidbody,
+            Vector3.zero
+        );
+
+
+        IgnoreBallCollisionWithCannon(
+            cannonBall
+        );
+
+
+        SetBodyVelocity(
+            ballRigidbody,
+            shotVelocity
+        );
+
+
+        if (showDebugLines)
+        {
+            Debug.DrawLine(
+                spawnPosition,
+                currentAimPoint,
+                Color.green,
+                2f
+            );
+        }
+
+
+        Destroy(
+            cannonBall,
+            cannonBallLifetime
+        );
+    }
+
+
+    private bool TryCalculateBallisticVelocity(
+        Vector3 startPosition,
+        Vector3 targetPosition,
+        float speed,
+        out Vector3 launchVelocity)
+    {
+        launchVelocity =
+            Vector3.zero;
+
+
+        if (speed <= 0.01f)
+        {
+            return false;
+        }
+
+
+        float gravity =
+            Mathf.Abs(
+                Physics.gravity.y
+            );
+
+
+        if (gravity <= 0.001f)
+        {
+            return false;
+        }
+
+
+        Vector3 toTarget =
+            targetPosition -
+            startPosition;
+
+
+        Vector3 horizontalToTarget =
+            new Vector3(
+                toTarget.x,
+                0f,
+                toTarget.z
+            );
+
+
+        float horizontalDistance =
+            horizontalToTarget.magnitude;
+
+
+        float verticalDistance =
+            toTarget.y;
+
+
+        if (
+            horizontalDistance <
+            0.0001f)
+        {
+            launchVelocity =
+                new Vector3(
+                    0f,
+                    Mathf.Sign(
+                        verticalDistance == 0f
+                            ? 1f
+                            : verticalDistance
+                    ) * speed,
+                    0f
+                );
+
+            return true;
+        }
+
+
+        float speedSquared =
+            speed *
+            speed;
+
+
+        float discriminant =
+            (
+                speedSquared *
+                speedSquared
+            )
+            -
+            gravity *
+            (
+                gravity *
+                horizontalDistance *
+                horizontalDistance
+                +
+                2f *
+                verticalDistance *
+                speedSquared
+            );
+
+
+        if (discriminant < 0f)
+        {
+            return false;
+        }
+
+
+        float sqrtDiscriminant =
+            Mathf.Sqrt(
+                discriminant
+            );
+
+
+        float lowArcAngle =
+            Mathf.Atan2(
+                speedSquared -
+                sqrtDiscriminant,
+
+                gravity *
+                horizontalDistance
+            );
+
+
+        float highArcAngle =
+            Mathf.Atan2(
+                speedSquared +
+                sqrtDiscriminant,
+
+                gravity *
+                horizontalDistance
+            );
+
+
+        float chosenAngle =
+            preferLowArcTrajectory
+                ? lowArcAngle
+                : highArcAngle;
+
+
+        Vector3 horizontalDirection =
+            horizontalToTarget.normalized;
+
+
+        float horizontalSpeed =
+            speed *
+            Mathf.Cos(
+                chosenAngle
+            );
+
+
+        float verticalSpeed =
+            speed *
+            Mathf.Sin(
+                chosenAngle
+            );
+
+
+        launchVelocity =
+            horizontalDirection *
+            horizontalSpeed
+            +
+            Vector3.up *
+            verticalSpeed;
+
+
+        return true;
+    }
+
+
+    private bool IsDirectionBehindCannon(
+        Vector3 direction)
+    {
+        Transform forwardSpace =
+            yawPivot.parent != null
+                ? yawPivot.parent
+                : transform;
+
+
+        Vector3 flatDirection =
+            direction;
+
+        flatDirection.y =
+            0f;
+
+
+        Vector3 flatForward =
+            forwardSpace.forward;
+
+        flatForward.y =
+            0f;
+
+
+        if (
+            flatDirection.sqrMagnitude <
+                0.0001f ||
+            flatForward.sqrMagnitude <
+                0.0001f)
+        {
+            return false;
+        }
+
+
+        return
+            Vector3.Dot(
+                flatForward.normalized,
+                flatDirection.normalized
+            ) <= 0f;
+    }
+
+
+    private Vector3 GetSafeUpDirection(
+        Vector3 shotDirection)
+    {
+        Vector3 upDirection =
+            muzzle != null
+                ? muzzle.up
+                : Vector3.up;
+
+
+        if (
+            Mathf.Abs(
+                Vector3.Dot(
+                    shotDirection,
+                    upDirection.normalized
+                )
+            ) > 0.999f)
+        {
+            upDirection =
+                Vector3.up;
+        }
+
+
+        return upDirection;
+    }
+
+
+    private void IgnoreBallCollisionWithCannon(
+        GameObject cannonBall)
+    {
+        if (cannonBall == null)
+        {
+            return;
+        }
+
+
+        if (
+            cannonColliders == null ||
+            cannonColliders.Length == 0)
+        {
+            CacheCannonColliders();
+        }
+
+
+        Collider[] ballColliders =
+            cannonBall
+                .GetComponentsInChildren<
+                    Collider>(true);
+
+
+        foreach (
+            Collider ballCollider
+            in ballColliders)
+        {
+            if (ballCollider == null)
+            {
+                continue;
+            }
+
+
+            foreach (
+                Collider cannonCollider
+                in cannonColliders)
+            {
+                if (
+                    cannonCollider == null)
+                {
+                    continue;
+                }
+
+
+                Physics.IgnoreCollision(
+                    ballCollider,
+                    cannonCollider,
+                    true
+                );
+            }
+        }
+    }
+
+
+    private bool ValidateReferences()
+    {
+        if (aimCamera == null)
+        {
+            Debug.LogError(
+                "Aim Camera missing hai.",
+                this
+            );
+
+            return false;
+        }
+
+
+        if (
+            yawPivot == null ||
+            pitchPivot == null ||
+            muzzle == null)
+        {
+            Debug.LogError(
+                "Yaw Pivot, Pitch Pivot ya Muzzle missing hai.",
+                this
+            );
+
+            return false;
+        }
+
+
+        return true;
+    }
+
+
+    private static void SetBodyVelocity(
+        Rigidbody body,
+        Vector3 velocity)
+    {
+        if (body == null)
+        {
+            return;
+        }
+
+#if UNITY_6000_0_OR_NEWER
+        body.linearVelocity =
+            velocity;
+#else
+        body.velocity =
+            velocity;
+#endif
+    }
+
+
+#if UNITY_EDITOR
+    private void OnDrawGizmosSelected()
+    {
+        if (
+            !showDebugLines ||
+            !hasAimPoint ||
+            muzzle == null)
+        {
+            return;
+        }
+
+
+        Gizmos.DrawLine(
+            muzzle.position,
+            currentAimPoint
+        );
+
+
+        Gizmos.DrawSphere(
+            currentAimPoint,
+            0.08f
+        );
+    }
+#endif
+}
+
+
+
+
+
