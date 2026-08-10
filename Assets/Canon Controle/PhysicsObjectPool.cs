@@ -7,86 +7,90 @@ public sealed class PhysicsObjectPool : MonoBehaviour
     {
         public PhysicsObjectDefinition Definition;
 
-        public readonly Stack<PhysicsTowerObject> Inactive =
-            new Stack<PhysicsTowerObject>();
+        public readonly Stack<PhysicsTowerObject>
+            Inactive =
+                new Stack<PhysicsTowerObject>();
 
-        public readonly HashSet<PhysicsTowerObject> InactiveLookup =
-            new HashSet<PhysicsTowerObject>();
+        public readonly HashSet<PhysicsTowerObject>
+            InactiveLookup =
+                new HashSet<PhysicsTowerObject>();
 
         public int TotalCreated;
     }
 
+
+    [Header("Pool")]
+
     [SerializeField]
     private Transform poolRoot;
 
+
     private readonly Dictionary<
         PhysicsObjectDefinition,
-        PoolBucket> pools =
-        new Dictionary<
-            PhysicsObjectDefinition,
-            PoolBucket>();
+        PoolBucket>
+        pools =
+            new Dictionary<
+                PhysicsObjectDefinition,
+                PoolBucket>();
+
 
     private readonly Dictionary<
         PhysicsTowerObject,
-        PoolBucket> objectOwners =
-        new Dictionary<
-            PhysicsTowerObject,
-            PoolBucket>();
+        PoolBucket>
+        objectOwners =
+            new Dictionary<
+                PhysicsTowerObject,
+                PoolBucket>();
+
 
     private void Awake()
     {
         if (poolRoot == null)
         {
-            poolRoot = transform;
+            poolRoot =
+                transform;
         }
     }
 
-    public void PrepareForLevel(LevelData levelData)
+
+    public void PrepareForLevel(
+        GridLevelData levelData)
     {
         if (levelData == null)
+        {
             return;
-
-        Dictionary<
-            PhysicsObjectDefinition,
-            int> requiredCounts =
-            new Dictionary<
-                PhysicsObjectDefinition,
-                int>();
-
-        foreach (LevelRowData row in levelData.Rows)
-        {
-            if (row == null ||
-                row.ObjectDefinition == null)
-            {
-                continue;
-            }
-
-            if (!requiredCounts.ContainsKey(
-                    row.ObjectDefinition))
-            {
-                requiredCounts[
-                    row.ObjectDefinition] = 0;
-            }
-
-            requiredCounts[
-                row.ObjectDefinition] +=
-                row.Count;
         }
 
-        foreach (var pair in requiredCounts)
-        {
-            int required =
-                Mathf.Max(
-                    pair.Value,
-                    pair.Key.MinimumPrewarmCount
-                );
 
-            EnsureCapacity(
-                pair.Key,
-                required
+        PhysicsObjectDefinition definition =
+            levelData.ObjectDefinition;
+
+
+        if (definition == null ||
+            definition.Prefab == null)
+        {
+            Debug.LogError(
+                "GridLevelData mein Object Definition missing hai.",
+                levelData
             );
+
+            return;
         }
+
+
+        int requiredCount =
+            Mathf.Max(
+                levelData.BakedOccupiedCellCount,
+                definition.MinimumPrewarmCount
+            );
+
+
+        EnsureCapacity(
+            definition,
+            requiredCount
+        );
     }
+
 
     public PhysicsTowerObject Get(
         PhysicsObjectDefinition definition,
@@ -100,49 +104,72 @@ public sealed class PhysicsObjectPool : MonoBehaviour
             return null;
         }
 
+
         PoolBucket bucket =
-            GetOrCreateBucket(definition);
+            GetOrCreateBucket(
+                definition
+            );
+
 
         if (bucket.Inactive.Count == 0)
         {
-            CreatePooledObject(bucket);
+            CreatePooledObject(
+                bucket
+            );
         }
+
 
         PhysicsTowerObject instance =
             bucket.Inactive.Pop();
+
 
         bucket.InactiveLookup.Remove(
             instance
         );
 
+
         Transform objectTransform =
             instance.transform;
+
 
         objectTransform.SetParent(
             parent,
             false
         );
 
+
         objectTransform.SetPositionAndRotation(
             position,
             rotation
         );
 
+
         objectTransform.localScale =
-            definition.Prefab.transform.localScale;
+            definition.Prefab
+                .transform
+                .localScale;
+
 
         instance.PrepareForSpawn();
 
-        instance.gameObject.SetActive(true);
+
+        instance.gameObject.SetActive(
+            true
+        );
+
 
         return instance;
     }
+
 
     public void Release(
         PhysicsTowerObject instance)
     {
         if (instance == null)
+        {
             return;
+        }
+
 
         if (!objectOwners.TryGetValue(
                 instance,
@@ -151,41 +178,58 @@ public sealed class PhysicsObjectPool : MonoBehaviour
             return;
         }
 
+
         if (bucket.InactiveLookup.Contains(
                 instance))
         {
             return;
         }
 
+
         instance.PrepareForPool();
 
-        instance.gameObject.SetActive(false);
+
+        instance.gameObject.SetActive(
+            false
+        );
+
 
         instance.transform.SetParent(
             poolRoot,
             false
         );
 
-        bucket.Inactive.Push(instance);
+
+        bucket.Inactive.Push(
+            instance
+        );
+
 
         bucket.InactiveLookup.Add(
             instance
         );
     }
 
+
     private void EnsureCapacity(
         PhysicsObjectDefinition definition,
         int requiredCount)
     {
         PoolBucket bucket =
-            GetOrCreateBucket(definition);
+            GetOrCreateBucket(
+                definition
+            );
+
 
         while (bucket.TotalCreated <
                requiredCount)
         {
-            CreatePooledObject(bucket);
+            CreatePooledObject(
+                bucket
+            );
         }
     }
+
 
     private PoolBucket GetOrCreateBucket(
         PhysicsObjectDefinition definition)
@@ -197,19 +241,24 @@ public sealed class PhysicsObjectPool : MonoBehaviour
             return existing;
         }
 
+
         PoolBucket bucket =
             new PoolBucket
             {
-                Definition = definition
+                Definition =
+                    definition
             };
+
 
         pools.Add(
             definition,
             bucket
         );
 
+
         return bucket;
     }
+
 
     private void CreatePooledObject(
         PoolBucket bucket)
@@ -220,24 +269,37 @@ public sealed class PhysicsObjectPool : MonoBehaviour
                 poolRoot
             );
 
+
         instance.name =
             bucket.Definition.Prefab.name +
             "_Pooled_" +
             bucket.TotalCreated;
 
+
         bucket.TotalCreated++;
+
 
         objectOwners.Add(
             instance,
             bucket
         );
 
+
         instance.PrepareForPool();
 
-        instance.gameObject.SetActive(false);
 
-        bucket.Inactive.Push(instance);
+        instance.gameObject.SetActive(
+            false
+        );
 
-        bucket.InactiveLookup.Add(instance);
+
+        bucket.Inactive.Push(
+            instance
+        );
+
+
+        bucket.InactiveLookup.Add(
+            instance
+        );
     }
 }

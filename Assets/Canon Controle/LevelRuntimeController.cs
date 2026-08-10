@@ -1,4 +1,4 @@
-//using System.Collections.Generic;
+﻿//using System.Collections.Generic;
 //using UnityEngine;
 //using UnityEngine.Events;
 
@@ -729,7 +729,7 @@ public sealed class LevelRuntimeController : MonoBehaviour
     [Header("Level")]
 
     [SerializeField]
-    private LevelData levelData;
+    private GridLevelData levelData;
 
 
     [Header("References")]
@@ -737,16 +737,9 @@ public sealed class LevelRuntimeController : MonoBehaviour
     [SerializeField]
     private PhysicsObjectPool objectPool;
 
-    [Tooltip(
-        "Complete level ka spawn origin. " +
-        "Empty ho to controller Transform use hoga."
-    )]
     [SerializeField]
     private Transform levelOrigin;
 
-    [Tooltip(
-        "Active tower objects is root ke andar rahenge."
-    )]
     [SerializeField]
     private Transform runtimeObjectsRoot;
 
@@ -777,7 +770,7 @@ public sealed class LevelRuntimeController : MonoBehaviour
     private bool levelGenerated;
 
 
-    public LevelData CurrentLevelData =>
+    public GridLevelData CurrentLevelData =>
         levelData;
 
     public LevelTable CurrentTable =>
@@ -797,20 +790,22 @@ public sealed class LevelRuntimeController : MonoBehaviour
 
 
     public void LoadLevel(
-        LevelData newLevelData)
+        GridLevelData newLevelData)
     {
         if (newLevelData == null)
         {
             Debug.LogError(
-                "LoadLevel: LevelData null hai.",
+                "LoadLevel: GridLevelData null hai.",
                 this
             );
 
             return;
         }
 
+
         levelData =
             newLevelData;
+
 
         GenerateLevel();
     }
@@ -824,58 +819,378 @@ public sealed class LevelRuntimeController : MonoBehaviour
             return;
         }
 
+
         ClearCurrentLevel();
+
 
         objectPool.PrepareForLevel(
             levelData
         );
+
 
         if (!PrepareTable())
         {
             return;
         }
 
+
         if (!currentTable.TryGetTowerSurface(
-                out Vector3 towerSurfacePosition,
-                out Quaternion towerSurfaceRotation))
+                out Vector3 surfacePosition,
+                out Quaternion surfaceRotation))
         {
             Debug.LogError(
-                "Table ki top surface calculate nahi ho saki.",
+                "Table ki tower surface calculate nahi ho saki.",
                 currentTable
             );
 
             return;
         }
 
+
+        if (!MeasureGridObject(
+                out Vector3 objectSize,
+                out Vector3 localBoundsCenterOffset))
+        {
+            return;
+        }
+
+
         remainingTargets =
             0;
 
-        GenerateTower(
-            towerSurfacePosition,
-            towerSurfaceRotation
+
+        SpawnGrid(
+            surfacePosition,
+            surfaceRotation,
+            objectSize,
+            localBoundsCenterOffset
         );
 
+
         Physics.SyncTransforms();
+
 
         levelGenerated =
             true;
 
+
         Debug.Log(
-            $"Level {levelData.LevelNumber} generated. " +
-            $"Objects: {activeObjects.Count}, " +
+            $"GRID LEVEL {levelData.LevelNumber} GENERATED\n" +
+            $"Boxes: {activeObjects.Count}\n" +
             $"Targets: {remainingTargets}",
             this
         );
 
+
         onLevelGenerated?.Invoke();
+
 
         if (remainingTargets <= 0)
         {
             Debug.LogWarning(
-                $"Level {levelData.LevelNumber} mein " +
-                "koi target generate nahi hua.",
+                "Generated level mein koi target nahi mila.",
                 this
             );
+        }
+    }
+
+
+    private bool MeasureGridObject(
+        out Vector3 objectSize,
+        out Vector3 localBoundsCenterOffset)
+    {
+        objectSize =
+            Vector3.zero;
+
+
+        localBoundsCenterOffset =
+            Vector3.zero;
+
+
+        PhysicsObjectDefinition definition =
+            levelData.ObjectDefinition;
+
+
+        /*
+         * Temporary measurement object.
+         *
+         * Identity rotation par measure karte hain
+         * taake X/Y/Z collider dimensions proper milen.
+         */
+        PhysicsTowerObject measurementObject =
+            objectPool.Get(
+                definition,
+                Vector3.zero,
+                Quaternion.identity,
+                runtimeObjectsRoot
+            );
+
+
+        if (measurementObject == null)
+        {
+            Debug.LogError(
+                "Grid object measure karne ke liye pool object nahi mila.",
+                this
+            );
+
+            return false;
+        }
+
+
+        Physics.SyncTransforms();
+
+
+        if (!measurementObject.TryGetPhysicsBounds(
+                out Bounds bounds))
+        {
+            Debug.LogError(
+                "Physics object par valid non-trigger Collider nahi mila.",
+                measurementObject
+            );
+
+
+            objectPool.Release(
+                measurementObject
+            );
+
+
+            return false;
+        }
+
+
+        objectSize =
+            bounds.size;
+
+
+        localBoundsCenterOffset =
+            bounds.center -
+            measurementObject.transform.position;
+
+
+        objectPool.Release(
+            measurementObject
+        );
+
+
+        if (objectSize.x <= 0.0001f ||
+            objectSize.y <= 0.0001f ||
+            objectSize.z <= 0.0001f)
+        {
+            Debug.LogError(
+                "Physics object's collider size invalid hai.",
+                this
+            );
+
+            return false;
+        }
+
+
+        return true;
+    }
+
+
+    private void SpawnGrid(
+        Vector3 surfacePosition,
+        Quaternion surfaceRotation,
+        Vector3 objectSize,
+        Vector3 localBoundsCenterOffset)
+    {
+        if (!levelData.TryGetOccupiedBounds(
+                out Vector3Int occupiedMin,
+                out Vector3Int occupiedMax))
+        {
+            Debug.LogError(
+                "Baked grid mein occupied cells nahi hain.",
+                levelData
+            );
+
+            return;
+        }
+
+
+        float stepX =
+            objectSize.x +
+            levelData.HorizontalGap;
+
+
+        float stepY =
+            objectSize.y +
+            levelData.VerticalGap;
+
+
+        float stepZ =
+            objectSize.z +
+            levelData.DepthGap;
+
+
+        /*
+         * Image ke transparent margins ignore hote hain.
+         *
+         * Occupied shape ka actual center calculate hota hai.
+         */
+        float occupiedCenterX =
+            (
+                occupiedMin.x +
+                occupiedMax.x
+            ) *
+            0.5f;
+
+
+        float occupiedCenterZ =
+            (
+                occupiedMin.z +
+                occupiedMax.z
+            ) *
+            0.5f;
+
+
+        PhysicsObjectDefinition definition =
+            levelData.ObjectDefinition;
+
+
+        /*
+         * Important:
+         *
+         * Y outer loop hai.
+         * Isliye logical spawn order bottom → top rahega.
+         */
+        for (int y = occupiedMin.y;
+             y <= occupiedMax.y;
+             y++)
+        {
+            for (int z = occupiedMin.z;
+                 z <= occupiedMax.z;
+                 z++)
+            {
+                for (int x = occupiedMin.x;
+                     x <= occupiedMax.x;
+                     x++)
+                {
+                    GridCellData cell =
+                        levelData.GetCell(
+                            x,
+                            y,
+                            z
+                        );
+
+
+                    if (cell == null ||
+                        !cell.Occupied)
+                    {
+                        continue;
+                    }
+
+
+                    /*
+                     * X:
+                     * Shape automatically center.
+                     */
+                    float localX =
+                        (
+                            x -
+                            occupiedCenterX
+                        ) *
+                        stepX;
+
+
+                    /*
+                     * Y:
+                     * Lowest occupied image row
+                     * directly table top par start hogi.
+                     *
+                     * Transparent bottom margin
+                     * automatically ignore hota hai.
+                     */
+                    float localY =
+                        objectSize.y *
+                        0.5f +
+                        (
+                            y -
+                            occupiedMin.y
+                        ) *
+                        stepY;
+
+
+                    /*
+                     * Z:
+                     * Complete depth centered.
+                     */
+                    float localZ =
+                        (
+                            z -
+                            occupiedCenterZ
+                        ) *
+                        stepZ;
+
+
+                    Vector3 localCellCenter =
+                        new Vector3(
+                            localX,
+                            localY,
+                            localZ
+                        )
+                        +
+                        levelData.GridOffset;
+
+
+                    Vector3 desiredBoundsCenter =
+                        surfacePosition +
+                        surfaceRotation *
+                        localCellCenter;
+
+
+                    /*
+                     * Prefab pivot center par na bhi ho
+                     * to collider bottom proper align hoga.
+                     */
+                    Vector3 rotatedBoundsOffset =
+                        surfaceRotation *
+                        localBoundsCenterOffset;
+
+
+                    Vector3 spawnPosition =
+                        desiredBoundsCenter -
+                        rotatedBoundsOffset;
+
+
+                    PhysicsTowerObject instance =
+                        objectPool.Get(
+                            definition,
+                            spawnPosition,
+                            surfaceRotation,
+                            runtimeObjectsRoot
+                        );
+
+
+                    if (instance == null)
+                    {
+                        continue;
+                    }
+
+
+                    /*
+                     * Color baked data se.
+                     */
+                    instance.SetVisualColor(
+                        cell.Color
+                    );
+
+
+                    instance.Cleared +=
+                        HandleObjectCleared;
+
+
+                    activeObjects.Add(
+                        instance
+                    );
+
+
+                    if (instance.CountsAsTarget)
+                    {
+                        remainingTargets++;
+                    }
+                }
+            }
         }
     }
 
@@ -885,16 +1200,17 @@ public sealed class LevelRuntimeController : MonoBehaviour
         LevelTable requiredPrefab =
             levelData.TablePrefab;
 
+
         if (requiredPrefab == null)
         {
             Debug.LogError(
-                $"Level {levelData.LevelNumber}: " +
-                "Table Prefab missing hai.",
+                "GridLevelData mein Table Prefab missing hai.",
                 levelData
             );
 
             return false;
         }
+
 
         if (cachedTable == null ||
             cachedTablePrefab != requiredPrefab)
@@ -904,36 +1220,37 @@ public sealed class LevelRuntimeController : MonoBehaviour
                 Destroy(
                     cachedTable.gameObject
                 );
-
-                cachedTable =
-                    null;
             }
 
-            Transform origin =
-                GetLevelOrigin();
 
             cachedTable =
                 Instantiate(
                     requiredPrefab,
-                    origin
+                    GetLevelOrigin()
                 );
+
 
             cachedTable.name =
                 requiredPrefab.name +
                 "_Runtime";
 
+
             cachedTablePrefab =
                 requiredPrefab;
         }
 
+
         currentTable =
             cachedTable;
+
+
+        Transform tableTransform =
+            currentTable.transform;
+
 
         Transform levelRoot =
             GetLevelOrigin();
 
-        Transform tableTransform =
-            currentTable.transform;
 
         if (tableTransform.parent !=
             levelRoot)
@@ -944,300 +1261,41 @@ public sealed class LevelRuntimeController : MonoBehaviour
             );
         }
 
+
         tableTransform.localPosition =
             levelData.TablePositionOffset;
+
 
         tableTransform.localRotation =
             Quaternion.Euler(
                 levelData.TableRotationEuler
             );
 
+
         tableTransform.localScale =
-            requiredPrefab.transform.localScale;
+            requiredPrefab
+                .transform
+                .localScale;
+
 
         currentTable.gameObject.SetActive(
             true
         );
 
+
         if (currentTable.TowerSurfaceCollider ==
             null)
         {
             Debug.LogError(
-                "LevelTable par Tower Surface Collider missing hai.",
+                "Table prefab par Tower Surface Collider missing hai.",
                 currentTable
             );
 
             return false;
         }
 
+
         return true;
-    }
-
-
-    private void GenerateTower(
-        Vector3 towerSurfacePosition,
-        Quaternion towerSurfaceRotation)
-    {
-        IReadOnlyList<LevelRowData> rows =
-            levelData.Rows;
-
-        if (rows == null ||
-            rows.Count == 0)
-        {
-            Debug.LogWarning(
-                $"Level {levelData.LevelNumber}: Rows empty hain.",
-                this
-            );
-
-            return;
-        }
-
-        float currentRowBottom =
-            levelData.TowerOffset.y;
-
-
-        for (int rowIndex = 0;
-             rowIndex < rows.Count;
-             rowIndex++)
-        {
-            LevelRowData row =
-                rows[rowIndex];
-
-            if (row == null)
-            {
-                continue;
-            }
-
-            PhysicsObjectDefinition definition =
-                row.ObjectDefinition;
-
-            if (definition == null ||
-                definition.Prefab == null)
-            {
-                Debug.LogWarning(
-                    $"Level {levelData.LevelNumber}, " +
-                    $"Row {rowIndex}: Definition/Prefab missing.",
-                    this
-                );
-
-                continue;
-            }
-
-
-            int objectCount =
-                Mathf.Max(
-                    1,
-                    row.Count
-                );
-
-
-            Quaternion rowRotation =
-                towerSurfaceRotation *
-                Quaternion.Euler(
-                    row.RotationEuler
-                );
-
-
-            /*
-             * First pooled object temporarily spawn
-             * karke actual collider size measure.
-             */
-            PhysicsTowerObject firstObject =
-                objectPool.Get(
-                    definition,
-                    towerSurfacePosition,
-                    rowRotation,
-                    runtimeObjectsRoot
-                );
-
-            if (firstObject == null)
-            {
-                Debug.LogWarning(
-                    $"Row {rowIndex}: Pool spawn failed.",
-                    this
-                );
-
-                continue;
-            }
-
-
-            Physics.SyncTransforms();
-
-
-            if (!firstObject.TryGetPhysicsBounds(
-                    out Bounds firstBounds))
-            {
-                Debug.LogError(
-                    $"{definition.name}: valid Collider nahi mila.",
-                    firstObject
-                );
-
-                objectPool.Release(
-                    firstObject
-                );
-
-                continue;
-            }
-
-
-            float objectWidth =
-                firstBounds.size.x;
-
-            float objectHeight =
-                firstBounds.size.y;
-
-
-            if (objectWidth <= 0.0001f ||
-                objectHeight <= 0.0001f)
-            {
-                Debug.LogError(
-                    $"{definition.name}: Collider bounds invalid hain.",
-                    firstObject
-                );
-
-                objectPool.Release(
-                    firstObject
-                );
-
-                continue;
-            }
-
-
-            Vector3 boundsCenterOffset =
-                firstBounds.center -
-                firstObject.transform.position;
-
-
-            float horizontalStep =
-                objectWidth +
-                levelData.HorizontalGap;
-
-
-            float rowWidth =
-                (objectCount - 1) *
-                horizontalStep;
-
-
-            float startX =
-                -(rowWidth * 0.5f) +
-                levelData.TowerOffset.x +
-                row.CenterOffsetX;
-
-
-            float centerY =
-                currentRowBottom +
-                objectHeight * 0.5f;
-
-
-            float localZ =
-                levelData.TowerOffset.z +
-                row.DepthOffset;
-
-
-            for (int objectIndex = 0;
-                 objectIndex < objectCount;
-                 objectIndex++)
-            {
-                PhysicsTowerObject instance;
-
-
-                if (objectIndex == 0)
-                {
-                    instance =
-                        firstObject;
-                }
-                else
-                {
-                    instance =
-                        objectPool.Get(
-                            definition,
-                            towerSurfacePosition,
-                            rowRotation,
-                            runtimeObjectsRoot
-                        );
-                }
-
-
-                if (instance == null)
-                {
-                    continue;
-                }
-
-
-                float localX =
-                    startX +
-                    objectIndex *
-                    horizontalStep;
-
-
-                Vector3 localBoundsCenter =
-                    new Vector3(
-                        localX,
-                        centerY,
-                        localZ
-                    );
-
-
-                Vector3 desiredBoundsCenter =
-                    towerSurfacePosition +
-                    towerSurfaceRotation *
-                    localBoundsCenter;
-
-
-                Vector3 desiredTransformPosition =
-                    desiredBoundsCenter -
-                    boundsCenterOffset;
-
-
-                instance.transform.SetPositionAndRotation(
-                    desiredTransformPosition,
-                    rowRotation
-                );
-
-
-                /*
-                 * COLOR
-                 *
-                 * LevelData se deterministic attractive
-                 * color milta hai.
-                 */
-                if (levelData.ColorizeTower)
-                {
-                    Color objectColor =
-                        levelData.GetObjectColor(
-                            rowIndex,
-                            objectIndex
-                        );
-
-                    instance.SetVisualColor(
-                        objectColor
-                    );
-                }
-
-
-                instance.Cleared +=
-                    HandleObjectCleared;
-
-
-                activeObjects.Add(
-                    instance
-                );
-
-
-                if (instance.CountsAsTarget)
-                {
-                    remainingTargets++;
-                }
-            }
-
-
-            Physics.SyncTransforms();
-
-
-            currentRowBottom +=
-                objectHeight +
-                levelData.VerticalGap;
-        }
     }
 
 
@@ -1274,12 +1332,6 @@ public sealed class LevelRuntimeController : MonoBehaviour
         );
 
 
-        Debug.Log(
-            $"Target cleared. Remaining: {remainingTargets}",
-            this
-        );
-
-
         if (levelGenerated &&
             remainingTargets == 0)
         {
@@ -1301,7 +1353,7 @@ public sealed class LevelRuntimeController : MonoBehaviour
 
 
         Debug.Log(
-            $"LEVEL {levelData.LevelNumber} COMPLETE",
+            $"GRID LEVEL {levelData.LevelNumber} COMPLETE",
             this
         );
 
@@ -1366,9 +1418,10 @@ public sealed class LevelRuntimeController : MonoBehaviour
 
     private Transform GetLevelOrigin()
     {
-        return levelOrigin != null
-            ? levelOrigin
-            : transform;
+        return
+            levelOrigin != null
+                ? levelOrigin
+                : transform;
     }
 
 
@@ -1377,8 +1430,44 @@ public sealed class LevelRuntimeController : MonoBehaviour
         if (levelData == null)
         {
             Debug.LogError(
-                "Level Data missing hai.",
+                "Grid Level Data missing hai.",
                 this
+            );
+
+            return false;
+        }
+
+
+        if (!levelData.HasValidBakedGrid)
+        {
+            Debug.LogError(
+                "GridLevelData bake nahi hui. " +
+                "GridLevelData Inspector mein " +
+                "'BAKE 3D GRID FROM IMAGE' press karein.",
+                levelData
+            );
+
+            return false;
+        }
+
+
+        if (levelData.ObjectDefinition == null ||
+            levelData.ObjectDefinition.Prefab == null)
+        {
+            Debug.LogError(
+                "Grid Level Data mein Object Definition/Prefab missing hai.",
+                levelData
+            );
+
+            return false;
+        }
+
+
+        if (levelData.TablePrefab == null)
+        {
+            Debug.LogError(
+                "Grid Level Data mein Table Prefab missing hai.",
+                levelData
             );
 
             return false;
@@ -1407,14 +1496,18 @@ public sealed class LevelRuntimeController : MonoBehaviour
         }
 
 
-        if (levelData.TablePrefab == null)
-        {
-            Debug.LogError(
-                "LevelData mein Table Prefab missing hai.",
-                levelData
-            );
+        Vector3 runtimeScale =
+            runtimeObjectsRoot.lossyScale;
 
-            return false;
+
+        if (Mathf.Abs(runtimeScale.x - 1f) > 0.01f ||
+            Mathf.Abs(runtimeScale.y - 1f) > 0.01f ||
+            Mathf.Abs(runtimeScale.z - 1f) > 0.01f)
+        {
+            Debug.LogWarning(
+                "RuntimeObjects ki world Scale ideally 1,1,1 honi chahiye.",
+                runtimeObjectsRoot
+            );
         }
 
 
@@ -1440,9 +1533,6 @@ public sealed class LevelRuntimeController : MonoBehaviour
         }
     }
 }
-
-
-
 
 
 
