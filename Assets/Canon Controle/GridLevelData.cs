@@ -79,8 +79,11 @@ public sealed class GridLevelData : ScriptableObject
     [SerializeField, Min(1)]
     private int gridHeight = 12;
 
-    [SerializeField, Min(1)]
-    private int gridDepth = 1;
+    [SerializeField, Min(1), HideInInspector]
+    private int gridDepth = 2;
+
+    [SerializeField, HideInInspector]
+    private bool mirrorPaintAcrossLayers = true;
 
 
     [Header("Image Mask")]
@@ -166,7 +169,7 @@ public sealed class GridLevelData : ScriptableObject
     [SerializeField, Min(0f)]
     private float verticalGap = 0f;
 
-    [SerializeField, Min(0f)]
+    [SerializeField, Min(0f), HideInInspector]
     private float depthGap = 0f;
 
 
@@ -286,6 +289,9 @@ public sealed class GridLevelData : ScriptableObject
 
     public int GridDepth =>
         gridDepth;
+
+    public bool MirrorPaintAcrossLayers =>
+        mirrorPaintAcrossLayers;
 
     public Vector3 GridOffset =>
         gridOffset;
@@ -444,6 +450,26 @@ public sealed class GridLevelData : ScriptableObject
 
 #if UNITY_EDITOR
 
+    private void OnValidate()
+    {
+        gridWidth = Mathf.Max(1, gridWidth);
+        gridHeight = Mathf.Max(1, gridHeight);
+        gridDepth = Mathf.Max(1, gridDepth);
+
+        /*
+         * When an existing one-layer level is changed to two layers,
+         * immediately copy its authored front layer into the new back
+         * layer. This keeps the level playable without requiring a
+         * separate allocation click after changing Grid Depth.
+         */
+        if (layers != null &&
+            layers.Count > 0 &&
+            layers.Count < gridDepth)
+        {
+            EditorEnsureGridAllocated(true);
+        }
+    }
+
     /// <summary>
     /// Hand-authored level design API used by GridLevelDataEditor's
     /// manual grid painter. Kept separate from the image-bake path below
@@ -451,7 +477,28 @@ public sealed class GridLevelData : ScriptableObject
     /// the same runtime data (layers/rows/cells) that LevelRuntimeController reads.
     /// </summary>
 
-    public void EditorEnsureGridAllocated()
+    public void EditorAddPaletteEntry(
+        PhysicsObjectDefinition definition)
+    {
+        if (definition == null)
+        {
+            return;
+        }
+
+        if (blockPalette == null)
+        {
+            blockPalette =
+                new List<PhysicsObjectDefinition>();
+        }
+
+        if (!blockPalette.Contains(definition))
+        {
+            blockPalette.Add(definition);
+        }
+    }
+
+    public void EditorEnsureGridAllocated(
+        bool duplicateLastDepthLayer = false)
     {
         gridWidth =
             Mathf.Max(1, gridWidth);
@@ -480,12 +527,23 @@ public sealed class GridLevelData : ScriptableObject
 
                 for (int x = 0; x < gridWidth; x++)
                 {
+                    bool isNewDepthLayer =
+                        oldLayers != null &&
+                        oldLayers.Count > 0 &&
+                        z >= oldLayers.Count;
+
+                    int sourceZ =
+                        duplicateLastDepthLayer &&
+                        isNewDepthLayer
+                            ? oldLayers.Count - 1
+                            : z;
+
                     GridCellData oldCell =
                         FindExistingCell(
                             oldLayers,
                             x,
                             y,
-                            z
+                            sourceZ
                         );
 
                     GridCellData newCell =
@@ -503,7 +561,9 @@ public sealed class GridLevelData : ScriptableObject
                         newCell.SetSpan(
                             oldCell.SpanX,
                             oldCell.SpanY,
-                            oldCell.SpanZ
+                            isNewDepthLayer
+                                ? 1
+                                : oldCell.SpanZ
                         );
 
                         newCell.SetOrientation(
@@ -516,8 +576,17 @@ public sealed class GridLevelData : ScriptableObject
 
                         if (oldCell.IsCovered)
                         {
+                            Vector3Int anchorCoordinate =
+                                oldCell.AnchorCoordinate;
+
+                            if (isNewDepthLayer)
+                            {
+                                anchorCoordinate.z +=
+                                    z - sourceZ;
+                            }
+
                             newCell.SetCoveredBy(
-                                oldCell.AnchorCoordinate
+                                anchorCoordinate
                             );
                         }
                     }
@@ -534,6 +603,141 @@ public sealed class GridLevelData : ScriptableObject
         }
 
         RecalculateBakedMetadata();
+    }
+
+
+    public void EditorSetDepthLayerCount(
+        int newLayerCount)
+    {
+        gridDepth =
+            Mathf.Clamp(newLayerCount, 1, 16);
+
+        EditorEnsureGridAllocated(true);
+    }
+
+
+    public void EditorSetMirrorPaintAcrossLayers(
+        bool enabled)
+    {
+        mirrorPaintAcrossLayers = enabled;
+    }
+
+
+    public void EditorSetDepthGap(
+        float gap)
+    {
+        depthGap = Mathf.Max(0f, gap);
+    }
+
+
+    public void EditorCopyDepthLayerToAll(
+        int sourceLayerIndex)
+    {
+        if (!IsGridAllocated ||
+            gridDepth <= 1)
+        {
+            return;
+        }
+
+        sourceLayerIndex =
+            Mathf.Clamp(
+                sourceLayerIndex,
+                0,
+                gridDepth - 1
+            );
+
+        GridDepthLayerData sourceLayer =
+            layers[sourceLayerIndex];
+
+        for (int z = 0; z < gridDepth; z++)
+        {
+            if (z == sourceLayerIndex)
+            {
+                continue;
+            }
+
+            layers[z] = CloneDepthLayer(
+                sourceLayer,
+                sourceLayerIndex,
+                z
+            );
+        }
+
+        RecalculateBakedMetadata();
+    }
+
+
+    private static GridDepthLayerData CloneDepthLayer(
+        GridDepthLayerData sourceLayer,
+        int sourceLayerIndex,
+        int targetLayerIndex)
+    {
+        GridDepthLayerData cloneLayer =
+            new GridDepthLayerData();
+
+        if (sourceLayer?.Rows == null)
+        {
+            return cloneLayer;
+        }
+
+        foreach (GridRowData sourceRow in sourceLayer.Rows)
+        {
+            GridRowData cloneRow =
+                new GridRowData();
+
+            if (sourceRow?.Cells != null)
+            {
+                foreach (GridCellData sourceCell in sourceRow.Cells)
+                {
+                    GridCellData cloneCell =
+                        new GridCellData(
+                            sourceCell != null && sourceCell.Occupied,
+                            sourceCell != null
+                                ? sourceCell.Color
+                                : Color.white,
+                            sourceCell != null
+                                ? sourceCell.DefinitionIndex
+                                : 0
+                        );
+
+                    if (sourceCell != null)
+                    {
+                        cloneCell.SetSpan(
+                            sourceCell.SpanX,
+                            sourceCell.SpanY,
+                            1
+                        );
+
+                        cloneCell.SetOrientation(
+                            sourceCell.Orientation
+                        );
+
+                        cloneCell.SetLocalOffset(
+                            sourceCell.LocalOffset
+                        );
+
+                        if (sourceCell.IsCovered)
+                        {
+                            Vector3Int anchorCoordinate =
+                                sourceCell.AnchorCoordinate;
+
+                            anchorCoordinate.z +=
+                                targetLayerIndex - sourceLayerIndex;
+
+                            cloneCell.SetCoveredBy(
+                                anchorCoordinate
+                            );
+                        }
+                    }
+
+                    cloneRow.Cells.Add(cloneCell);
+                }
+            }
+
+            cloneLayer.Rows.Add(cloneRow);
+        }
+
+        return cloneLayer;
     }
 
 

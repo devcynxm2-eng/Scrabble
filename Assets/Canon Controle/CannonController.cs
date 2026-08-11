@@ -7,7 +7,7 @@
 // * Ye script ab kisi UI Image/Canvas element par attach karne ki zaroorat
 // * NAHI hai. Isay kisi bhi plain GameObject (jaise "GameManagers" ya khud
 // * cannon ke root) par attach karein. Ye ab UI Event System (IPointerDownHandler
-// * waghera) use nahi karti — is liye Canvas kabhi bhi aim/shoot ko intercept
+// * waghera) use nahi karti ï¿½ is liye Canvas kabhi bhi aim/shoot ko intercept
 // * nahi kar sakta.
 // *
 // * Requires: Project Settings > Player > Active Input Handling =
@@ -239,7 +239,7 @@
 
 //    /// <summary>
 //    /// Pointer kisi UI element (Canvas Graphic jispar Raycast Target on ho)
-//    /// ke upar hai ya nahi — is check ki wajah se HUD/buttons ke upar
+//    /// ke upar hai ya nahi ï¿½ is check ki wajah se HUD/buttons ke upar
 //    /// tap karne par cannon galti se fire nahi karega, aur UI se koi
 //    /// interference bhi nahi hogi kyunke ye sirf ek guard hai, 3D aim
 //    /// calculation UI raycast par depend nahi karti.
@@ -823,7 +823,7 @@
 //        if (horizontalDistance < 0.0001f)
 //        {
 //            /*
-//             * Target seedha upar/neeche hai — horizontal solve nahi hota.
+//             * Target seedha upar/neeche hai ï¿½ horizontal solve nahi hota.
 //             * Straight vertical shot bhej do.
 //             */
 //            launchVelocity =
@@ -1037,6 +1037,8 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
+using TMPro;
 
 public sealed class CannonController : MonoBehaviour
 {
@@ -1116,6 +1118,24 @@ public sealed class CannonController : MonoBehaviour
     private float minimumShotInterval = 0f;
 
 
+    [Header("Ball Limit And HUD")]
+
+    [SerializeField]
+    private LevelRuntimeController levelRuntimeController;
+
+    [Tooltip(
+        "Optional TMP text. Empty ho to top-left HUD automatically create hoga."
+    )]
+    [SerializeField]
+    private TMP_Text ballsRemainingText;
+
+    [SerializeField]
+    private bool autoCreateBallsHud = true;
+
+    [SerializeField, Min(1)]
+    private int fallbackBallLimit = 10;
+
+
     [Header("Trajectory")]
 
     [Tooltip(
@@ -1175,6 +1195,16 @@ public sealed class CannonController : MonoBehaviour
 
     private Collider[] cannonColliders;
 
+    private LevelRuntimeController subscribedLevelController;
+    private GridLevelData activeBallLevel;
+    private GameObject autoCreatedBallsHud;
+    private int totalBalls;
+    private int remainingBalls;
+    private bool ballLimitInitialized;
+
+    public int RemainingBalls => remainingBalls;
+    public int TotalBalls => totalBalls;
+
 
     private void Awake()
     {
@@ -1189,6 +1219,251 @@ public sealed class CannonController : MonoBehaviour
         }
 
         CacheCannonColliders();
+    }
+
+
+    private void OnEnable()
+    {
+        ConnectLevelController();
+    }
+
+
+    private void Start()
+    {
+        ConnectLevelController();
+        EnsureBallsHud();
+
+        ResetBallLimit(
+            levelRuntimeController != null
+                ? levelRuntimeController.CurrentLevelData
+                : null
+        );
+    }
+
+
+    private void OnDisable()
+    {
+        DisconnectLevelController();
+    }
+
+
+    private void ConnectLevelController()
+    {
+        if (levelRuntimeController == null)
+        {
+            levelRuntimeController =
+                FindFirstObjectByType<LevelRuntimeController>();
+        }
+
+        if (subscribedLevelController ==
+            levelRuntimeController)
+        {
+            return;
+        }
+
+        DisconnectLevelController();
+
+        subscribedLevelController =
+            levelRuntimeController;
+
+        if (subscribedLevelController != null)
+        {
+            subscribedLevelController.LevelGenerated +=
+                HandleLevelGenerated;
+        }
+    }
+
+
+    private void DisconnectLevelController()
+    {
+        if (subscribedLevelController != null)
+        {
+            subscribedLevelController.LevelGenerated -=
+                HandleLevelGenerated;
+        }
+
+        subscribedLevelController = null;
+    }
+
+
+    private void HandleLevelGenerated(
+        GridLevelData generatedLevel)
+    {
+        ResetBallLimit(generatedLevel);
+    }
+
+
+    private void EnsureBallLimitInitialized()
+    {
+        GridLevelData currentLevel =
+            levelRuntimeController != null
+                ? levelRuntimeController.CurrentLevelData
+                : null;
+
+        if (!ballLimitInitialized ||
+            currentLevel != activeBallLevel)
+        {
+            ResetBallLimit(currentLevel);
+        }
+    }
+
+
+    private void ResetBallLimit(
+        GridLevelData ballLevel)
+    {
+        activeBallLevel = ballLevel;
+
+        totalBalls = Mathf.Max(
+            1,
+            ballLevel != null
+                ? ballLevel.AvailableBalls
+                : fallbackBallLimit
+        );
+
+        remainingBalls = totalBalls;
+        ballLimitInitialized = true;
+
+        EnsureBallsHud();
+        UpdateBallsHud();
+    }
+
+
+    private void ConsumeBall()
+    {
+        remainingBalls = Mathf.Max(
+            0,
+            remainingBalls - 1
+        );
+
+        UpdateBallsHud();
+    }
+
+
+    private void EnsureBallsHud()
+    {
+        if (ballsRemainingText != null ||
+            !autoCreateBallsHud)
+        {
+            return;
+        }
+
+        Canvas targetCanvas = null;
+
+        Canvas[] canvases =
+            FindObjectsByType<Canvas>(
+                FindObjectsInactive.Exclude,
+                FindObjectsSortMode.None
+            );
+
+        foreach (Canvas candidate in canvases)
+        {
+            if (candidate != null &&
+                candidate.renderMode !=
+                RenderMode.WorldSpace)
+            {
+                targetCanvas = candidate;
+                break;
+            }
+        }
+
+        if (targetCanvas == null)
+        {
+            GameObject canvasObject =
+                new GameObject(
+                    "Cannon HUD Canvas",
+                    typeof(RectTransform),
+                    typeof(Canvas),
+                    typeof(CanvasScaler),
+                    typeof(GraphicRaycaster)
+                );
+
+            int uiLayer =
+                LayerMask.NameToLayer("UI");
+
+            if (uiLayer >= 0)
+            {
+                canvasObject.layer = uiLayer;
+            }
+
+            targetCanvas =
+                canvasObject.GetComponent<Canvas>();
+
+            targetCanvas.renderMode =
+                RenderMode.ScreenSpaceOverlay;
+
+            targetCanvas.sortingOrder = 100;
+
+            CanvasScaler scaler =
+                canvasObject.GetComponent<CanvasScaler>();
+
+            scaler.uiScaleMode =
+                CanvasScaler.ScaleMode.ScaleWithScreenSize;
+
+            scaler.referenceResolution =
+                new Vector2(1080f, 1920f);
+        }
+
+        autoCreatedBallsHud =
+            new GameObject(
+                "Balls Remaining Text",
+                typeof(RectTransform),
+                typeof(CanvasRenderer),
+                typeof(TextMeshProUGUI)
+            );
+
+        autoCreatedBallsHud.layer =
+            targetCanvas.gameObject.layer;
+
+        RectTransform textRect =
+            autoCreatedBallsHud.GetComponent<RectTransform>();
+
+        textRect.SetParent(
+            targetCanvas.transform,
+            false
+        );
+
+        textRect.anchorMin =
+            new Vector2(0f, 1f);
+
+        textRect.anchorMax =
+            new Vector2(0f, 1f);
+
+        textRect.pivot =
+            new Vector2(0f, 1f);
+
+        textRect.anchoredPosition =
+            new Vector2(32f, -32f);
+
+        textRect.sizeDelta =
+            new Vector2(420f, 80f);
+
+        TextMeshProUGUI hudText =
+            autoCreatedBallsHud.GetComponent<TextMeshProUGUI>();
+
+        hudText.fontSize = 44f;
+        hudText.fontStyle = FontStyles.Bold;
+        hudText.alignment = TextAlignmentOptions.TopLeft;
+        hudText.color = Color.white;
+        hudText.raycastTarget = false;
+
+        ballsRemainingText = hudText;
+    }
+
+
+    private void UpdateBallsHud()
+    {
+        if (ballsRemainingText == null)
+        {
+            return;
+        }
+
+        ballsRemainingText.text =
+            $"Balls: {remainingBalls}";
+
+        ballsRemainingText.color =
+            remainingBalls > 0
+                ? Color.white
+                : new Color(1f, 0.25f, 0.25f, 1f);
     }
 
 
@@ -1809,7 +2084,12 @@ public sealed class CannonController : MonoBehaviour
 
     public void Shoot()
     {
+        EnsureBallLimitInitialized();
+
         if (
+            remainingBalls <= 0 ||
+            (levelRuntimeController != null &&
+             !levelRuntimeController.IsLevelGenerated) ||
             !hasAimPoint ||
             Time.time <
             nextAllowedShotTime)
@@ -1989,6 +2269,19 @@ public sealed class CannonController : MonoBehaviour
             return;
         }
 
+        LowerGroundDisappearEffect groundDisappearEffect =
+            cannonBall.GetComponent<LowerGroundDisappearEffect>();
+
+        if (groundDisappearEffect == null)
+        {
+            groundDisappearEffect =
+                cannonBall.AddComponent<LowerGroundDisappearEffect>();
+        }
+
+        groundDisappearEffect.SetDestroyOnComplete(true);
+        groundDisappearEffect.SetAcceptUnmarkedStaticGround(true);
+        groundDisappearEffect.ResetEffect();
+
 
         ballRigidbody.isKinematic =
             false;
@@ -2020,6 +2313,8 @@ public sealed class CannonController : MonoBehaviour
             shotVelocity
         );
 
+        ConsumeBall();
+
 
         if (showDebugLines)
         {
@@ -2032,8 +2327,7 @@ public sealed class CannonController : MonoBehaviour
         }
 
 
-        Destroy(
-            cannonBall,
+        groundDisappearEffect.ScheduleSmoothFallback(
             cannonBallLifetime
         );
     }

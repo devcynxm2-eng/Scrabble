@@ -721,15 +721,46 @@
 
 
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.UI;
 
 public sealed class LevelRuntimeController : MonoBehaviour
 {
+    public event System.Action<GridLevelData> LevelGenerated;
+
     [Header("Level")]
 
     [SerializeField]
     private GridLevelData levelData;
+
+    [Tooltip(
+        "Game mein levels jis order mein chalne hain. Element 0 hamesha " +
+        "Level 1 hoga."
+    )]
+    [SerializeField]
+    private List<GridLevelData> levelsInOrder =
+        new List<GridLevelData>();
+
+    [SerializeField]
+    private bool startFromLevelOne = true;
+
+
+    [Header("Next Level UI")]
+
+    [SerializeField]
+    private Button nextLevelButton;
+
+    [SerializeField]
+    private TMP_Text levelCompleteText;
+
+    [Tooltip(
+        "References missing hon to runtime par complete popup aur " +
+        "NEXT LEVEL button khud create karega."
+    )]
+    [SerializeField]
+    private bool autoCreateNextLevelUI = true;
 
 
     [Header("References")]
@@ -760,6 +791,22 @@ public sealed class LevelRuntimeController : MonoBehaviour
     )]
     [SerializeField, Range(1, 10)]
     private int unsupportedFramesRequired = 2;
+
+
+    [Header("Mirrored Depth Physics")]
+
+    [Tooltip(
+        "Mirror Paint ON ho to front layer ka hit same X/Y par maujood " +
+        "baqi depth-layer blocks ko bhi unlock aur push karega."
+    )]
+    [SerializeField]
+    private bool linkMirroredDepthLayerPhysics = true;
+
+    [Tooltip(
+        "Front block ke impulse ka kitna hissa mirrored layers ko mile."
+    )]
+    [SerializeField, Range(0f, 1.5f)]
+    private float mirroredLayerImpulseMultiplier = 1f;
 
 
     [Header("Events")]
@@ -822,6 +869,12 @@ public sealed class LevelRuntimeController : MonoBehaviour
 
     private bool levelGenerated;
 
+    private bool isPropagatingMirroredActivation;
+
+    private int currentLevelIndex;
+
+    private GameObject autoCreatedCompletePanel;
+
     /// <summary>
     /// Lowest occupied grid row for the current level — the "floor"
     /// row that always counts as supported by the table, even if the
@@ -842,9 +895,18 @@ public sealed class LevelRuntimeController : MonoBehaviour
     public bool IsLevelGenerated =>
         levelGenerated;
 
+    public int CurrentLevelIndex =>
+        currentLevelIndex;
+
+    public bool HasNextLevel =>
+        FindNextLevelIndex(currentLevelIndex + 1) >= 0;
+
 
     private void Start()
     {
+        SelectStartingLevel();
+        EnsureNextLevelUI();
+        SetLevelCompleteUIVisible(false);
         GenerateLevel();
     }
 
@@ -866,6 +928,16 @@ public sealed class LevelRuntimeController : MonoBehaviour
         levelData =
             newLevelData;
 
+        int sequenceIndex =
+            levelsInOrder != null
+                ? levelsInOrder.IndexOf(newLevelData)
+                : -1;
+
+        if (sequenceIndex >= 0)
+        {
+            currentLevelIndex = sequenceIndex;
+        }
+
 
         GenerateLevel();
     }
@@ -874,6 +946,10 @@ public sealed class LevelRuntimeController : MonoBehaviour
     [ContextMenu("Generate Level")]
     public void GenerateLevel()
     {
+        EnsureNextLevelUI();
+        SetLevelCompleteUIVisible(false);
+        RefreshNextLevelButton();
+
         if (!ValidateReferences())
         {
             return;
@@ -931,6 +1007,8 @@ public sealed class LevelRuntimeController : MonoBehaviour
             this
         );
 
+
+        LevelGenerated?.Invoke(levelData);
 
         onLevelGenerated?.Invoke();
 
@@ -1410,11 +1488,18 @@ public sealed class LevelRuntimeController : MonoBehaviour
 
 
                     /*
-                     * Color baked data se.
+                     * Pool se purani property-block state clear karo.
+                     * Default visual hamesha prefab ka apna material aur
+                     * texture hai; paint tint definition par optional hai.
                      */
-                    instance.SetVisualColor(
-                        cell.Color
-                    );
+                    instance.RestorePrefabVisual();
+
+                    if (definition.TintWithPaintColor)
+                    {
+                        instance.SetVisualColor(
+                            cell.Color
+                        );
+                    }
 
 
                     Vector3Int anchorCoordinate =
@@ -1457,6 +1542,9 @@ public sealed class LevelRuntimeController : MonoBehaviour
 
                     instance.Cleared +=
                         HandleObjectCleared;
+
+                    instance.Activated +=
+                        HandleObjectActivated;
 
 
                     activeObjects.Add(
@@ -1680,6 +1768,61 @@ public sealed class LevelRuntimeController : MonoBehaviour
     }
 
 
+    private void HandleObjectActivated(
+        PhysicsTowerObject source,
+        Vector3 sourceImpulse)
+    {
+        if (source == null ||
+            levelData == null ||
+            !linkMirroredDepthLayerPhysics ||
+            !levelData.MirrorPaintAcrossLayers ||
+            levelData.GridDepth <= 1 ||
+            isPropagatingMirroredActivation)
+        {
+            return;
+        }
+
+        Vector3Int sourceCoordinate =
+            source.GridCoordinate;
+
+        Vector3 mirroredImpulse =
+            sourceImpulse *
+            mirroredLayerImpulseMultiplier;
+
+        isPropagatingMirroredActivation = true;
+
+        try
+        {
+            for (int z = 0;
+                 z < levelData.GridDepth;
+                 z++)
+            {
+                if (!occupancyByCoordinate.TryGetValue(
+                        new Vector3Int(
+                            sourceCoordinate.x,
+                            sourceCoordinate.y,
+                            z
+                        ),
+                        out PhysicsTowerObject mirroredObject) ||
+                    mirroredObject == null ||
+                    mirroredObject == source ||
+                    !mirroredObject.IsLocked)
+                {
+                    continue;
+                }
+
+                mirroredObject.ActivatePhysics(
+                    mirroredImpulse
+                );
+            }
+        }
+        finally
+        {
+            isPropagatingMirroredActivation = false;
+        }
+    }
+
+
     private void HandleObjectCleared(
         PhysicsTowerObject target)
     {
@@ -1691,6 +1834,9 @@ public sealed class LevelRuntimeController : MonoBehaviour
 
         target.Cleared -=
             HandleObjectCleared;
+
+        target.Activated -=
+            HandleObjectActivated;
 
 
         activeObjects.Remove(
@@ -1778,6 +1924,373 @@ public sealed class LevelRuntimeController : MonoBehaviour
 
 
         onLevelComplete?.Invoke();
+
+        ShowLevelCompleteUI();
+    }
+
+
+    public void LoadNextLevel()
+    {
+        int nextIndex =
+            FindNextLevelIndex(
+                currentLevelIndex + 1
+            );
+
+        if (nextIndex < 0)
+        {
+            Debug.LogWarning(
+                "Next level configured nahi hai. LevelRuntimeController " +
+                "ke 'Levels In Order' list mein Level 2 add karein.",
+                this
+            );
+
+            return;
+        }
+
+        currentLevelIndex = nextIndex;
+        LoadLevel(levelsInOrder[nextIndex]);
+    }
+
+
+    public void RestartCurrentLevel()
+    {
+        GenerateLevel();
+    }
+
+
+    private void SelectStartingLevel()
+    {
+        if (levelsInOrder == null ||
+            levelsInOrder.Count == 0)
+        {
+            currentLevelIndex = 0;
+            return;
+        }
+
+        if (startFromLevelOne)
+        {
+            int firstLevelIndex =
+                FindNextLevelIndex(0);
+
+            if (firstLevelIndex >= 0)
+            {
+                currentLevelIndex = firstLevelIndex;
+                levelData = levelsInOrder[firstLevelIndex];
+            }
+
+            return;
+        }
+
+        int configuredIndex =
+            levelsInOrder.IndexOf(levelData);
+
+        currentLevelIndex =
+            configuredIndex >= 0
+                ? configuredIndex
+                : Mathf.Max(0, FindNextLevelIndex(0));
+
+        if (levelData == null &&
+            currentLevelIndex < levelsInOrder.Count)
+        {
+            levelData = levelsInOrder[currentLevelIndex];
+        }
+    }
+
+
+    private int FindNextLevelIndex(
+        int startingIndex)
+    {
+        if (levelsInOrder == null)
+        {
+            return -1;
+        }
+
+        for (int i = Mathf.Max(0, startingIndex);
+             i < levelsInOrder.Count;
+             i++)
+        {
+            if (levelsInOrder[i] != null)
+            {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+
+    private void EnsureNextLevelUI()
+    {
+        if (nextLevelButton != null)
+        {
+            nextLevelButton.onClick.RemoveListener(
+                LoadNextLevel
+            );
+
+            nextLevelButton.onClick.AddListener(
+                LoadNextLevel
+            );
+        }
+
+        if ((nextLevelButton != null &&
+             levelCompleteText != null) ||
+            !autoCreateNextLevelUI)
+        {
+            return;
+        }
+
+        Canvas targetCanvas = null;
+
+        Canvas[] canvases =
+            FindObjectsByType<Canvas>(
+                FindObjectsInactive.Exclude,
+                FindObjectsSortMode.None
+            );
+
+        foreach (Canvas candidate in canvases)
+        {
+            if (candidate != null &&
+                candidate.renderMode != RenderMode.WorldSpace)
+            {
+                targetCanvas = candidate;
+                break;
+            }
+        }
+
+        if (targetCanvas == null)
+        {
+            GameObject canvasObject =
+                new GameObject(
+                    "Level Progress Canvas",
+                    typeof(RectTransform),
+                    typeof(Canvas),
+                    typeof(CanvasScaler),
+                    typeof(GraphicRaycaster)
+                );
+
+            int uiLayer = LayerMask.NameToLayer("UI");
+
+            if (uiLayer >= 0)
+            {
+                canvasObject.layer = uiLayer;
+            }
+
+            targetCanvas = canvasObject.GetComponent<Canvas>();
+            targetCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            targetCanvas.sortingOrder = 110;
+
+            CanvasScaler scaler =
+                canvasObject.GetComponent<CanvasScaler>();
+
+            scaler.uiScaleMode =
+                CanvasScaler.ScaleMode.ScaleWithScreenSize;
+
+            scaler.referenceResolution =
+                new Vector2(1080f, 1920f);
+        }
+
+        int panelLayer = targetCanvas.gameObject.layer;
+
+        autoCreatedCompletePanel =
+            new GameObject(
+                "Level Complete Panel",
+                typeof(RectTransform),
+                typeof(CanvasRenderer),
+                typeof(Image)
+            );
+
+        autoCreatedCompletePanel.layer = panelLayer;
+
+        RectTransform panelRect =
+            autoCreatedCompletePanel.GetComponent<RectTransform>();
+
+        panelRect.SetParent(targetCanvas.transform, false);
+        panelRect.anchorMin = new Vector2(0.5f, 0.5f);
+        panelRect.anchorMax = new Vector2(0.5f, 0.5f);
+        panelRect.pivot = new Vector2(0.5f, 0.5f);
+        panelRect.anchoredPosition = Vector2.zero;
+        panelRect.sizeDelta = new Vector2(620f, 180f);
+
+        Image panelImage =
+            autoCreatedCompletePanel.GetComponent<Image>();
+
+        panelImage.color = new Color(0.03f, 0.04f, 0.07f, 0.92f);
+
+        GameObject titleObject =
+            new GameObject(
+                "Level Complete Text",
+                typeof(RectTransform),
+                typeof(CanvasRenderer),
+                typeof(TextMeshProUGUI)
+            );
+
+        titleObject.layer = panelLayer;
+
+        RectTransform titleRect =
+            titleObject.GetComponent<RectTransform>();
+
+        titleRect.SetParent(panelRect, false);
+        titleRect.anchorMin = new Vector2(0f, 1f);
+        titleRect.anchorMax = new Vector2(1f, 1f);
+        titleRect.pivot = new Vector2(0.5f, 1f);
+        titleRect.anchoredPosition = new Vector2(0f, -38f);
+        titleRect.sizeDelta = new Vector2(-40f, 100f);
+
+        TextMeshProUGUI title =
+            titleObject.GetComponent<TextMeshProUGUI>();
+
+        title.fontSize = 48f;
+        title.fontStyle = FontStyles.Bold;
+        title.alignment = TextAlignmentOptions.Center;
+        title.color = Color.white;
+        title.raycastTarget = false;
+
+        levelCompleteText = title;
+
+        GameObject buttonObject =
+            new GameObject(
+                "Next Level Button",
+                typeof(RectTransform),
+                typeof(CanvasRenderer),
+                typeof(Image),
+                typeof(Button)
+            );
+
+        buttonObject.layer = panelLayer;
+
+        RectTransform buttonRect =
+            buttonObject.GetComponent<RectTransform>();
+
+        /*
+         * NEXT LEVEL gameplay ke duran bhi visible rehna chahiye,
+         * isliye button complete panel ka child nahi. Panel hide hone
+         * par sirf completion title hide hota hai, button nahi.
+         */
+        buttonRect.SetParent(targetCanvas.transform, false);
+        buttonRect.anchorMin = new Vector2(1f, 1f);
+        buttonRect.anchorMax = new Vector2(1f, 1f);
+        buttonRect.pivot = new Vector2(1f, 1f);
+        buttonRect.anchoredPosition = new Vector2(-32f, -32f);
+        buttonRect.sizeDelta = new Vector2(390f, 88f);
+
+        Image buttonImage = buttonObject.GetComponent<Image>();
+        buttonImage.color = new Color(0.15f, 0.62f, 1f, 1f);
+
+        nextLevelButton = buttonObject.GetComponent<Button>();
+        nextLevelButton.targetGraphic = buttonImage;
+        nextLevelButton.onClick.AddListener(LoadNextLevel);
+
+        GameObject labelObject =
+            new GameObject(
+                "Label",
+                typeof(RectTransform),
+                typeof(CanvasRenderer),
+                typeof(TextMeshProUGUI)
+            );
+
+        labelObject.layer = panelLayer;
+
+        RectTransform labelRect =
+            labelObject.GetComponent<RectTransform>();
+
+        labelRect.SetParent(buttonRect, false);
+        labelRect.anchorMin = Vector2.zero;
+        labelRect.anchorMax = Vector2.one;
+        labelRect.offsetMin = Vector2.zero;
+        labelRect.offsetMax = Vector2.zero;
+
+        TextMeshProUGUI label =
+            labelObject.GetComponent<TextMeshProUGUI>();
+
+        label.text = "NEXT LEVEL";
+        label.fontSize = 38f;
+        label.fontStyle = FontStyles.Bold;
+        label.alignment = TextAlignmentOptions.Center;
+        label.color = Color.white;
+        label.raycastTarget = false;
+
+        RefreshNextLevelButton();
+    }
+
+
+    private void ShowLevelCompleteUI()
+    {
+        EnsureNextLevelUI();
+
+        bool hasNext = HasNextLevel;
+
+        if (levelCompleteText != null)
+        {
+            levelCompleteText.text =
+                hasNext
+                    ? $"LEVEL {levelData.LevelNumber} COMPLETE"
+                    : "ALL LEVELS COMPLETE";
+        }
+
+        if (nextLevelButton != null)
+        {
+            RefreshNextLevelButton();
+        }
+
+        SetLevelCompleteUIVisible(true);
+    }
+
+
+    private void SetLevelCompleteUIVisible(
+        bool visible)
+    {
+        if (autoCreatedCompletePanel != null)
+        {
+            autoCreatedCompletePanel.SetActive(visible);
+        }
+        else if (levelCompleteText != null)
+        {
+            levelCompleteText.gameObject.SetActive(visible);
+        }
+
+        if (nextLevelButton != null)
+        {
+            nextLevelButton.gameObject.SetActive(true);
+        }
+    }
+
+
+    private void RefreshNextLevelButton()
+    {
+        if (nextLevelButton == null)
+        {
+            return;
+        }
+
+        int nextIndex =
+            FindNextLevelIndex(
+                currentLevelIndex + 1
+            );
+
+        bool hasNext = nextIndex >= 0;
+        nextLevelButton.gameObject.SetActive(true);
+        nextLevelButton.interactable = hasNext;
+
+        TMP_Text buttonLabel =
+            nextLevelButton.GetComponentInChildren<TMP_Text>(true);
+
+        if (buttonLabel == null)
+        {
+            return;
+        }
+
+        if (!hasNext)
+        {
+            buttonLabel.text = "NO NEXT LEVEL";
+            return;
+        }
+
+        GridLevelData nextLevel = levelsInOrder[nextIndex];
+
+        buttonLabel.text =
+            nextLevel != null
+                ? $"NEXT LEVEL {nextLevel.LevelNumber}"
+                : "NEXT LEVEL";
     }
 
 
@@ -1804,6 +2317,9 @@ public sealed class LevelRuntimeController : MonoBehaviour
 
             instance.Cleared -=
                 HandleObjectCleared;
+
+            instance.Activated -=
+                HandleObjectActivated;
 
 
             if (objectPool != null)
@@ -1986,6 +2502,9 @@ public sealed class LevelRuntimeController : MonoBehaviour
             {
                 instance.Cleared -=
                     HandleObjectCleared;
+
+                instance.Activated -=
+                    HandleObjectActivated;
             }
         }
     }

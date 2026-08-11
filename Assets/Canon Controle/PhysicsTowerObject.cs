@@ -120,7 +120,7 @@ public sealed class PhysicsTowerObject : MonoBehaviour
     /// support-chain check itself doesn't need this: it reads
     /// IsLocked + movement-from-spawn each FixedUpdate directly.
     /// </summary>
-    public event Action<PhysicsTowerObject> Activated;
+    public event Action<PhysicsTowerObject, Vector3> Activated;
 
 
     [Header("Level")]
@@ -177,6 +177,9 @@ public sealed class PhysicsTowerObject : MonoBehaviour
 
     private MaterialPropertyBlock
         colorPropertyBlock;
+
+    private LowerGroundDisappearEffect
+        lowerGroundDisappearEffect;
 
     private bool isCleared;
 
@@ -250,6 +253,21 @@ public sealed class PhysicsTowerObject : MonoBehaviour
             colorPropertyBlock =
                 new MaterialPropertyBlock();
         }
+
+        if (lowerGroundDisappearEffect == null)
+        {
+            lowerGroundDisappearEffect =
+                GetComponent<LowerGroundDisappearEffect>();
+
+            if (lowerGroundDisappearEffect == null)
+            {
+                lowerGroundDisappearEffect =
+                    gameObject.AddComponent<LowerGroundDisappearEffect>();
+            }
+        }
+
+        lowerGroundDisappearEffect.SetDestroyOnComplete(false);
+        lowerGroundDisappearEffect.SetAcceptUnmarkedStaticGround(true);
     }
 
 
@@ -380,6 +398,42 @@ public sealed class PhysicsTowerObject : MonoBehaviour
     }
 
 
+    /// <summary>
+    /// Clears runtime visual overrides so the Renderer uses the material
+    /// and texture authored directly on the prefab.
+    /// </summary>
+    public void RestorePrefabVisual()
+    {
+        if (colorRenderers == null ||
+            colorRenderers.Length == 0 ||
+            colorPropertyBlock == null)
+        {
+            ResolveReferences();
+        }
+
+        if (colorRenderers == null ||
+            colorPropertyBlock == null)
+        {
+            return;
+        }
+
+        foreach (Renderer targetRenderer
+                 in colorRenderers)
+        {
+            if (targetRenderer == null)
+            {
+                continue;
+            }
+
+            colorPropertyBlock.Clear();
+
+            targetRenderer.SetPropertyBlock(
+                colorPropertyBlock
+            );
+        }
+    }
+
+
     public void PrepareForSpawn()
     {
         isCleared =
@@ -394,6 +448,14 @@ public sealed class PhysicsTowerObject : MonoBehaviour
         {
             return;
         }
+
+        lowerGroundDisappearEffect.Completed -=
+            HandleLowerGroundDisappearCompleted;
+
+        lowerGroundDisappearEffect.Completed +=
+            HandleLowerGroundDisappearCompleted;
+
+        lowerGroundDisappearEffect.ResetEffect();
 
         body.detectCollisions =
             true;
@@ -483,13 +545,22 @@ public sealed class PhysicsTowerObject : MonoBehaviour
         }
 
         Activated?.Invoke(
-            this
+            this,
+            impulse
         );
     }
 
 
     public void PrepareForPool()
     {
+        if (lowerGroundDisappearEffect != null)
+        {
+            lowerGroundDisappearEffect.Completed -=
+                HandleLowerGroundDisappearCompleted;
+
+            lowerGroundDisappearEffect.ResetEffect();
+        }
+
         isCleared =
             true;
 
@@ -609,6 +680,21 @@ public sealed class PhysicsTowerObject : MonoBehaviour
             return;
         }
 
+        if (lowerGroundDisappearEffect != null &&
+            lowerGroundDisappearEffect.TryBeginFromTrigger(
+                Vector3.up
+            ))
+        {
+            return;
+        }
+
+        MarkCleared();
+    }
+
+
+    private void HandleLowerGroundDisappearCompleted(
+        LowerGroundDisappearEffect completedEffect)
+    {
         MarkCleared();
     }
 

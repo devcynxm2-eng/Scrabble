@@ -9,9 +9,14 @@ using UnityEngine;
 /// </summary>
 public enum PieceOrientation
 {
-    UprightY,
-    LyingX,
-    LyingZ
+    // Explicit values preserve orientations already serialized in
+    // existing GridLevelData assets.
+    UprightY = 0,
+    LyingX = 1,
+    LyingZ = 2,
+    RotatedY90 = 3,
+    RotatedY180 = 4,
+    RotatedY270 = 5
 }
 
 public static class PieceOrientationUtility
@@ -30,6 +35,15 @@ public static class PieceOrientationUtility
 
             case PieceOrientation.LyingZ:
                 return Quaternion.Euler(90f, 0f, 0f);
+
+            case PieceOrientation.RotatedY90:
+                return Quaternion.Euler(0f, 90f, 0f);
+
+            case PieceOrientation.RotatedY180:
+                return Quaternion.Euler(0f, 180f, 0f);
+
+            case PieceOrientation.RotatedY270:
+                return Quaternion.Euler(0f, 270f, 0f);
 
             default:
                 return Quaternion.identity;
@@ -60,6 +74,14 @@ public static class PieceOrientationUtility
                     uprightFootprint.x,
                     uprightFootprint.z,
                     uprightFootprint.y
+                );
+
+            case PieceOrientation.RotatedY90:
+            case PieceOrientation.RotatedY270:
+                return new Vector3Int(
+                    uprightFootprint.z,
+                    uprightFootprint.y,
+                    uprightFootprint.x
                 );
 
             default:
@@ -93,6 +115,14 @@ public static class PieceOrientationUtility
                     gridAlignedTargetSize.x,
                     gridAlignedTargetSize.z,
                     gridAlignedTargetSize.y
+                );
+
+            case PieceOrientation.RotatedY90:
+            case PieceOrientation.RotatedY270:
+                return new Vector3(
+                    gridAlignedTargetSize.z,
+                    gridAlignedTargetSize.y,
+                    gridAlignedTargetSize.x
                 );
 
             default:

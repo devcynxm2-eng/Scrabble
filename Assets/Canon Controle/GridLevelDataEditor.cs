@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 
+using System.IO;
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
@@ -12,6 +13,8 @@ public sealed class GridLevelDataEditor : Editor
     private Color paintColor = Color.white;
     private int paintDefinitionIndex;
     private bool eraseMode;
+
+    private PhysicsTowerObject prefabShapeToAdd;
 
     private int paintSpanX = 1;
     private int paintSpanY = 1;
@@ -56,6 +59,50 @@ public sealed class GridLevelDataEditor : Editor
 
         DrawImageBakeSection(levelData);
         DrawManualPainterSection(levelData);
+        DrawSaveLevelSection(levelData);
+    }
+
+
+    private void DrawSaveLevelSection(
+        GridLevelData levelData)
+    {
+        EditorGUILayout.Space(16f);
+
+        EditorGUILayout.LabelField(
+            "Level Save",
+            EditorStyles.boldLabel
+        );
+
+        string assetPath =
+            AssetDatabase.GetAssetPath(levelData);
+
+        EditorGUILayout.HelpBox(
+            string.IsNullOrEmpty(assetPath)
+                ? "Level pehle Project window mein asset ki tarah create karein."
+                : $"Current level asset:\n{assetPath}",
+            string.IsNullOrEmpty(assetPath)
+                ? MessageType.Warning
+                : MessageType.None
+        );
+
+        using (
+            new EditorGUI.DisabledScope(
+                string.IsNullOrEmpty(assetPath)))
+        {
+            if (GUILayout.Button(
+                    "SAVE LEVEL",
+                    GUILayout.Height(38f)))
+            {
+                serializedObject.ApplyModifiedProperties();
+                EditorUtility.SetDirty(levelData);
+                AssetDatabase.SaveAssetIfDirty(levelData);
+
+                Debug.Log(
+                    $"Level saved successfully: {assetPath}",
+                    levelData
+                );
+            }
+        }
     }
 
 
@@ -135,6 +182,8 @@ public sealed class GridLevelDataEditor : Editor
         );
 
 
+        DrawDepthLayerSetup(levelData);
+
         if (GUILayout.Button(
                 $"Allocate / Resize Grid To " +
                 $"{levelData.GridWidth} x " +
@@ -146,10 +195,12 @@ public sealed class GridLevelDataEditor : Editor
                 "Resize Grid Level"
             );
 
-            levelData.EditorEnsureGridAllocated();
+            levelData.EditorEnsureGridAllocated(true);
 
             EditorUtility.SetDirty(levelData);
         }
+
+        DrawQuickShapeSetup(levelData);
 
 
         if (levelData.BlockPalette == null ||
@@ -195,6 +246,315 @@ public sealed class GridLevelDataEditor : Editor
         EditorGUILayout.Space(10f);
 
         DrawGridPainter(levelData);
+    }
+
+
+    private void DrawDepthLayerSetup(
+        GridLevelData levelData)
+    {
+        EditorGUILayout.Space(6f);
+
+        EditorGUILayout.LabelField(
+            "Depth Layers",
+            EditorStyles.boldLabel
+        );
+
+        int requestedLayerCount =
+            EditorGUILayout.IntField(
+                "Layer Count",
+                levelData.GridDepth
+            );
+
+        requestedLayerCount =
+            Mathf.Clamp(requestedLayerCount, 1, 16);
+
+        if (requestedLayerCount != levelData.GridDepth)
+        {
+            Undo.RecordObject(
+                levelData,
+                "Change Grid Layer Count"
+            );
+
+            levelData.EditorSetDepthLayerCount(
+                requestedLayerCount
+            );
+
+            paintLayerZ =
+                Mathf.Clamp(
+                    paintLayerZ,
+                    0,
+                    requestedLayerCount - 1
+                );
+
+            EditorUtility.SetDirty(levelData);
+        }
+
+        bool requestedMirror =
+            EditorGUILayout.Toggle(
+                new GUIContent(
+                    "Mirror Paint To All Layers",
+                    "ON: paint ya erase sab depth layers par same jagah apply hoga."
+                ),
+                levelData.MirrorPaintAcrossLayers
+            );
+
+        if (requestedMirror !=
+            levelData.MirrorPaintAcrossLayers)
+        {
+            Undo.RecordObject(
+                levelData,
+                "Change Layer Paint Mirroring"
+            );
+
+            levelData.EditorSetMirrorPaintAcrossLayers(
+                requestedMirror
+            );
+
+            EditorUtility.SetDirty(levelData);
+        }
+
+        float requestedLayerGap =
+            EditorGUILayout.FloatField(
+                new GUIContent(
+                    "Layer Gap",
+                    "Adjacent depth layers ke blocks ke darmiyan world-space gap."
+                ),
+                levelData.DepthGap
+            );
+
+        requestedLayerGap =
+            Mathf.Max(0f, requestedLayerGap);
+
+        if (!Mathf.Approximately(
+                requestedLayerGap,
+                levelData.DepthGap))
+        {
+            Undo.RecordObject(
+                levelData,
+                "Change Grid Layer Gap"
+            );
+
+            levelData.EditorSetDepthGap(
+                requestedLayerGap
+            );
+
+            EditorUtility.SetDirty(levelData);
+        }
+
+        if (levelData.GridDepth > 1 &&
+            levelData.IsGridAllocated &&
+            GUILayout.Button(
+                $"COPY LAYER {paintLayerZ + 1} TO ALL LAYERS"))
+        {
+            Undo.RecordObject(
+                levelData,
+                "Copy Grid Layer To All Layers"
+            );
+
+            levelData.EditorCopyDepthLayerToAll(
+                paintLayerZ
+            );
+
+            EditorUtility.SetDirty(levelData);
+        }
+
+        EditorGUILayout.HelpBox(
+            levelData.MirrorPaintAcrossLayers
+                ? $"Mirror ON: ek layer par banaya design sab layers par show hoga. Current layer gap: {levelData.DepthGap:0.###}."
+                : $"Mirror OFF: Layer buttons se har layer separately edit hogi. Current layer gap: {levelData.DepthGap:0.###}.",
+            MessageType.Info
+        );
+    }
+
+
+    private void DrawQuickShapeSetup(
+        GridLevelData levelData)
+    {
+        EditorGUILayout.Space(10f);
+
+        EditorGUILayout.LabelField(
+            "Quick Add Prefab Shape",
+            EditorStyles.boldLabel
+        );
+
+        prefabShapeToAdd =
+            (PhysicsTowerObject)EditorGUILayout.ObjectField(
+                "Shape Prefab",
+                prefabShapeToAdd,
+                typeof(PhysicsTowerObject),
+                false
+            );
+
+        EditorGUILayout.HelpBox(
+            "Drag a prefab whose root has PhysicsTowerObject, Rigidbody " +
+            "and a non-trigger Collider. Its Renderer material and texture " +
+            "are preserved automatically.",
+            MessageType.None
+        );
+
+        if (prefabShapeToAdd != null)
+        {
+            Renderer[] renderers =
+                prefabShapeToAdd.GetComponentsInChildren<Renderer>(true);
+
+            int materialCount = 0;
+            int texturedMaterialCount = 0;
+
+            foreach (Renderer targetRenderer in renderers)
+            {
+                if (targetRenderer == null)
+                {
+                    continue;
+                }
+
+                foreach (Material material in targetRenderer.sharedMaterials)
+                {
+                    if (material == null)
+                    {
+                        continue;
+                    }
+
+                    materialCount++;
+
+                    if (material.mainTexture != null)
+                    {
+                        texturedMaterialCount++;
+                    }
+                }
+            }
+
+            MessageType materialMessageType =
+                texturedMaterialCount > 0
+                    ? MessageType.Info
+                    : MessageType.Warning;
+
+            EditorGUILayout.HelpBox(
+                $"Detected Renderers: {renderers.Length} | " +
+                $"Materials: {materialCount} | " +
+                $"Materials With Texture: {texturedMaterialCount}\n" +
+                (texturedMaterialCount > 0
+                    ? "Prefab ka existing material/texture automatically use hoga."
+                    : "Prefab material par texture nahi mila. Texture chahiye to prefab Renderer ke material par assign karein."),
+                materialMessageType
+            );
+        }
+
+        using (new EditorGUI.DisabledScope(prefabShapeToAdd == null))
+        {
+            if (GUILayout.Button(
+                    "CREATE DEFINITION + ADD TO BLOCK PALETTE",
+                    GUILayout.Height(30f)))
+            {
+                CreateAndAddShapeDefinition(
+                    levelData,
+                    prefabShapeToAdd
+                );
+            }
+        }
+    }
+
+
+    private void CreateAndAddShapeDefinition(
+        GridLevelData levelData,
+        PhysicsTowerObject shapePrefab)
+    {
+        if (levelData == null ||
+            shapePrefab == null)
+        {
+            return;
+        }
+
+        Rigidbody body =
+            shapePrefab.GetComponent<Rigidbody>();
+
+        Collider[] colliders =
+            shapePrefab.GetComponentsInChildren<Collider>(true);
+
+        bool hasNonTriggerCollider =
+            false;
+
+        foreach (Collider targetCollider in colliders)
+        {
+            if (targetCollider != null &&
+                targetCollider.enabled &&
+                !targetCollider.isTrigger)
+            {
+                hasNonTriggerCollider = true;
+                break;
+            }
+        }
+
+        if (body == null ||
+            !hasNonTriggerCollider)
+        {
+            EditorUtility.DisplayDialog(
+                "Invalid Physics Shape Prefab",
+                "The prefab root needs a Rigidbody and at least one " +
+                "enabled non-trigger Collider on the root or a child.",
+                "OK"
+            );
+
+            return;
+        }
+
+        string levelAssetPath =
+            AssetDatabase.GetAssetPath(levelData);
+
+        string folderPath =
+            Path.GetDirectoryName(levelAssetPath);
+
+        if (string.IsNullOrEmpty(folderPath))
+        {
+            folderPath = "Assets";
+        }
+
+        folderPath =
+            folderPath.Replace('\\', '/');
+
+        string definitionPath =
+            AssetDatabase.GenerateUniqueAssetPath(
+                $"{folderPath}/{shapePrefab.name}Definition.asset"
+            );
+
+        PhysicsObjectDefinition definition =
+            CreateInstance<PhysicsObjectDefinition>();
+
+        definition.EditorConfigure(
+            shapePrefab,
+            shapePrefab.name
+        );
+
+        AssetDatabase.CreateAsset(
+            definition,
+            definitionPath
+        );
+
+        Undo.RecordObject(
+            levelData,
+            "Add Prefab Shape To Block Palette"
+        );
+
+        levelData.EditorAddPaletteEntry(
+            definition
+        );
+
+        EditorUtility.SetDirty(levelData);
+        EditorUtility.SetDirty(definition);
+
+        AssetDatabase.SaveAssets();
+
+        paintDefinitionIndex =
+            levelData.BlockPalette.Count - 1;
+
+        footprintCache.Remove(definition);
+        prefabShapeToAdd = null;
+
+        Selection.activeObject = definition;
+
+        Debug.Log(
+            $"Shape definition created and added: {definitionPath}",
+            levelData
+        );
     }
 
 
@@ -248,6 +608,37 @@ public sealed class GridLevelDataEditor : Editor
             Color.white;
 
         EditorGUILayout.EndHorizontal();
+
+        PhysicsObjectDefinition selectedDefinition =
+            levelData.BlockPalette[paintDefinitionIndex];
+
+        if (selectedDefinition != null)
+        {
+            SerializedObject definitionObject =
+                new SerializedObject(selectedDefinition);
+
+            definitionObject.Update();
+
+            SerializedProperty tintProperty =
+                definitionObject.FindProperty(
+                    "tintWithPaintColor"
+                );
+
+            EditorGUILayout.PropertyField(
+                tintProperty,
+                new GUIContent(
+                    "Tint Prefab With Paint Color",
+                    "OFF keeps the prefab material and texture exactly."
+                )
+            );
+
+            if (definitionObject.ApplyModifiedProperties())
+            {
+                EditorUtility.SetDirty(
+                    selectedDefinition
+                );
+            }
+        }
     }
 
 
@@ -305,14 +696,27 @@ public sealed class GridLevelDataEditor : Editor
 
         DrawOrientationButton("Upright", PieceOrientation.UprightY);
         DrawOrientationButton("Lying (X)", PieceOrientation.LyingX);
-        DrawOrientationButton("Lying (Z)", PieceOrientation.LyingZ);
+        DrawOrientationButton("X 90", PieceOrientation.LyingZ);
+
+        EditorGUILayout.EndHorizontal();
+
+        EditorGUILayout.BeginHorizontal();
+
+        DrawOrientationButton("Y 90", PieceOrientation.RotatedY90);
+        DrawOrientationButton("Y 180", PieceOrientation.RotatedY180);
+        DrawOrientationButton("Y 270", PieceOrientation.RotatedY270);
 
         EditorGUILayout.EndHorizontal();
 
         EditorGUILayout.HelpBox(
             "Upright = as authored (tall pieces stand up). " +
-            "Lying (X)/(Z) tip a tall piece 90° so it lies flat " +
-            "sideways instead — pick whichever makes it horizontal.",
+            "Lying (X) lays a tall piece along X. " +
+            "X 90 rotates the piece 90 degrees around its X axis.",
+            MessageType.None
+        );
+
+        EditorGUILayout.HelpBox(
+            "Y 90/180/270 rotates an upright piece around its Y axis.",
             MessageType.None
         );
 
@@ -639,6 +1043,13 @@ public sealed class GridLevelDataEditor : Editor
                 paintDefinitionIndex
             );
 
+            if (levelData.MirrorPaintAcrossLayers)
+            {
+                levelData.EditorCopyDepthLayerToAll(
+                    paintLayerZ
+                );
+            }
+
             EditorUtility.SetDirty(levelData);
         }
 
@@ -681,6 +1092,13 @@ public sealed class GridLevelDataEditor : Editor
                 ReadPalette(),
                 paintDefinitionIndex
             );
+
+            if (levelData.MirrorPaintAcrossLayers)
+            {
+                levelData.EditorCopyDepthLayerToAll(
+                    paintLayerZ
+                );
+            }
 
             EditorUtility.SetDirty(levelData);
         }
@@ -768,13 +1186,27 @@ public sealed class GridLevelDataEditor : Editor
 
         if (levelData.GridDepth > 1)
         {
-            paintLayerZ =
-                EditorGUILayout.IntSlider(
-                    "Depth Layer (Z)",
+            string[] layerLabels =
+                new string[levelData.GridDepth];
+
+            for (int z = 0; z < layerLabels.Length; z++)
+            {
+                layerLabels[z] =
+                    $"Layer {z + 1}";
+            }
+
+            EditorGUILayout.LabelField(
+                "Depth Layer (Z)"
+            );
+
+            paintLayerZ = GUILayout.Toolbar(
+                Mathf.Clamp(
                     paintLayerZ,
                     0,
                     levelData.GridDepth - 1
-                );
+                ),
+                layerLabels
+            );
         }
         else
         {
@@ -850,10 +1282,16 @@ public sealed class GridLevelDataEditor : Editor
                         GUILayout.Width(CellButtonSize),
                         GUILayout.Height(CellButtonSize)))
                 {
+                    int effectiveSpanZ =
+                        levelData.MirrorPaintAcrossLayers
+                            ? 1
+                            : paintSpanZ;
+
                     bool paintingSpan =
                         paintSpanX > 1 ||
                         paintSpanY > 1 ||
-                        paintSpanZ > 1 ||
+                        effectiveSpanZ > 1 ||
+                        paintOrientation != PieceOrientation.UprightY ||
                         seamOffsetX ||
                         seamOffsetZ;
 
@@ -864,58 +1302,64 @@ public sealed class GridLevelDataEditor : Editor
                             seamOffsetZ ? 0.5f : 0f
                         );
 
-                    if (eraseMode)
+                    Undo.RecordObject(
+                        levelData,
+                        eraseMode
+                            ? "Erase Grid Cell"
+                            : "Paint Grid Cell"
+                    );
+
+                    int firstTargetLayer =
+                        levelData.MirrorPaintAcrossLayers
+                            ? 0
+                            : paintLayerZ;
+
+                    int lastTargetLayer =
+                        levelData.MirrorPaintAcrossLayers
+                            ? levelData.GridDepth - 1
+                            : paintLayerZ;
+
+                    for (int targetLayer = firstTargetLayer;
+                         targetLayer <= lastTargetLayer;
+                         targetLayer++)
                     {
-                        Undo.RecordObject(
-                            levelData,
-                            "Erase Grid Cell"
-                        );
-
-                        levelData.EditorClearSpanGroupAt(
-                            x,
-                            y,
-                            paintLayerZ
-                        );
-                    }
-                    else if (paintingSpan)
-                    {
-                        Undo.RecordObject(
-                            levelData,
-                            "Paint Grid Footprint"
-                        );
-
-                        levelData.EditorPaintSpan(
-                            x,
-                            y,
-                            paintLayerZ,
-                            paintSpanX,
-                            paintSpanY,
-                            paintSpanZ,
-                            paintColor,
-                            paintDefinitionIndex,
-                            paintOrientation,
-                            seamOffset
-                        );
-                    }
-                    else
-                    {
-                        Undo.RecordObject(
-                            levelData,
-                            "Paint Grid Cell"
-                        );
-
-                        levelData.EditorSetCell(
-                            x,
-                            y,
-                            paintLayerZ,
-                            true,
-                            paintColor,
-                            paintDefinitionIndex
-                        );
-
-                        levelData.RecalculateBakedMetadata();
+                        if (eraseMode)
+                        {
+                            levelData.EditorClearSpanGroupAt(
+                                x,
+                                y,
+                                targetLayer
+                            );
+                        }
+                        else if (paintingSpan)
+                        {
+                            levelData.EditorPaintSpan(
+                                x,
+                                y,
+                                targetLayer,
+                                paintSpanX,
+                                paintSpanY,
+                                effectiveSpanZ,
+                                paintColor,
+                                paintDefinitionIndex,
+                                paintOrientation,
+                                seamOffset
+                            );
+                        }
+                        else
+                        {
+                            levelData.EditorSetCell(
+                                x,
+                                y,
+                                targetLayer,
+                                true,
+                                paintColor,
+                                paintDefinitionIndex
+                            );
+                        }
                     }
 
+                    levelData.RecalculateBakedMetadata();
                     EditorUtility.SetDirty(levelData);
                 }
 

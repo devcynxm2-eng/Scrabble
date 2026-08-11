@@ -16,6 +16,15 @@ public sealed class PhysicsObjectDefinition : ScriptableObject
     [SerializeField]
     private string displayName;
 
+    [Header("Visual")]
+
+    [Tooltip(
+        "ON applies the level paint color as a tint. Leave OFF to " +
+        "preserve the prefab Renderer material and texture exactly."
+    )]
+    [SerializeField]
+    private bool tintWithPaintColor = false;
+
     [Header("Pool")]
 
     [Tooltip(
@@ -54,9 +63,26 @@ public sealed class PhysicsObjectDefinition : ScriptableObject
     public int MinimumPrewarmCount =>
         minimumPrewarmCount;
 
+    public bool TintWithPaintColor =>
+        tintWithPaintColor;
+
     public bool AutoFitToCell =>
         autoFitToCell;
 
     public Vector3 ManualScaleMultiplier =>
         manualScaleMultiplier;
+
+#if UNITY_EDITOR
+    /// <summary>
+    /// Used by GridLevelDataEditor when a prefab is added through the
+    /// quick shape setup UI. Runtime code still reads this asset normally.
+    /// </summary>
+    public void EditorConfigure(
+        PhysicsTowerObject prefabValue,
+        string displayNameValue)
+    {
+        prefab = prefabValue;
+        displayName = displayNameValue;
+    }
+#endif
 }
