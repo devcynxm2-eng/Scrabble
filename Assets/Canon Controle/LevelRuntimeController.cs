@@ -720,10 +720,13 @@
 
 
 
+using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.AddressableAssets;
 using UnityEngine.Events;
+using UnityEngine.ResourceManagement.AsyncOperations;
 using UnityEngine.UI;
 
 public sealed class LevelRuntimeController : MonoBehaviour
@@ -872,6 +875,18 @@ public sealed class LevelRuntimeController : MonoBehaviour
 
     private int currentLevelIndex;
 
+    private AsyncOperationHandle<GridLevelData>
+        activeLevelHandle;
+
+    private bool hasActiveLevelHandle;
+
+    private AsyncOperationHandle<GridLevelData>
+        pendingLevelHandle;
+
+    private bool hasPendingLevelHandle;
+
+    private bool isLoadingLevel;
+
     private GameObject autoCreatedCompletePanel;
 
     /// <summary>
@@ -903,10 +918,32 @@ public sealed class LevelRuntimeController : MonoBehaviour
 
     private void Start()
     {
-        SelectStartingLevel();
         EnsureNextLevelUI();
         SetLevelCompleteUIVisible(false);
-        GenerateLevel();
+
+        if (IsLiveWorkingLevelPreviewEnabled())
+        {
+            currentLevelIndex = 0;
+            GenerateLevel();
+            return;
+        }
+
+        SelectStartingLevel();
+
+        if (FindNextLevelIndex(currentLevelIndex) < 0)
+        {
+            Debug.LogError(
+                "Addressable level catalog empty hai. Level Creator se " +
+                "kam az kam ek level SAVE karein.",
+                this
+            );
+            RefreshNextLevelButton();
+            return;
+        }
+
+        StartCoroutine(
+            LoadAddressableLevelRoutine(currentLevelIndex)
+        );
     }
 
 
@@ -924,12 +961,19 @@ public sealed class LevelRuntimeController : MonoBehaviour
         }
 
 
-        levelData =
-            newLevelData;
+        if (hasActiveLevelHandle)
+        {
+            PrepareForLevelAssetRelease();
+            ReleaseActiveLevelHandle();
+        }
+
+        levelData = newLevelData;
 
         int sequenceIndex =
             levelDatabase != null
-                ? levelDatabase.IndexOf(newLevelData)
+                ? levelDatabase.FindIndexByLevelNumber(
+                    newLevelData.LevelNumber
+                )
                 : -1;
 
         if (sequenceIndex >= 0)
@@ -1221,7 +1265,7 @@ public sealed class LevelRuntimeController : MonoBehaviour
                 out Vector3Int occupiedMax))
         {
             Debug.LogError(
-                "Baked grid mein occupied cells nahi hain.",
+                "Manual grid mein occupied cells nahi hain.",
                 levelData
             );
 
@@ -1253,8 +1297,6 @@ public sealed class LevelRuntimeController : MonoBehaviour
 
 
         /*
-         * Image ke transparent margins ignore hote hain.
-         *
          * Occupied shape ka actual center calculate hota hai.
          */
         float occupiedCenterX =
@@ -1349,7 +1391,7 @@ public sealed class LevelRuntimeController : MonoBehaviour
 
                     /*
                      * Y:
-                     * Lowest occupied image row
+                     * Lowest occupied manual-grid row
                      * directly table top par start hogi.
                      *
                      * Transparent bottom margin
@@ -1437,7 +1479,8 @@ public sealed class LevelRuntimeController : MonoBehaviour
                     Quaternion pieceRotation =
                         surfaceRotation *
                         PieceOrientationUtility.GetRotation(
-                            orientation
+                            orientation,
+                            cell.CustomZRotation
                         );
 
 
@@ -1930,6 +1973,11 @@ public sealed class LevelRuntimeController : MonoBehaviour
 
     public void LoadNextLevel()
     {
+        if (isLoadingLevel)
+        {
+            return;
+        }
+
         int nextIndex =
             FindNextLevelIndex(
                 currentLevelIndex + 1
@@ -1938,22 +1986,130 @@ public sealed class LevelRuntimeController : MonoBehaviour
         if (nextIndex < 0)
         {
             Debug.LogWarning(
-                "Next level configured nahi hai. LevelRuntimeController " +
-                "ke 'Levels In Order' list mein Level 2 add karein.",
+                "Next Addressable level configured nahi hai. Level " +
+                "Creator se next level SAVE karein.",
                 this
             );
 
             return;
         }
 
-        currentLevelIndex = nextIndex;
-        LoadLevel(levelDatabase.GetLevel(nextIndex));
+        StartCoroutine(
+            LoadAddressableLevelRoutine(nextIndex)
+        );
     }
 
 
     public void RestartCurrentLevel()
     {
+        if (isLoadingLevel ||
+            levelData == null)
+        {
+            return;
+        }
+
+        DestroyActiveCannonBalls();
         GenerateLevel();
+    }
+
+
+    private IEnumerator LoadAddressableLevelRoutine(
+        int levelIndex)
+    {
+        if (isLoadingLevel ||
+            levelDatabase == null)
+        {
+            yield break;
+        }
+
+        string address =
+            levelDatabase.GetAddress(levelIndex);
+
+        if (string.IsNullOrWhiteSpace(address))
+        {
+            Debug.LogError(
+                $"Level index {levelIndex} ka Addressable address missing hai.",
+                this
+            );
+            yield break;
+        }
+
+        isLoadingLevel = true;
+        RefreshNextLevelButton();
+
+        AsyncOperationHandle<GridLevelData> newHandle =
+            Addressables.LoadAssetAsync<GridLevelData>(address);
+
+        pendingLevelHandle = newHandle;
+        hasPendingLevelHandle = true;
+
+        yield return newHandle;
+
+        if (newHandle.Status != AsyncOperationStatus.Succeeded ||
+            newHandle.Result == null)
+        {
+            Debug.LogError(
+                $"Addressable level load failed: {address}",
+                this
+            );
+
+            if (newHandle.IsValid())
+            {
+                Addressables.Release(newHandle);
+            }
+
+            hasPendingLevelHandle = false;
+            isLoadingLevel = false;
+            RefreshNextLevelButton();
+            yield break;
+        }
+
+        /*
+         * Pehle purane instantiated objects destroy hote hain. Ek frame
+         * baad purana Addressables handle release hota hai, isliye bundle
+         * unload ke waqt koi live prefab/material instance nahi rehta.
+         */
+        PrepareForLevelAssetRelease();
+        yield return null;
+        ReleaseActiveLevelHandle();
+
+        activeLevelHandle = newHandle;
+        hasActiveLevelHandle = true;
+        hasPendingLevelHandle = false;
+        currentLevelIndex = levelIndex;
+        levelData = newHandle.Result;
+        isLoadingLevel = false;
+
+        GenerateLevel();
+    }
+
+
+    public void LoadLevelByNumber(int levelNumber)
+    {
+        if (levelDatabase == null)
+        {
+            Debug.LogError(
+                "LoadLevelByNumber: GridLevelDatabase missing hai.",
+                this
+            );
+            return;
+        }
+
+        int levelIndex =
+            levelDatabase.FindIndexByLevelNumber(levelNumber);
+
+        if (levelIndex < 0)
+        {
+            Debug.LogWarning(
+                $"Addressable Level {levelNumber} catalog mein nahi mila.",
+                this
+            );
+            return;
+        }
+
+        StartCoroutine(
+            LoadAddressableLevelRoutine(levelIndex)
+        );
     }
 
 
@@ -1974,25 +2130,36 @@ public sealed class LevelRuntimeController : MonoBehaviour
             if (firstLevelIndex >= 0)
             {
                 currentLevelIndex = firstLevelIndex;
-                levelData = levelDatabase.GetLevel(firstLevelIndex);
             }
 
             return;
         }
 
         int configuredIndex =
-            levelDatabase.IndexOf(levelData);
+            levelData != null
+                ? levelDatabase.FindIndexByLevelNumber(
+                    levelData.LevelNumber
+                )
+                : -1;
 
         currentLevelIndex =
             configuredIndex >= 0
                 ? configuredIndex
                 : Mathf.Max(0, FindNextLevelIndex(0));
 
-        if (levelData == null &&
-            currentLevelIndex < levelDatabase.Count)
-        {
-            levelData = levelDatabase.GetLevel(currentLevelIndex);
-        }
+    }
+
+
+    private static bool IsLiveWorkingLevelPreviewEnabled()
+    {
+#if UNITY_EDITOR
+        return UnityEditor.SessionState.GetBool(
+            "RoyalSmash.LiveWorkingLevelPreview",
+            false
+        );
+#else
+        return false;
+#endif
     }
 
 
@@ -2008,7 +2175,8 @@ public sealed class LevelRuntimeController : MonoBehaviour
              i < levelDatabase.Count;
              i++)
         {
-            if (levelDatabase.GetLevel(i) != null)
+            if (!string.IsNullOrWhiteSpace(
+                    levelDatabase.GetAddress(i)))
             {
                 return i;
             }
@@ -2268,7 +2436,8 @@ public sealed class LevelRuntimeController : MonoBehaviour
 
         bool hasNext = nextIndex >= 0;
         nextLevelButton.gameObject.SetActive(true);
-        nextLevelButton.interactable = hasNext;
+        nextLevelButton.interactable =
+            hasNext && !isLoadingLevel;
 
         TMP_Text buttonLabel =
             nextLevelButton.GetComponentInChildren<TMP_Text>(true);
@@ -2284,13 +2453,82 @@ public sealed class LevelRuntimeController : MonoBehaviour
             return;
         }
 
-        GridLevelData nextLevel =
-            levelDatabase.GetLevel(nextIndex);
-
         buttonLabel.text =
-            nextLevel != null
-                ? $"NEXT LEVEL {nextLevel.LevelNumber}"
-                : "NEXT LEVEL";
+            isLoadingLevel
+                ? "LOADING..."
+                : $"NEXT LEVEL " +
+                  $"{levelDatabase.GetLevelNumber(nextIndex)}";
+    }
+
+
+    private void PrepareForLevelAssetRelease()
+    {
+        ClearCurrentLevel();
+        DestroyActiveCannonBalls();
+
+        if (objectPool != null)
+        {
+            objectPool.ClearAll();
+        }
+
+        if (cachedTable != null)
+        {
+            if (Application.isPlaying)
+            {
+                Destroy(cachedTable.gameObject);
+            }
+            else
+            {
+                DestroyImmediate(cachedTable.gameObject);
+            }
+        }
+
+        cachedTable = null;
+        cachedTablePrefab = null;
+        currentTable = null;
+    }
+
+
+    private static void DestroyActiveCannonBalls()
+    {
+        CannonBallMarker[] cannonBalls =
+            FindObjectsByType<CannonBallMarker>(
+                FindObjectsInactive.Include,
+                FindObjectsSortMode.None
+            );
+
+        foreach (CannonBallMarker cannonBall in cannonBalls)
+        {
+            if (cannonBall == null)
+            {
+                continue;
+            }
+
+            if (Application.isPlaying)
+            {
+                Destroy(cannonBall.gameObject);
+            }
+            else
+            {
+                DestroyImmediate(cannonBall.gameObject);
+            }
+        }
+    }
+
+
+    private void ReleaseActiveLevelHandle()
+    {
+        if (!hasActiveLevelHandle)
+        {
+            return;
+        }
+
+        if (activeLevelHandle.IsValid())
+        {
+            Addressables.Release(activeLevelHandle);
+        }
+
+        hasActiveLevelHandle = false;
     }
 
 
@@ -2384,12 +2622,11 @@ public sealed class LevelRuntimeController : MonoBehaviour
         }
 
 
-        if (!levelData.HasValidBakedGrid)
+        if (!levelData.HasValidGrid)
         {
             Debug.LogError(
-                "GridLevelData bake nahi hui. " +
-                "GridLevelData Inspector mein " +
-                "'BAKE 3D GRID FROM IMAGE' press karein.",
+                "Manual GridLevelData mein koi painted cell nahi hai. " +
+                "Level Creator mein grid allocate karke shapes paint karein.",
                 levelData
             );
 
@@ -2507,6 +2744,16 @@ public sealed class LevelRuntimeController : MonoBehaviour
                     HandleObjectActivated;
             }
         }
+
+        ReleaseActiveLevelHandle();
+
+        if (hasPendingLevelHandle &&
+            pendingLevelHandle.IsValid())
+        {
+            Addressables.Release(pendingLevelHandle);
+        }
+
+        hasPendingLevelHandle = false;
     }
 }
 

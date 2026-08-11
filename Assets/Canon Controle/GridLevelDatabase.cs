@@ -1,5 +1,36 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
+
+[Serializable]
+public sealed class GridLevelAddressEntry
+{
+    [SerializeField, Min(1)]
+    private int levelNumber = 1;
+
+    [SerializeField]
+    private string address;
+
+    public int LevelNumber => levelNumber;
+
+    public string Address => address;
+
+#if UNITY_EDITOR
+    public GridLevelAddressEntry(
+        int newLevelNumber,
+        string newAddress)
+    {
+        levelNumber = Mathf.Max(1, newLevelNumber);
+        address = newAddress;
+    }
+
+    public void EditorSetAddress(string newAddress)
+    {
+        address = newAddress;
+    }
+#endif
+}
+
 
 [CreateAssetMenu(
     fileName = "GridLevelDatabase",
@@ -7,152 +38,136 @@ using UnityEngine;
 public sealed class GridLevelDatabase : ScriptableObject
 {
     [Tooltip(
-        "Level Creator se banne wale tamam levels ki central ordered list."
+        "Runtime par load hone wale per-level Addressable assets ki " +
+        "ordered catalog. Full level data is asset mein store nahi hota."
     )]
     [SerializeField]
+    private List<GridLevelAddressEntry> addressableLevels =
+        new List<GridLevelAddressEntry>();
+
+    /*
+     * Purane central-database snapshots sirf one-time editor migration
+     * ke liye rakhe hain. Runtime kabhi is list se level load nahi karta.
+     * Field name intentionally 'levels' hai taa-ke existing serialized
+     * data loss ke baghair deserialize ho sake.
+     */
+    [SerializeField, HideInInspector]
     private List<GridLevelData> levels =
         new List<GridLevelData>();
 
-    public IReadOnlyList<GridLevelData> Levels => levels;
+    public IReadOnlyList<GridLevelAddressEntry> AddressableLevels =>
+        addressableLevels;
 
     public int Count =>
-        levels != null
-            ? levels.Count
+        addressableLevels != null
+            ? addressableLevels.Count
             : 0;
 
 
-    public GridLevelData GetLevel(
-        int index)
+    public GridLevelAddressEntry GetEntry(int index)
     {
-        if (levels == null ||
+        if (addressableLevels == null ||
             index < 0 ||
-            index >= levels.Count)
+            index >= addressableLevels.Count)
         {
             return null;
         }
 
-        return levels[index];
+        return addressableLevels[index];
     }
 
 
-    public int IndexOf(
-        GridLevelData level)
+    public string GetAddress(int index)
     {
-        return
-            levels != null
-                ? levels.IndexOf(level)
-                : -1;
+        GridLevelAddressEntry entry = GetEntry(index);
+
+        return entry != null
+            ? entry.Address
+            : null;
     }
 
 
-    public GridLevelData GetLevelByNumber(
-        int levelNumber)
+    public int GetLevelNumber(int index)
     {
-        if (levels == null)
+        GridLevelAddressEntry entry = GetEntry(index);
+
+        return entry != null
+            ? entry.LevelNumber
+            : -1;
+    }
+
+
+    public int FindIndexByLevelNumber(int levelNumber)
+    {
+        if (addressableLevels == null)
         {
-            return null;
+            return -1;
         }
 
-        foreach (GridLevelData level in levels)
+        for (int i = 0; i < addressableLevels.Count; i++)
         {
-            if (level != null &&
-                level.LevelNumber == levelNumber)
+            GridLevelAddressEntry entry = addressableLevels[i];
+
+            if (entry != null &&
+                entry.LevelNumber == levelNumber)
             {
-                return level;
+                return i;
             }
         }
 
-        return null;
+        return -1;
     }
 
 
 #if UNITY_EDITOR
 
-    public void EditorRegisterLevel(
-        GridLevelData level)
+    public IReadOnlyList<GridLevelData> EditorLegacyLevels => levels;
+
+    public void EditorRegisterAddress(
+        int levelNumber,
+        string address)
     {
-        if (level == null)
+        if (addressableLevels == null)
         {
-            return;
+            addressableLevels =
+                new List<GridLevelAddressEntry>();
         }
 
-        if (levels == null)
+        int existingIndex =
+            FindIndexByLevelNumber(levelNumber);
+
+        if (existingIndex >= 0)
         {
-            levels = new List<GridLevelData>();
+            addressableLevels[existingIndex]
+                .EditorSetAddress(address);
         }
-
-        levels.RemoveAll(entry => entry == null);
-
-        if (!levels.Contains(level))
+        else
         {
-            levels.Add(level);
-        }
-
-        levels.Sort(CompareLevels);
-    }
-
-
-    public void EditorReplaceLevel(
-        GridLevelData oldLevel,
-        GridLevelData replacement)
-    {
-        if (replacement == null)
-        {
-            return;
-        }
-
-        if (levels == null)
-        {
-            levels = new List<GridLevelData>();
-        }
-
-        int index = levels.IndexOf(oldLevel);
-
-        if (index >= 0)
-        {
-            levels[index] = replacement;
-        }
-        else if (!levels.Contains(replacement))
-        {
-            levels.Add(replacement);
-        }
-
-        levels.RemoveAll(entry => entry == null);
-        levels.Sort(CompareLevels);
-    }
-
-
-    private static int CompareLevels(
-        GridLevelData left,
-        GridLevelData right)
-    {
-        if (left == right)
-        {
-            return 0;
-        }
-
-        if (left == null)
-        {
-            return 1;
-        }
-
-        if (right == null)
-        {
-            return -1;
-        }
-
-        int numberComparison =
-            left.LevelNumber.CompareTo(
-                right.LevelNumber
+            addressableLevels.Add(
+                new GridLevelAddressEntry(
+                    levelNumber,
+                    address
+                )
             );
+        }
 
-        return
-            numberComparison != 0
-                ? numberComparison
-                : string.CompareOrdinal(
-                    left.name,
-                    right.name
-                );
+        addressableLevels.RemoveAll(entry => entry == null);
+        addressableLevels.Sort(
+            (left, right) =>
+                left.LevelNumber.CompareTo(right.LevelNumber)
+        );
+    }
+
+
+    public void EditorClearLegacyLevels()
+    {
+        if (levels == null)
+        {
+            levels = new List<GridLevelData>();
+            return;
+        }
+
+        levels.Clear();
     }
 
 #endif

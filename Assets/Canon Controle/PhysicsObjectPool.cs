@@ -95,7 +95,7 @@ public sealed class PhysicsObjectPool : MonoBehaviour
 
             int requiredCount =
                 Mathf.Max(
-                    levelData.BakedOccupiedCellCount,
+                    levelData.OccupiedCellCount,
                     definition.MinimumPrewarmCount
                 );
 
@@ -223,6 +223,37 @@ public sealed class PhysicsObjectPool : MonoBehaviour
         bucket.InactiveLookup.Add(
             instance
         );
+    }
+
+
+    /// <summary>
+    /// Addressable level switch se pehle purane level definitions aur
+    /// prefab instances ki tamam references release karta hai.
+    /// </summary>
+    public void ClearAll()
+    {
+        List<PhysicsTowerObject> instances =
+            new List<PhysicsTowerObject>(objectOwners.Keys);
+
+        foreach (PhysicsTowerObject instance in instances)
+        {
+            if (instance == null)
+            {
+                continue;
+            }
+
+            if (Application.isPlaying)
+            {
+                Destroy(instance.gameObject);
+            }
+            else
+            {
+                DestroyImmediate(instance.gameObject);
+            }
+        }
+
+        pools.Clear();
+        objectOwners.Clear();
     }
 
 

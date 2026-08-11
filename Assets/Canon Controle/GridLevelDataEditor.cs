@@ -9,7 +9,12 @@ using UnityEngine;
 public sealed class GridLevelDataEditor : Editor
 {
     private const string LevelDatabasePath =
-        "Assets/Canon Controle/GridLevelDatabase.asset";
+        GridLevelAddressablesEditorUtility.DatabasePath;
+
+    private const string LivePreviewSessionKey =
+        "RoyalSmash.LiveWorkingLevelPreview";
+
+    private static bool livePreviewRefreshQueued;
 
     private int paintLayerZ;
     private int paintTierY;
@@ -23,6 +28,7 @@ public sealed class GridLevelDataEditor : Editor
     private int paintSpanY = 1;
     private int paintSpanZ = 1;
     private PieceOrientation paintOrientation = PieceOrientation.UprightY;
+    private float paintCustomZRotation;
     private bool manualFootprintOverride;
 
     /// <summary>
@@ -60,13 +66,167 @@ public sealed class GridLevelDataEditor : Editor
         GridLevelData levelData =
             (GridLevelData)target;
 
+        EditorGUI.BeginChangeCheck();
+
+        DrawLiveGamePreviewSection(levelData);
+
         DrawLevelCreatorSection(levelData);
 
         DrawDefaultInspector();
 
-        DrawImageBakeSection(levelData);
         DrawManualPainterSection(levelData);
         DrawSaveLevelSection(levelData);
+
+        bool inspectorChanged =
+            EditorGUI.EndChangeCheck();
+
+        if (inspectorChanged &&
+            Application.isPlaying &&
+            SessionState.GetBool(
+                LivePreviewSessionKey,
+                false
+            ))
+        {
+            QueueLiveGamePreviewRefresh(levelData);
+        }
+    }
+
+
+    private void DrawLiveGamePreviewSection(
+        GridLevelData levelData)
+    {
+        EditorGUILayout.LabelField(
+            "Live Game Preview",
+            EditorStyles.boldLabel
+        );
+
+        bool previewEnabled =
+            SessionState.GetBool(
+                LivePreviewSessionKey,
+                false
+            );
+
+        EditorGUILayout.HelpBox(
+            Application.isPlaying && previewEnabled
+                ? "LIVE PREVIEW ACTIVE: Inspector mein design change " +
+                  "karein; Game View automatically refresh hogi."
+                : "Current working grid ko exact Game View mein dekhne " +
+                  "aur Play Mode mein live edit karne ke liye preview start karein.",
+            Application.isPlaying && previewEnabled
+                ? MessageType.Info
+                : MessageType.None
+        );
+
+        if (!Application.isPlaying)
+        {
+            if (GUILayout.Button(
+                    "START LIVE GAME PREVIEW",
+                    GUILayout.Height(42f)))
+            {
+                SessionState.SetBool(
+                    LivePreviewSessionKey,
+                    true
+                );
+
+                /*
+                 * Working canvas disk par sync hota hai taa-ke Play Mode
+                 * domain reload exact current design read kare. Central
+                 * saved-level database sirf SAVE LEVEL se update hoti hai.
+                 */
+                EditorUtility.SetDirty(levelData);
+                AssetDatabase.SaveAssetIfDirty(levelData);
+
+                EditorApplication.EnterPlaymode();
+                GUIUtility.ExitGUI();
+            }
+        }
+        else
+        {
+            if (!previewEnabled)
+            {
+                if (GUILayout.Button(
+                        "ENABLE CURRENT DESIGN PREVIEW",
+                        GUILayout.Height(38f)))
+                {
+                    SessionState.SetBool(
+                        LivePreviewSessionKey,
+                        true
+                    );
+
+                    QueueLiveGamePreviewRefresh(levelData);
+                }
+            }
+            else
+            {
+                EditorGUILayout.BeginHorizontal();
+
+                if (GUILayout.Button("REFRESH GAME VIEW"))
+                {
+                    QueueLiveGamePreviewRefresh(levelData);
+                }
+
+                if (GUILayout.Button("STOP LIVE PREVIEW"))
+                {
+                    SessionState.SetBool(
+                        LivePreviewSessionKey,
+                        false
+                    );
+
+                    GridLevelDatabase database =
+                        GetOrCreateLevelDatabase();
+
+                    LevelRuntimeController controller =
+                        FindFirstObjectByType<LevelRuntimeController>();
+
+                    if (controller != null &&
+                        database.Count > 0)
+                    {
+                        controller.LoadLevelByNumber(
+                            database.GetLevelNumber(0)
+                        );
+                    }
+                }
+
+                EditorGUILayout.EndHorizontal();
+            }
+        }
+
+        EditorGUILayout.Space(10f);
+    }
+
+
+    private static void QueueLiveGamePreviewRefresh(
+        GridLevelData levelData)
+    {
+        if (livePreviewRefreshQueued ||
+            levelData == null)
+        {
+            return;
+        }
+
+        livePreviewRefreshQueued = true;
+
+        EditorApplication.delayCall += () =>
+        {
+            livePreviewRefreshQueued = false;
+
+            if (!Application.isPlaying ||
+                !SessionState.GetBool(
+                    LivePreviewSessionKey,
+                    false
+                ))
+            {
+                return;
+            }
+
+            LevelRuntimeController controller =
+                FindFirstObjectByType<LevelRuntimeController>();
+
+            if (controller != null)
+            {
+                controller.LoadLevel(levelData);
+            }
+        };
     }
 
 
@@ -76,7 +236,8 @@ public sealed class GridLevelDataEditor : Editor
         GridLevelDatabase database =
             GetOrCreateLevelDatabase();
 
-        EnsureDatabaseUsesSnapshots(database);
+        GridLevelAddressablesEditorUtility
+            .EnsurePerLevelAddressableAssets(database);
 
         EditorGUILayout.LabelField(
             "Level Creator",
@@ -86,7 +247,8 @@ public sealed class GridLevelDataEditor : Editor
         EditorGUILayout.HelpBox(
             $"Saved Levels: {database.Count}\n" +
             "Yeh GridLevelData single working canvas hai. SAVE LEVEL " +
-            "database mein snapshot create/update karta hai.",
+            "separate ScriptableObject create/update karke usay " +
+            "Addressable banata hai.",
             MessageType.Info
         );
 
@@ -101,9 +263,9 @@ public sealed class GridLevelDataEditor : Editor
 
         using (
             new EditorGUI.DisabledScope(
-                database.GetLevelByNumber(
+                database.FindIndexByLevelNumber(
                     levelNumberToEdit
-                ) == null))
+                ) < 0))
         {
             if (GUILayout.Button(
                     "LOAD SAVED LEVEL FOR EDIT"))
@@ -153,56 +315,29 @@ public sealed class GridLevelDataEditor : Editor
             return;
         }
 
-        EnsureDatabaseUsesSnapshots(database);
-
         int levelNumber =
             Mathf.Max(1, workingLevel.LevelNumber);
 
         GridLevelData savedLevel =
-            database.GetLevelByNumber(levelNumber);
-
-        bool isNewSnapshot = savedLevel == null;
-
-        if (isNewSnapshot)
-        {
-            savedLevel =
-                CreateInstance<GridLevelData>();
-
-            AssetDatabase.AddObjectToAsset(
-                savedLevel,
-                database
+            GridLevelAddressablesEditorUtility.SaveWorkingLevel(
+                workingLevel,
+                database,
+                out bool isNewLevelAsset
             );
+
+        if (savedLevel == null)
+        {
+            Debug.LogError(
+                $"Level {levelNumber} save nahi ho saka.",
+                workingLevel
+            );
+            return;
         }
 
-        EditorUtility.CopySerialized(
-            workingLevel,
-            savedLevel
-        );
-
-        savedLevel.name =
-            $"SavedLevel_{levelNumber:000}";
-
-        savedLevel.hideFlags =
-            HideFlags.HideInHierarchy;
-
-        savedLevel.EditorSetLevelNumber(levelNumber);
-
-        Undo.RecordObject(
-            database,
-            "Save Grid Level Snapshot"
-        );
-
-        database.EditorRegisterLevel(savedLevel);
-
-        EditorUtility.SetDirty(savedLevel);
-        EditorUtility.SetDirty(database);
-        EditorUtility.SetDirty(workingLevel);
-        AssetDatabase.SaveAssets();
-
         Debug.Log(
-            isNewSnapshot
-                ? $"Level {levelNumber} saved in central database."
-                : $"Level {levelNumber} updated in central database.",
+            isNewLevelAsset
+                ? $"Level {levelNumber} separate Addressable asset mein saved."
+                : $"Level {levelNumber} Addressable asset update ho gaya.",
             workingLevel
         );
     }
@@ -213,15 +348,16 @@ public sealed class GridLevelDataEditor : Editor
         GridLevelDatabase database,
         int levelNumber)
     {
-        EnsureDatabaseUsesSnapshots(database);
-
         GridLevelData savedLevel =
-            database.GetLevelByNumber(levelNumber);
+            GridLevelAddressablesEditorUtility.GetLevelAsset(
+                database,
+                levelNumber
+            );
 
         if (savedLevel == null)
         {
             Debug.LogWarning(
-                $"Saved Level {levelNumber} database mein nahi mila.",
+                $"Saved Level {levelNumber} asset nahi mila.",
                 database
             );
 
@@ -260,13 +396,13 @@ public sealed class GridLevelDataEditor : Editor
 
         for (int i = 0; i < database.Count; i++)
         {
-            GridLevelData savedLevel = database.GetLevel(i);
+            int savedLevelNumber = database.GetLevelNumber(i);
 
-            if (savedLevel != null)
+            if (savedLevelNumber > 0)
             {
                 nextLevelNumber = Mathf.Max(
                     nextLevelNumber,
-                    savedLevel.LevelNumber + 1
+                    savedLevelNumber + 1
                 );
             }
         }
@@ -314,64 +450,6 @@ public sealed class GridLevelDataEditor : Editor
     }
 
 
-    private static void EnsureDatabaseUsesSnapshots(
-        GridLevelDatabase database)
-    {
-        if (database == null)
-        {
-            return;
-        }
-
-        bool changed = false;
-
-        for (int i = 0; i < database.Count; i++)
-        {
-            GridLevelData existingLevel =
-                database.GetLevel(i);
-
-            if (existingLevel == null ||
-                AssetDatabase.GetAssetPath(existingLevel) ==
-                LevelDatabasePath)
-            {
-                continue;
-            }
-
-            GridLevelData snapshot =
-                CreateInstance<GridLevelData>();
-
-            EditorUtility.CopySerialized(
-                existingLevel,
-                snapshot
-            );
-
-            snapshot.name =
-                $"SavedLevel_{existingLevel.LevelNumber:000}";
-
-            snapshot.hideFlags =
-                HideFlags.HideInHierarchy;
-
-            AssetDatabase.AddObjectToAsset(
-                snapshot,
-                database
-            );
-
-            database.EditorReplaceLevel(
-                existingLevel,
-                snapshot
-            );
-
-            EditorUtility.SetDirty(snapshot);
-            changed = true;
-        }
-
-        if (changed)
-        {
-            EditorUtility.SetDirty(database);
-            AssetDatabase.SaveAssets();
-        }
-    }
-
-
     private void DrawSaveLevelSection(
         GridLevelData levelData)
     {
@@ -389,8 +467,8 @@ public sealed class GridLevelDataEditor : Editor
             string.IsNullOrEmpty(assetPath)
                 ? "Single working GridLevelData asset missing hai."
                 : $"Single working grid:\n{assetPath}\n" +
-                  $"SAVE LEVEL database mein Level " +
-                  $"{levelData.LevelNumber} create/update karega.",
+                  $"SAVE LEVEL separate Addressable Level " +
+                  $"{levelData.LevelNumber} asset create/update karega.",
             string.IsNullOrEmpty(assetPath)
                 ? MessageType.Warning
                 : MessageType.None
@@ -421,63 +499,6 @@ public sealed class GridLevelDataEditor : Editor
     }
 
 
-    private void DrawImageBakeSection(
-        GridLevelData levelData)
-    {
-        EditorGUILayout.Space(15f);
-
-        EditorGUILayout.LabelField(
-            "Image → 3D Grid Baker",
-            EditorStyles.boldLabel
-        );
-
-
-        if (levelData.SourceImage == null)
-        {
-            EditorGUILayout.HelpBox(
-                "Source Image assign karein.",
-                MessageType.Warning
-            );
-        }
-
-
-        using (
-            new EditorGUI.DisabledScope(
-                levelData.SourceImage == null))
-        {
-            if (GUILayout.Button(
-                    "BAKE 3D GRID FROM IMAGE",
-                    GUILayout.Height(38f)))
-            {
-                BakeGrid(levelData);
-            }
-        }
-
-
-        EditorGUILayout.Space(8f);
-
-        if (levelData.HasValidBakedGrid)
-        {
-            EditorGUILayout.HelpBox(
-                $"Baked Grid: " +
-                $"{levelData.GridWidth} x " +
-                $"{levelData.GridHeight} x " +
-                $"{levelData.GridDepth}\n" +
-                $"Occupied Boxes: " +
-                $"{levelData.BakedOccupiedCellCount}",
-                MessageType.Info
-            );
-        }
-        else
-        {
-            EditorGUILayout.HelpBox(
-                "Grid abhi bake nahi hui. " +
-                "Source Image se bake karein, ya neeche " +
-                "Manual Level Painter se hath se design karein.",
-                MessageType.Warning
-            );
-        }
-    }
 
 
     private void DrawManualPainterSection(
@@ -492,7 +513,7 @@ public sealed class GridLevelDataEditor : Editor
 
         EditorGUILayout.HelpBox(
             "Royal Smash jaisi hand-designed block/tier towers banane ke liye. " +
-            "Image ki zaroorat nahi — grid ko directly paint karein.",
+            "Grid cells ko directly paint karke level design karein.",
             MessageType.None
         );
 
@@ -1023,6 +1044,44 @@ public sealed class GridLevelDataEditor : Editor
 
         EditorGUILayout.EndHorizontal();
 
+        EditorGUILayout.BeginHorizontal();
+
+        DrawOrientationButton("Z 90", PieceOrientation.RotatedZ90);
+        DrawOrientationButton("Z 180", PieceOrientation.RotatedZ180);
+        DrawOrientationButton("Z 270", PieceOrientation.RotatedZ270);
+
+        EditorGUILayout.EndHorizontal();
+
+        DrawOrientationButton(
+            "CUSTOM Z",
+            PieceOrientation.CustomZ
+        );
+
+        EditorGUILayout.BeginHorizontal();
+
+        using (
+            new EditorGUI.DisabledScope(
+                paintOrientation != PieceOrientation.CustomZ))
+        {
+            paintCustomZRotation =
+                EditorGUILayout.FloatField(
+                    new GUIContent(
+                        "Custom Z Angle",
+                        "Sirf CUSTOM Z orientation ke liye apni degree value."
+                    ),
+                    paintCustomZRotation
+                );
+        }
+
+        if (GUILayout.Button(
+                "Reset",
+                GUILayout.Width(65f)))
+        {
+            paintCustomZRotation = 0f;
+        }
+
+        EditorGUILayout.EndHorizontal();
+
         EditorGUILayout.HelpBox(
             "Upright = as authored (tall pieces stand up). " +
             "Lying (X) lays a tall piece along X. " +
@@ -1031,7 +1090,9 @@ public sealed class GridLevelDataEditor : Editor
         );
 
         EditorGUILayout.HelpBox(
-            "Y 90/180/270 rotates an upright piece around its Y axis.",
+            "Y 90/180/270 aur Z 90/180/270 selected piece ko " +
+            "respective local axis par rotate karte hain. Apna angle " +
+            "sirf CUSTOM Z select karne ke baad effective hoga.",
             MessageType.None
         );
 
@@ -1658,7 +1719,8 @@ public sealed class GridLevelDataEditor : Editor
                                 paintColor,
                                 paintDefinitionIndex,
                                 paintOrientation,
-                                seamOffset
+                                seamOffset,
+                                paintCustomZRotation
                             );
                         }
                         else
@@ -1674,7 +1736,7 @@ public sealed class GridLevelDataEditor : Editor
                         }
                     }
 
-                    levelData.RecalculateBakedMetadata();
+                    levelData.RecalculateGridMetadata();
                     EditorUtility.SetDirty(levelData);
                 }
 
@@ -1687,100 +1749,6 @@ public sealed class GridLevelDataEditor : Editor
     }
 
 
-    private static void BakeGrid(
-        GridLevelData levelData)
-    {
-        Texture2D texture =
-            levelData.SourceImage;
-
-
-        if (texture == null)
-        {
-            return;
-        }
-
-
-        string assetPath =
-            AssetDatabase.GetAssetPath(
-                texture
-            );
-
-
-        TextureImporter importer =
-            AssetImporter.GetAtPath(
-                assetPath
-            ) as TextureImporter;
-
-
-        bool restoreReadability =
-            false;
-
-
-        try
-        {
-            /*
-             * User ko manually Read/Write ON
-             * karne ki zaroorat nahi.
-             */
-            if (importer != null &&
-                !importer.isReadable)
-            {
-                restoreReadability =
-                    true;
-
-
-                importer.isReadable =
-                    true;
-
-
-                importer.SaveAndReimport();
-            }
-
-
-            Undo.RecordObject(
-                levelData,
-                "Bake Grid Level From Image"
-            );
-
-
-            levelData
-                .EditorBakeFromReadableSourceImage();
-
-
-            EditorUtility.SetDirty(
-                levelData
-            );
-
-
-            AssetDatabase.SaveAssets();
-
-
-            SceneView.RepaintAll();
-        }
-        catch (System.Exception exception)
-        {
-            Debug.LogException(
-                exception,
-                levelData
-            );
-        }
-        finally
-        {
-            /*
-             * Texture ki original import setting
-             * restore kar dete hain.
-             */
-            if (importer != null &&
-                restoreReadability)
-            {
-                importer.isReadable =
-                    false;
-
-
-                importer.SaveAndReimport();
-            }
-        }
-    }
 }
 
 #endif

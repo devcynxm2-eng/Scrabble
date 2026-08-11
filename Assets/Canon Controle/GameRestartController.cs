@@ -1,15 +1,27 @@
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 public sealed class GameRestartController : MonoBehaviour
 {
+    [SerializeField]
+    private LevelRuntimeController levelRuntimeController;
+
     public void RestartGame()
     {
-        Scene currentScene =
-            SceneManager.GetActiveScene();
+        if (levelRuntimeController == null)
+        {
+            levelRuntimeController =
+                FindFirstObjectByType<LevelRuntimeController>();
+        }
 
-        SceneManager.LoadScene(
-            currentScene.buildIndex
-        );
+        if (levelRuntimeController == null)
+        {
+            Debug.LogError(
+                "Restart ke liye LevelRuntimeController nahi mila.",
+                this
+            );
+            return;
+        }
+
+        levelRuntimeController.RestartCurrentLevel();
     }
 }

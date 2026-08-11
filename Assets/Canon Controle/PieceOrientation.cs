@@ -16,7 +16,11 @@ public enum PieceOrientation
     LyingZ = 2,
     RotatedY90 = 3,
     RotatedY180 = 4,
-    RotatedY270 = 5
+    RotatedY270 = 5,
+    RotatedZ90 = 6,
+    RotatedZ180 = 7,
+    RotatedZ270 = 8,
+    CustomZ = 9
 }
 
 public static class PieceOrientationUtility
@@ -26,7 +30,8 @@ public static class PieceOrientationUtility
     /// needed to visually tip a piece from upright into this orientation.
     /// </summary>
     public static Quaternion GetRotation(
-        PieceOrientation orientation)
+        PieceOrientation orientation,
+        float customZRotation = 0f)
     {
         switch (orientation)
         {
@@ -44,6 +49,22 @@ public static class PieceOrientationUtility
 
             case PieceOrientation.RotatedY270:
                 return Quaternion.Euler(0f, 270f, 0f);
+
+            case PieceOrientation.RotatedZ90:
+                return Quaternion.Euler(0f, 0f, 90f);
+
+            case PieceOrientation.RotatedZ180:
+                return Quaternion.Euler(0f, 0f, 180f);
+
+            case PieceOrientation.RotatedZ270:
+                return Quaternion.Euler(0f, 0f, 270f);
+
+            case PieceOrientation.CustomZ:
+                return Quaternion.Euler(
+                    0f,
+                    0f,
+                    customZRotation
+                );
 
             default:
                 return Quaternion.identity;
@@ -63,6 +84,8 @@ public static class PieceOrientationUtility
         switch (orientation)
         {
             case PieceOrientation.LyingX:
+            case PieceOrientation.RotatedZ90:
+            case PieceOrientation.RotatedZ270:
                 return new Vector3Int(
                     uprightFootprint.y,
                     uprightFootprint.x,
@@ -104,6 +127,8 @@ public static class PieceOrientationUtility
         switch (orientation)
         {
             case PieceOrientation.LyingX:
+            case PieceOrientation.RotatedZ90:
+            case PieceOrientation.RotatedZ270:
                 return new Vector3(
                     gridAlignedTargetSize.y,
                     gridAlignedTargetSize.x,
