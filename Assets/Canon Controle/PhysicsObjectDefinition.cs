@@ -1,31 +1,3 @@
-//using UnityEngine;
-
-//[CreateAssetMenu(
-//    fileName = "PhysicsObjectDefinition",
-//    menuName = "Royal Smash/Physics Object Definition")]
-//public sealed class PhysicsObjectDefinition : ScriptableObject
-//{
-//    [Header("Prefab")]
-//    [SerializeField]
-//    private PhysicsTowerObject prefab;
-
-//    [Header("Placement Size")]
-//    [Tooltip("Object collider ka approximate X/Y/Z size.")]
-//    [SerializeField]
-//    private Vector3 placementSize =
-//        new Vector3(0.38f, 0.55f, 0.38f);
-
-//    [Header("Pool")]
-//    [SerializeField, Min(0)]
-//    private int minimumPrewarmCount = 16;
-
-//    public PhysicsTowerObject Prefab => prefab;
-//    public Vector3 PlacementSize => placementSize;
-//    public int MinimumPrewarmCount => minimumPrewarmCount;
-//}
-
-
-
 using UnityEngine;
 
 [CreateAssetMenu(
@@ -38,6 +10,12 @@ public sealed class PhysicsObjectDefinition : ScriptableObject
     [SerializeField]
     private PhysicsTowerObject prefab;
 
+    [Tooltip(
+        "Palette/UI mein dikhane ke liye. Empty ho to asset name use hoga."
+    )]
+    [SerializeField]
+    private string displayName;
+
     [Header("Pool")]
 
     [Tooltip(
@@ -46,13 +24,39 @@ public sealed class PhysicsObjectDefinition : ScriptableObject
     [SerializeField, Min(0)]
     private int minimumPrewarmCount = 16;
 
+    [Header("Grid Fit")]
+
+    [Tooltip(
+        "ON hone par is shape ko GridLevelData ki Cell Size ke andar " +
+        "automatically scale kiya jayega (mixed shapes ek uniform grid " +
+        "mein clean fit hote hain). OFF ho to prefab ki authored scale " +
+        "as-is use hogi (decoration pieces jo cell se chota/bara honi " +
+        "chahiye, jaise corner toppers)."
+    )]
+    [SerializeField]
+    private bool autoFitToCell = true;
+
+    [Tooltip(
+        "Fit hone ke baad extra multiplier. Default (1,1,1)."
+    )]
+    [SerializeField]
+    private Vector3 manualScaleMultiplier =
+        Vector3.one;
+
     public PhysicsTowerObject Prefab =>
         prefab;
 
+    public string DisplayName =>
+        string.IsNullOrEmpty(displayName)
+            ? name
+            : displayName;
+
     public int MinimumPrewarmCount =>
         minimumPrewarmCount;
+
+    public bool AutoFitToCell =>
+        autoFitToCell;
+
+    public Vector3 ManualScaleMultiplier =>
+        manualScaleMultiplier;
 }
-
-
-
-

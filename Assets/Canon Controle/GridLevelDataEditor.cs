@@ -1,20 +1,67 @@
-﻿#if UNITY_EDITOR
+#if UNITY_EDITOR
 
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
 [CustomEditor(typeof(GridLevelData))]
 public sealed class GridLevelDataEditor : Editor
 {
+    private int paintLayerZ;
+    private int paintTierY;
+    private Color paintColor = Color.white;
+    private int paintDefinitionIndex;
+    private bool eraseMode;
+
+    private int paintSpanX = 1;
+    private int paintSpanY = 1;
+    private int paintSpanZ = 1;
+    private PieceOrientation paintOrientation = PieceOrientation.UprightY;
+    private bool manualFootprintOverride;
+
+    /// <summary>
+    /// ON hone par piece apne grid slot ke center par nahi, do adjacent
+    /// cells ke BEECH ki seam par baithti hai — brick-offset stacking
+    /// (jaise real bricks) ke liye. X/Z dono directions mein alag se
+    /// on/off ho sakta hai.
+    /// </summary>
+    private bool seamOffsetX;
+    private bool seamOffsetZ;
+
+    /// <summary>
+    /// Live-measured footprint per shape, in-memory only (never
+    /// serialized). Nothing to configure and nothing to go stale —
+    /// re-measured automatically whenever a shape wasn't measured yet
+    /// or this level's Cell Size changed since the last measurement.
+    /// </summary>
+    private readonly Dictionary<PhysicsObjectDefinition, Vector3Int>
+        footprintCache =
+            new Dictionary<PhysicsObjectDefinition, Vector3Int>();
+
+    private Vector3 footprintCacheCellSize;
+
+    private int presetBottomRowCount = 8;
+    private int presetRowCount = 6;
+    private float presetRingRadius = 4f;
+
+    private const float CellButtonSize = 18f;
+
+
     public override void OnInspectorGUI()
     {
         DrawDefaultInspector();
 
-
         GridLevelData levelData =
             (GridLevelData)target;
 
+        DrawImageBakeSection(levelData);
+        DrawManualPainterSection(levelData);
+    }
 
+
+    private void DrawImageBakeSection(
+        GridLevelData levelData)
+    {
         EditorGUILayout.Space(15f);
 
         EditorGUILayout.LabelField(
@@ -34,22 +81,18 @@ public sealed class GridLevelDataEditor : Editor
 
         using (
             new EditorGUI.DisabledScope(
-                levelData.SourceImage == null
-            ))
+                levelData.SourceImage == null))
         {
             if (GUILayout.Button(
                     "BAKE 3D GRID FROM IMAGE",
                     GUILayout.Height(38f)))
             {
-                BakeGrid(
-                    levelData
-                );
+                BakeGrid(levelData);
             }
         }
 
 
         EditorGUILayout.Space(8f);
-
 
         if (levelData.HasValidBakedGrid)
         {
@@ -67,9 +110,820 @@ public sealed class GridLevelDataEditor : Editor
         {
             EditorGUILayout.HelpBox(
                 "Grid abhi bake nahi hui. " +
-                "Source Image set karke Bake button press karein.",
+                "Source Image se bake karein, ya neeche " +
+                "Manual Level Painter se hath se design karein.",
                 MessageType.Warning
             );
+        }
+    }
+
+
+    private void DrawManualPainterSection(
+        GridLevelData levelData)
+    {
+        EditorGUILayout.Space(20f);
+
+        EditorGUILayout.LabelField(
+            "Manual Level Painter",
+            EditorStyles.boldLabel
+        );
+
+        EditorGUILayout.HelpBox(
+            "Royal Smash jaisi hand-designed block/tier towers banane ke liye. " +
+            "Image ki zaroorat nahi — grid ko directly paint karein.",
+            MessageType.None
+        );
+
+
+        if (GUILayout.Button(
+                $"Allocate / Resize Grid To " +
+                $"{levelData.GridWidth} x " +
+                $"{levelData.GridHeight} x " +
+                $"{levelData.GridDepth}"))
+        {
+            Undo.RecordObject(
+                levelData,
+                "Resize Grid Level"
+            );
+
+            levelData.EditorEnsureGridAllocated();
+
+            EditorUtility.SetDirty(levelData);
+        }
+
+
+        if (levelData.BlockPalette == null ||
+            levelData.BlockPalette.Count == 0)
+        {
+            EditorGUILayout.HelpBox(
+                "Pehle upar 'Block Palette' mein kam az kam ek shape " +
+                "(Physics Object Definition) add karein — jaise Cube ya " +
+                "Cylinder — phir paint kar sakenge.",
+                MessageType.Warning
+            );
+
+            return;
+        }
+
+        if (!levelData.IsGridAllocated)
+        {
+            EditorGUILayout.HelpBox(
+                "Pehle grid allocate karein taake paint kar sakein.",
+                MessageType.Info
+            );
+
+            return;
+        }
+
+
+        EditorGUILayout.Space(6f);
+
+        DrawShapePicker(levelData);
+
+        EditorGUILayout.Space(6f);
+
+        DrawSpanPicker(levelData);
+
+        EditorGUILayout.Space(6f);
+
+        DrawColorPicker(levelData);
+
+        EditorGUILayout.Space(6f);
+
+        DrawPresetTools(levelData);
+
+        EditorGUILayout.Space(10f);
+
+        DrawGridPainter(levelData);
+    }
+
+
+    private void DrawShapePicker(
+        GridLevelData levelData)
+    {
+        EditorGUILayout.LabelField(
+            "Paint Shape",
+            EditorStyles.boldLabel
+        );
+
+        paintDefinitionIndex =
+            Mathf.Clamp(
+                paintDefinitionIndex,
+                0,
+                levelData.BlockPalette.Count - 1
+            );
+
+        EditorGUILayout.BeginHorizontal();
+
+        for (int i = 0;
+             i < levelData.BlockPalette.Count;
+             i++)
+        {
+            PhysicsObjectDefinition entry =
+                levelData.BlockPalette[i];
+
+            string label =
+                entry != null
+                    ? entry.DisplayName
+                    : $"[{i}] missing";
+
+            bool isSelected =
+                i == paintDefinitionIndex;
+
+            GUI.backgroundColor =
+                isSelected
+                    ? new Color(0.4f, 0.75f, 1f)
+                    : Color.white;
+
+            if (GUILayout.Toggle(
+                    isSelected,
+                    label,
+                    EditorStyles.miniButton))
+            {
+                paintDefinitionIndex = i;
+            }
+        }
+
+        GUI.backgroundColor =
+            Color.white;
+
+        EditorGUILayout.EndHorizontal();
+    }
+
+
+    /// <summary>
+    /// Footprint is measured live from the selected shape by default —
+    /// pick the shape, it already knows how many cells it needs, no
+    /// setup step required. Orientation buttons re-derive that footprint
+    /// (and the spawn rotation) for a tipped-over piece with one click,
+    /// so a tall piece can be made to lie flat without hand-typing spans.
+    /// </summary>
+    private void DrawSpanPicker(
+        GridLevelData levelData)
+    {
+        EditorGUILayout.LabelField(
+            "Footprint & Orientation",
+            EditorStyles.boldLabel
+        );
+
+        PhysicsObjectDefinition selectedDefinition =
+            paintDefinitionIndex >= 0 &&
+            paintDefinitionIndex < levelData.BlockPalette.Count
+                ? levelData.BlockPalette[paintDefinitionIndex]
+                : null;
+
+        Vector3Int naturalFootprint =
+            selectedDefinition != null
+                ? GetOrMeasureFootprint(selectedDefinition, levelData.CellSize)
+                : Vector3Int.one;
+
+        EditorGUILayout.BeginHorizontal();
+
+        EditorGUILayout.LabelField(
+            $"'{(selectedDefinition != null ? selectedDefinition.DisplayName : "?")}' " +
+            $"measured size (upright): " +
+            $"{naturalFootprint.x}x{naturalFootprint.y}x{naturalFootprint.z} cells",
+            EditorStyles.miniLabel
+        );
+
+        if (GUILayout.Button(
+                "Re-measure",
+                GUILayout.Width(90f)))
+        {
+            /*
+             * Sirf edge case ke liye — agar prefab ka mesh/collider isi
+             * Editor session mein change hua ho. Normal flow mein
+             * kabhi press karne ki zaroorat nahi.
+             */
+            footprintCache.Clear();
+        }
+
+        EditorGUILayout.EndHorizontal();
+
+
+        EditorGUILayout.BeginHorizontal();
+
+        DrawOrientationButton("Upright", PieceOrientation.UprightY);
+        DrawOrientationButton("Lying (X)", PieceOrientation.LyingX);
+        DrawOrientationButton("Lying (Z)", PieceOrientation.LyingZ);
+
+        EditorGUILayout.EndHorizontal();
+
+        EditorGUILayout.HelpBox(
+            "Upright = as authored (tall pieces stand up). " +
+            "Lying (X)/(Z) tip a tall piece 90° so it lies flat " +
+            "sideways instead — pick whichever makes it horizontal.",
+            MessageType.None
+        );
+
+
+        EditorGUILayout.LabelField(
+            "Seam Offset (brick-style stacking)",
+            EditorStyles.boldLabel
+        );
+
+        EditorGUILayout.BeginHorizontal();
+
+        seamOffsetX =
+            EditorGUILayout.ToggleLeft(
+                "Center On Seam (X)",
+                seamOffsetX,
+                GUILayout.Width(160f)
+            );
+
+        seamOffsetZ =
+            EditorGUILayout.ToggleLeft(
+                "Center On Seam (Z)",
+                seamOffsetZ,
+                GUILayout.Width(160f)
+            );
+
+        EditorGUILayout.EndHorizontal();
+
+        EditorGUILayout.HelpBox(
+            "ON: the next click lands half a cell to the side instead " +
+            "of dead-center — so a piece can sit straddling the seam " +
+            "between two cells below it (e.g. one block resting on top " +
+            "of two, half on each) instead of snapping to a single " +
+            "cell's exact center.",
+            MessageType.None
+        );
+
+
+        Vector3Int effectiveFootprint =
+            PieceOrientationUtility.ApplyToFootprint(
+                naturalFootprint,
+                paintOrientation
+            );
+
+        manualFootprintOverride =
+            EditorGUILayout.ToggleLeft(
+                "Manual Footprint Override",
+                manualFootprintOverride
+            );
+
+        if (manualFootprintOverride)
+        {
+            paintSpanX =
+                EditorGUILayout.IntSlider(
+                    "Span X",
+                    paintSpanX,
+                    1,
+                    Mathf.Max(1, levelData.GridWidth)
+                );
+
+            paintSpanY =
+                EditorGUILayout.IntSlider(
+                    "Span Y",
+                    paintSpanY,
+                    1,
+                    Mathf.Max(1, levelData.GridHeight)
+                );
+
+            if (levelData.GridDepth > 1)
+            {
+                paintSpanZ =
+                    EditorGUILayout.IntSlider(
+                        "Span Z",
+                        paintSpanZ,
+                        1,
+                        Mathf.Max(1, levelData.GridDepth)
+                    );
+            }
+            else
+            {
+                paintSpanZ = 1;
+            }
+        }
+        else
+        {
+            paintSpanX =
+                Mathf.Max(1, effectiveFootprint.x);
+
+            paintSpanY =
+                Mathf.Max(1, effectiveFootprint.y);
+
+            paintSpanZ =
+                levelData.GridDepth > 1
+                    ? Mathf.Max(1, effectiveFootprint.z)
+                    : 1;
+
+            EditorGUILayout.LabelField(
+                $"Next click paints: {paintSpanX}x{paintSpanY}x{paintSpanZ} cells"
+            );
+        }
+    }
+
+
+    /// <summary>
+    /// Returns how many grid cells this shape naturally needs, measuring
+    /// it the first time it's asked about (or after Cell Size changes)
+    /// and reusing that afterward. Nothing here is authored or stored on
+    /// the definition — there is no field to set and nothing that can go
+    /// stale from a forgotten step; picking a shape always yields the
+    /// right footprint.
+    /// </summary>
+    private Vector3Int GetOrMeasureFootprint(
+        PhysicsObjectDefinition definition,
+        Vector3 cellSize)
+    {
+        if (footprintCacheCellSize != cellSize)
+        {
+            footprintCache.Clear();
+            footprintCacheCellSize = cellSize;
+        }
+
+        if (footprintCache.TryGetValue(
+                definition,
+                out Vector3Int cachedFootprint))
+        {
+            return cachedFootprint;
+        }
+
+        Vector3Int measuredFootprint =
+            MeasurePrefabFootprint(definition, cellSize);
+
+        footprintCache[definition] =
+            measuredFootprint;
+
+        return measuredFootprint;
+    }
+
+
+    /// <summary>
+    /// Temporarily instantiates the definition's prefab (editor-only,
+    /// destroyed immediately after) and measures its actual physics
+    /// bounds at its authored scale, then divides by this level's
+    /// CellSize and rounds to the nearest whole number of cells per
+    /// axis.
+    /// </summary>
+    private static Vector3Int MeasurePrefabFootprint(
+        PhysicsObjectDefinition definition,
+        Vector3 cellSize)
+    {
+        if (definition == null ||
+            definition.Prefab == null)
+        {
+            return Vector3Int.one;
+        }
+
+        GameObject tempInstance =
+            (GameObject)PrefabUtility.InstantiatePrefab(
+                definition.Prefab.gameObject
+            );
+
+        tempInstance.transform.SetPositionAndRotation(
+            Vector3.zero,
+            Quaternion.identity
+        );
+
+        Vector3Int result =
+            Vector3Int.one;
+
+        try
+        {
+            PhysicsTowerObject towerObject =
+                tempInstance.GetComponent<PhysicsTowerObject>();
+
+            Physics.SyncTransforms();
+
+            if (towerObject != null &&
+                towerObject.TryGetPhysicsBounds(out Bounds bounds))
+            {
+                /*
+                 * bounds.size prefab ki AUTHORED (as-is) world size hai —
+                 * ye seedha cellSize se compare hoti hai. Runtime fit-scale
+                 * calculation (LevelRuntimeController.TryGetFitData) ke
+                 * ulat: yahan authored scale ko normalize/divide NAHI
+                 * karte, kyunke hume yahi jaanna hai ke shape ABHI, jaisi
+                 * authored hai, kitne cells cover karti hai.
+                 */
+                result =
+                    new Vector3Int(
+                        Mathf.Max(1, Mathf.RoundToInt(bounds.size.x / Mathf.Max(0.0001f, cellSize.x))),
+                        Mathf.Max(1, Mathf.RoundToInt(bounds.size.y / Mathf.Max(0.0001f, cellSize.y))),
+                        Mathf.Max(1, Mathf.RoundToInt(bounds.size.z / Mathf.Max(0.0001f, cellSize.z)))
+                    );
+            }
+        }
+        finally
+        {
+            Object.DestroyImmediate(tempInstance);
+        }
+
+        return result;
+    }
+
+
+    private void DrawOrientationButton(
+        string label,
+        PieceOrientation value)
+    {
+        bool isSelected =
+            paintOrientation == value;
+
+        GUI.backgroundColor =
+            isSelected
+                ? new Color(0.4f, 0.9f, 0.55f)
+                : Color.white;
+
+        if (GUILayout.Toggle(
+                isSelected,
+                label,
+                EditorStyles.miniButton))
+        {
+            paintOrientation = value;
+        }
+
+        GUI.backgroundColor =
+            Color.white;
+    }
+
+
+    private void DrawColorPicker(
+        GridLevelData levelData)
+    {
+        EditorGUILayout.LabelField(
+            "Paint Color",
+            EditorStyles.boldLabel
+        );
+
+        SerializedProperty paletteProperty =
+            serializedObject.FindProperty("colorPalette");
+
+        if (paletteProperty != null &&
+            paletteProperty.arraySize > 0)
+        {
+            EditorGUILayout.BeginHorizontal();
+
+            for (int i = 0;
+                 i < paletteProperty.arraySize;
+                 i++)
+            {
+                Color swatchColor =
+                    paletteProperty
+                        .GetArrayElementAtIndex(i)
+                        .colorValue;
+
+                Color previousBackground =
+                    GUI.backgroundColor;
+
+                GUI.backgroundColor =
+                    swatchColor;
+
+                if (GUILayout.Button(
+                        "",
+                        GUILayout.Width(28f),
+                        GUILayout.Height(20f)))
+                {
+                    paintColor = swatchColor;
+                }
+
+                GUI.backgroundColor =
+                    previousBackground;
+            }
+
+            EditorGUILayout.EndHorizontal();
+        }
+
+        paintColor =
+            EditorGUILayout.ColorField(
+                "Custom Color",
+                paintColor
+            );
+
+        eraseMode =
+            EditorGUILayout.ToggleLeft(
+                "Erase Mode (click cells to clear)",
+                eraseMode
+            );
+    }
+
+
+    private void DrawPresetTools(
+        GridLevelData levelData)
+    {
+        EditorGUILayout.LabelField(
+            "Shape Presets",
+            EditorStyles.boldLabel
+        );
+
+        EditorGUILayout.BeginHorizontal();
+
+        if (GUILayout.Button("Clear All"))
+        {
+            Undo.RecordObject(
+                levelData,
+                "Clear Grid Level"
+            );
+
+            levelData.EditorClearAllCells();
+
+            EditorUtility.SetDirty(levelData);
+        }
+
+        if (GUILayout.Button("Fill Current Layer"))
+        {
+            Undo.RecordObject(
+                levelData,
+                "Fill Grid Layer"
+            );
+
+            levelData.EditorFillRectangle(
+                paintLayerZ,
+                0,
+                0,
+                levelData.GridWidth - 1,
+                levelData.GridHeight - 1,
+                paintColor,
+                paintDefinitionIndex
+            );
+
+            EditorUtility.SetDirty(levelData);
+        }
+
+        EditorGUILayout.EndHorizontal();
+
+
+        EditorGUILayout.Space(6f);
+
+        EditorGUILayout.LabelField(
+            "Pyramid (bottom-heavy stack)"
+        );
+
+        presetBottomRowCount =
+            EditorGUILayout.IntSlider(
+                "Bottom Row Count",
+                presetBottomRowCount,
+                1,
+                levelData.GridWidth
+            );
+
+        presetRowCount =
+            EditorGUILayout.IntSlider(
+                "Row Count",
+                presetRowCount,
+                1,
+                presetBottomRowCount
+            );
+
+        if (GUILayout.Button("Apply Pyramid Preset"))
+        {
+            Undo.RecordObject(
+                levelData,
+                "Apply Pyramid Preset"
+            );
+
+            levelData.EditorApplyPyramidPreset(
+                paintLayerZ,
+                presetBottomRowCount,
+                presetRowCount,
+                ReadPalette(),
+                paintDefinitionIndex
+            );
+
+            EditorUtility.SetDirty(levelData);
+        }
+
+
+        EditorGUILayout.Space(6f);
+
+        EditorGUILayout.LabelField(
+            "Round Tier (cake-style layer, needs Grid Depth > 1)"
+        );
+
+        paintTierY =
+            EditorGUILayout.IntSlider(
+                "Tier Height (Y)",
+                paintTierY,
+                0,
+                Mathf.Max(0, levelData.GridHeight - 1)
+            );
+
+        presetRingRadius =
+            EditorGUILayout.Slider(
+                "Radius",
+                presetRingRadius,
+                0.5f,
+                Mathf.Max(
+                    levelData.GridWidth,
+                    levelData.GridDepth
+                )
+            );
+
+        if (GUILayout.Button("Apply Round Tier At This Height"))
+        {
+            Undo.RecordObject(
+                levelData,
+                "Apply Round Tier"
+            );
+
+            levelData.EditorApplyRingLayer(
+                paintTierY,
+                presetRingRadius,
+                paintColor,
+                paintDefinitionIndex
+            );
+
+            EditorUtility.SetDirty(levelData);
+        }
+    }
+
+
+    private List<Color> ReadPalette()
+    {
+        List<Color> palette =
+            new List<Color>();
+
+        SerializedProperty paletteProperty =
+            serializedObject.FindProperty("colorPalette");
+
+        if (paletteProperty == null)
+        {
+            return palette;
+        }
+
+        for (int i = 0;
+             i < paletteProperty.arraySize;
+             i++)
+        {
+            palette.Add(
+                paletteProperty
+                    .GetArrayElementAtIndex(i)
+                    .colorValue
+            );
+        }
+
+        return palette;
+    }
+
+
+    private void DrawGridPainter(
+        GridLevelData levelData)
+    {
+        EditorGUILayout.LabelField(
+            "Grid Paint (click cells to toggle)",
+            EditorStyles.boldLabel
+        );
+
+        if (levelData.GridDepth > 1)
+        {
+            paintLayerZ =
+                EditorGUILayout.IntSlider(
+                    "Depth Layer (Z)",
+                    paintLayerZ,
+                    0,
+                    levelData.GridDepth - 1
+                );
+        }
+        else
+        {
+            paintLayerZ = 0;
+        }
+
+        string legend =
+            "Legend: ";
+
+        for (int i = 0;
+             i < levelData.BlockPalette.Count;
+             i++)
+        {
+            PhysicsObjectDefinition entry =
+                levelData.BlockPalette[i];
+
+            legend +=
+                $"{i}={(entry != null ? entry.DisplayName : "missing")}  ";
+        }
+
+        EditorGUILayout.LabelField(
+            legend,
+            EditorStyles.miniLabel
+        );
+
+        EditorGUILayout.Space(4f);
+
+        /*
+         * Top row drawn first so the tower reads bottom-to-top
+         * the same way it will spawn at runtime.
+         */
+        for (int y = levelData.GridHeight - 1;
+             y >= 0;
+             y--)
+        {
+            EditorGUILayout.BeginHorizontal();
+
+            for (int x = 0;
+                 x < levelData.GridWidth;
+                 x++)
+            {
+                GridCellData cell =
+                    levelData.GetCell(x, y, paintLayerZ);
+
+                bool isOccupied =
+                    cell != null && cell.Occupied;
+
+                Color previousBackground =
+                    GUI.backgroundColor;
+
+                GUI.backgroundColor =
+                    isOccupied
+                        ? cell.Color
+                        : new Color(1f, 1f, 1f, 0.12f);
+
+                /*
+                 * Shape ka short hint (palette index) taake mixed
+                 * shapes wale cells button ke text se pehchane ja sakein.
+                 * Covered cells (bare footprint ka hissa, khud spawn
+                 * nahi hoti) ek dot se dikhai jaati hain.
+                 */
+                string cellLabel =
+                    isOccupied
+                        ? (
+                            cell.IsCovered
+                                ? "•"
+                                : cell.DefinitionIndex.ToString()
+                          )
+                        : "";
+
+                if (GUILayout.Button(
+                        cellLabel,
+                        GUILayout.Width(CellButtonSize),
+                        GUILayout.Height(CellButtonSize)))
+                {
+                    bool paintingSpan =
+                        paintSpanX > 1 ||
+                        paintSpanY > 1 ||
+                        paintSpanZ > 1 ||
+                        seamOffsetX ||
+                        seamOffsetZ;
+
+                    Vector3 seamOffset =
+                        new Vector3(
+                            seamOffsetX ? 0.5f : 0f,
+                            0f,
+                            seamOffsetZ ? 0.5f : 0f
+                        );
+
+                    if (eraseMode)
+                    {
+                        Undo.RecordObject(
+                            levelData,
+                            "Erase Grid Cell"
+                        );
+
+                        levelData.EditorClearSpanGroupAt(
+                            x,
+                            y,
+                            paintLayerZ
+                        );
+                    }
+                    else if (paintingSpan)
+                    {
+                        Undo.RecordObject(
+                            levelData,
+                            "Paint Grid Footprint"
+                        );
+
+                        levelData.EditorPaintSpan(
+                            x,
+                            y,
+                            paintLayerZ,
+                            paintSpanX,
+                            paintSpanY,
+                            paintSpanZ,
+                            paintColor,
+                            paintDefinitionIndex,
+                            paintOrientation,
+                            seamOffset
+                        );
+                    }
+                    else
+                    {
+                        Undo.RecordObject(
+                            levelData,
+                            "Paint Grid Cell"
+                        );
+
+                        levelData.EditorSetCell(
+                            x,
+                            y,
+                            paintLayerZ,
+                            true,
+                            paintColor,
+                            paintDefinitionIndex
+                        );
+
+                        levelData.RecalculateBakedMetadata();
+                    }
+
+                    EditorUtility.SetDirty(levelData);
+                }
+
+                GUI.backgroundColor =
+                    previousBackground;
+            }
+
+            EditorGUILayout.EndHorizontal();
         }
     }
 

@@ -114,11 +114,41 @@ public sealed class PhysicsTowerObject : MonoBehaviour
 {
     public event Action<PhysicsTowerObject> Cleared;
 
+    /// <summary>
+    /// Fires the moment a locked block turns dynamic (direct hit or
+    /// lost support) — available for VFX/SFX/analytics hooks. The
+    /// support-chain check itself doesn't need this: it reads
+    /// IsLocked + movement-from-spawn each FixedUpdate directly.
+    /// </summary>
+    public event Action<PhysicsTowerObject> Activated;
+
 
     [Header("Level")]
 
     [SerializeField]
     private bool countsAsTarget = true;
+
+
+    [Header("Spawn Locking")]
+
+    [Tooltip(
+        "ON: object spawn par locked/kinematic rahega (khada rahega, " +
+        "khud se nahi girega). Sirf cannonball se direct hit hone par " +
+        "ya support khone par dynamic/gravity-affected banega. " +
+        "Royal Smash jaisi 'smash the tower' gameplay ke liye ON rakhein."
+    )]
+    [SerializeField]
+    private bool startLockedOnSpawn = true;
+
+
+    [Header("Hit Impact")]
+
+    [Tooltip("Cannonball ki velocity ka kitna impulse is object ko transfer hoga.")]
+    [SerializeField, Range(0f, 2f)]
+    private float impactTransferMultiplier = 0.35f;
+
+    [SerializeField, Min(0f)]
+    private float maximumImpactImpulse = 14f;
 
 
     [Header("Physics")]
@@ -173,6 +203,19 @@ public sealed class PhysicsTowerObject : MonoBehaviour
     public Rigidbody Body =>
         body;
 
+    /// <summary>
+    /// True while the object is kinematic/no-gravity (standing solid,
+    /// still supporting whatever is stacked above it).
+    /// </summary>
+    public bool IsLocked { get; private set; }
+
+    /// <summary>
+    /// Grid cell this instance was spawned into. Set by
+    /// LevelRuntimeController right after spawn; used for support-chain
+    /// lookups (is the cell directly below still standing?).
+    /// </summary>
+    public Vector3Int GridCoordinate { get; private set; }
+
 
     private void Awake()
     {
@@ -207,6 +250,13 @@ public sealed class PhysicsTowerObject : MonoBehaviour
             colorPropertyBlock =
                 new MaterialPropertyBlock();
         }
+    }
+
+
+    public void SetGridCoordinate(
+        Vector3Int coordinate)
+    {
+        GridCoordinate = coordinate;
     }
 
 
@@ -345,20 +395,7 @@ public sealed class PhysicsTowerObject : MonoBehaviour
             return;
         }
 
-        SetVelocity(
-            Vector3.zero
-        );
-
-        body.angularVelocity =
-            Vector3.zero;
-
         body.detectCollisions =
-            true;
-
-        body.isKinematic =
-            false;
-
-        body.useGravity =
             true;
 
         body.solverIterations =
@@ -367,7 +404,87 @@ public sealed class PhysicsTowerObject : MonoBehaviour
         body.solverVelocityIterations =
             solverVelocityIterations;
 
+        /*
+         * Locked spawn: naya spawned block khud se nahi girega.
+         * Sirf direct hit (OnCollisionEnter) ya support-chain
+         * (LevelRuntimeController) se ActivatePhysics() call hone
+         * par gravity/physics enable hogi.
+         */
+        IsLocked =
+            startLockedOnSpawn;
+
+        body.isKinematic =
+            IsLocked;
+
+        body.useGravity =
+            !IsLocked;
+
+        /*
+         * Kinematic body par velocity set karna Unity console warning
+         * deta hai (unsupported, harmless) — isliye sirf dynamic
+         * (unlocked) case mein reset karte hain.
+         */
+        if (!IsLocked)
+        {
+            SetVelocity(
+                Vector3.zero
+            );
+
+            body.angularVelocity =
+                Vector3.zero;
+        }
+
         body.WakeUp();
+    }
+
+
+    /// <summary>
+    /// Locked block ko dynamic banata hai — direct cannonball hit se,
+    /// ya LevelRuntimeController ke support-chain check se (jab neeche
+    /// wala block hat jaye).
+    /// </summary>
+    public void ActivatePhysics(
+        Vector3 impulse = default)
+    {
+        if (!IsLocked ||
+            isCleared)
+        {
+            return;
+        }
+
+        if (body == null)
+        {
+            ResolveReferences();
+        }
+
+        if (body == null)
+        {
+            return;
+        }
+
+        IsLocked =
+            false;
+
+        body.isKinematic =
+            false;
+
+        body.useGravity =
+            true;
+
+        body.WakeUp();
+
+        if (impulse.sqrMagnitude >
+            0.0001f)
+        {
+            body.AddForce(
+                impulse,
+                ForceMode.Impulse
+            );
+        }
+
+        Activated?.Invoke(
+            this
+        );
     }
 
 
@@ -376,11 +493,20 @@ public sealed class PhysicsTowerObject : MonoBehaviour
         isCleared =
             true;
 
+        IsLocked =
+            true;
+
+        GridCoordinate =
+            default;
+
         /*
          * Old level ke event references
          * pooled object ke sath nahi rahenge.
          */
         Cleared =
+            null;
+
+        Activated =
             null;
 
         if (body == null)
@@ -393,12 +519,20 @@ public sealed class PhysicsTowerObject : MonoBehaviour
             return;
         }
 
-        SetVelocity(
-            Vector3.zero
-        );
+        /*
+         * Sirf tab velocity reset karo jab body abhi dynamic thi —
+         * pehle se kinematic body par set karna sirf console
+         * warning deta hai, koi asar nahi hota.
+         */
+        if (!body.isKinematic)
+        {
+            SetVelocity(
+                Vector3.zero
+            );
 
-        body.angularVelocity =
-            Vector3.zero;
+            body.angularVelocity =
+                Vector3.zero;
+        }
 
         body.useGravity =
             false;
@@ -407,6 +541,53 @@ public sealed class PhysicsTowerObject : MonoBehaviour
             true;
 
         body.Sleep();
+    }
+
+
+    private void OnCollisionEnter(
+        Collision collision)
+    {
+        if (!IsLocked ||
+            isCleared ||
+            collision == null ||
+            collision.collider == null)
+        {
+            return;
+        }
+
+        /*
+         * Sirf CannonBallMarker wale colliders is block ko activate
+         * karte hain — random physics touches (dusre locked blocks
+         * ke beech chhoti overlaps wagera) ko ignore kiya jata hai.
+         */
+        CannonBallMarker cannonBall =
+            collision.collider.GetComponentInParent<
+                CannonBallMarker>();
+
+        if (cannonBall == null)
+        {
+            return;
+        }
+
+        Vector3 incomingVelocity =
+            collision.relativeVelocity;
+
+        float incomingMass =
+            collision.rigidbody != null
+                ? Mathf.Max(0.01f, collision.rigidbody.mass)
+                : 1f;
+
+        Vector3 impulse =
+            Vector3.ClampMagnitude(
+                incomingVelocity *
+                incomingMass *
+                impactTransferMultiplier,
+                maximumImpactImpulse
+            );
+
+        ActivatePhysics(
+            impulse
+        );
     }
 
 

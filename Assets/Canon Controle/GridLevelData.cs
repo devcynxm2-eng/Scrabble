@@ -43,10 +43,26 @@ public sealed class GridLevelData : ScriptableObject
         Vector3.zero;
 
 
-    [Header("Grid Object")]
+    [Header("Grid Blocks")]
 
+    [Tooltip(
+        "Is level mein use hone wale shapes (cube, cylinder, wagera). " +
+        "Har grid cell inmein se ek index reference karta hai, isliye " +
+        "ek hi level mein multiple shapes mix ho sakti hain."
+    )]
     [SerializeField]
-    private PhysicsObjectDefinition objectDefinition;
+    private List<PhysicsObjectDefinition> blockPalette =
+        new List<PhysicsObjectDefinition>();
+
+    [Tooltip(
+        "Ek grid cell ka uniform world-space footprint. " +
+        "Palette ki har shape auto-fit ke through isi size mein " +
+        "scale hoti hai, is liye cube/cylinder jaisi different shapes " +
+        "bhi same grid mein clean tarah se align hoti hain."
+    )]
+    [SerializeField]
+    private Vector3 cellSize =
+        new Vector3(0.4f, 0.4f, 0.4f);
 
 
     [Header("Source Image")]
@@ -229,8 +245,35 @@ public sealed class GridLevelData : ScriptableObject
     public Vector3 TableRotationEuler =>
         tableRotationEuler;
 
-    public PhysicsObjectDefinition ObjectDefinition =>
-        objectDefinition;
+    public IReadOnlyList<PhysicsObjectDefinition> BlockPalette =>
+        blockPalette;
+
+    public Vector3 CellSize =>
+        cellSize;
+
+    /// <summary>
+    /// Palette entry for a cell's DefinitionIndex, clamped so an
+    /// out-of-range/stale index (e.g. after removing a palette entry)
+    /// falls back to entry 0 instead of throwing.
+    /// </summary>
+    public PhysicsObjectDefinition GetPaletteEntry(
+        int definitionIndex)
+    {
+        if (blockPalette == null ||
+            blockPalette.Count == 0)
+        {
+            return null;
+        }
+
+        int clampedIndex =
+            Mathf.Clamp(
+                definitionIndex,
+                0,
+                blockPalette.Count - 1
+            );
+
+        return blockPalette[clampedIndex];
+    }
 
     public Texture2D SourceImage =>
         sourceImage;
@@ -282,13 +325,24 @@ public sealed class GridLevelData : ScriptableObject
     {
         get
         {
+            return
+                IsGridAllocated &&
+                bakedOccupiedCellCount > 0;
+        }
+    }
+
+
+    /// <summary>
+    /// True once layers/rows/cells match gridWidth/gridHeight/gridDepth,
+    /// regardless of whether any cell is occupied yet. Used by the manual
+    /// grid painter, which needs an allocated (but possibly still empty) grid.
+    /// </summary>
+    public bool IsGridAllocated
+    {
+        get
+        {
             if (layers == null ||
                 layers.Count != gridDepth)
-            {
-                return false;
-            }
-
-            if (bakedOccupiedCellCount <= 0)
             {
                 return false;
             }
@@ -389,6 +443,558 @@ public sealed class GridLevelData : ScriptableObject
 
 
 #if UNITY_EDITOR
+
+    /// <summary>
+    /// Hand-authored level design API used by GridLevelDataEditor's
+    /// manual grid painter. Kept separate from the image-bake path below
+    /// so painted levels and baked-from-image levels can both populate
+    /// the same runtime data (layers/rows/cells) that LevelRuntimeController reads.
+    /// </summary>
+
+    public void EditorEnsureGridAllocated()
+    {
+        gridWidth =
+            Mathf.Max(1, gridWidth);
+
+        gridHeight =
+            Mathf.Max(1, gridHeight);
+
+        gridDepth =
+            Mathf.Max(1, gridDepth);
+
+        List<GridDepthLayerData> oldLayers =
+            layers;
+
+        layers =
+            new List<GridDepthLayerData>(gridDepth);
+
+        for (int z = 0; z < gridDepth; z++)
+        {
+            GridDepthLayerData layer =
+                new GridDepthLayerData();
+
+            for (int y = 0; y < gridHeight; y++)
+            {
+                GridRowData row =
+                    new GridRowData();
+
+                for (int x = 0; x < gridWidth; x++)
+                {
+                    GridCellData oldCell =
+                        FindExistingCell(
+                            oldLayers,
+                            x,
+                            y,
+                            z
+                        );
+
+                    GridCellData newCell =
+                        oldCell != null
+                            ? new GridCellData(
+                                oldCell.Occupied,
+                                oldCell.Color,
+                                oldCell.DefinitionIndex)
+                            : new GridCellData(
+                                false,
+                                Color.white);
+
+                    if (oldCell != null)
+                    {
+                        newCell.SetSpan(
+                            oldCell.SpanX,
+                            oldCell.SpanY,
+                            oldCell.SpanZ
+                        );
+
+                        newCell.SetOrientation(
+                            oldCell.Orientation
+                        );
+
+                        newCell.SetLocalOffset(
+                            oldCell.LocalOffset
+                        );
+
+                        if (oldCell.IsCovered)
+                        {
+                            newCell.SetCoveredBy(
+                                oldCell.AnchorCoordinate
+                            );
+                        }
+                    }
+
+                    row.Cells.Add(
+                        newCell
+                    );
+                }
+
+                layer.Rows.Add(row);
+            }
+
+            layers.Add(layer);
+        }
+
+        RecalculateBakedMetadata();
+    }
+
+
+    private static GridCellData FindExistingCell(
+        List<GridDepthLayerData> sourceLayers,
+        int x,
+        int y,
+        int z)
+    {
+        if (sourceLayers == null ||
+            z >= sourceLayers.Count)
+        {
+            return null;
+        }
+
+        GridDepthLayerData layer =
+            sourceLayers[z];
+
+        if (layer?.Rows == null ||
+            y >= layer.Rows.Count)
+        {
+            return null;
+        }
+
+        GridRowData row =
+            layer.Rows[y];
+
+        if (row?.Cells == null ||
+            x >= row.Cells.Count)
+        {
+            return null;
+        }
+
+        return row.Cells[x];
+    }
+
+
+    /// <summary>
+    /// Paints/erases a single, independent (1x1x1) cell. If that cell
+    /// was previously an anchor or part of a bigger footprint, the
+    /// whole old span group is cleared first so no stale anchor/covered
+    /// data is left behind.
+    /// </summary>
+    public void EditorSetCell(
+        int x,
+        int y,
+        int z,
+        bool occupied,
+        Color color,
+        int definitionIndex = 0)
+    {
+        EditorClearSpanGroupAt(x, y, z);
+
+        GridCellData cell =
+            GetCell(x, y, z);
+
+        if (cell == null)
+        {
+            return;
+        }
+
+        cell.SetOccupied(occupied);
+        cell.SetColor(color);
+        cell.SetDefinitionIndex(Mathf.Max(0, definitionIndex));
+        cell.ClearSpanState();
+    }
+
+
+    /// <summary>
+    /// Paints a multi-cell shape: (x,y,z) becomes the anchor (the cell
+    /// that actually spawns something at runtime), and every other cell
+    /// in the spanX/spanY/spanZ footprint is marked as covered by it
+    /// (occupied for stability/bounds purposes, but spawns nothing of
+    /// its own). Any span group already touching the footprint is
+    /// cleared first so footprints never silently overlap.
+    /// </summary>
+    public void EditorPaintSpan(
+        int x,
+        int y,
+        int z,
+        int spanX,
+        int spanY,
+        int spanZ,
+        Color color,
+        int definitionIndex = 0,
+        PieceOrientation orientation = PieceOrientation.UprightY,
+        Vector3 localOffset = default)
+    {
+        spanX = Mathf.Max(1, spanX);
+        spanY = Mathf.Max(1, spanY);
+        spanZ = Mathf.Max(1, spanZ);
+
+        for (int dz = 0; dz < spanZ; dz++)
+        {
+            for (int dy = 0; dy < spanY; dy++)
+            {
+                for (int dx = 0; dx < spanX; dx++)
+                {
+                    EditorClearSpanGroupAt(
+                        x + dx,
+                        y + dy,
+                        z + dz
+                    );
+                }
+            }
+        }
+
+        Vector3Int anchorCoordinate =
+            new Vector3Int(x, y, z);
+
+        for (int dz = 0; dz < spanZ; dz++)
+        {
+            for (int dy = 0; dy < spanY; dy++)
+            {
+                for (int dx = 0; dx < spanX; dx++)
+                {
+                    GridCellData cell =
+                        GetCell(x + dx, y + dy, z + dz);
+
+                    if (cell == null)
+                    {
+                        continue;
+                    }
+
+                    cell.SetOccupied(true);
+                    cell.SetColor(color);
+                    cell.SetDefinitionIndex(Mathf.Max(0, definitionIndex));
+
+                    bool isAnchor =
+                        dx == 0 && dy == 0 && dz == 0;
+
+                    if (isAnchor)
+                    {
+                        cell.ClearSpanState();
+
+                        cell.SetSpan(spanX, spanY, spanZ);
+
+                        cell.SetOrientation(orientation);
+
+                        cell.SetLocalOffset(localOffset);
+                    }
+                    else
+                    {
+                        cell.SetSpan(1, 1, 1);
+
+                        cell.SetCoveredBy(anchorCoordinate);
+                    }
+                }
+            }
+        }
+
+        RecalculateBakedMetadata();
+    }
+
+
+    /// <summary>
+    /// Erases the whole span group (anchor + all covered cells) that
+    /// the given coordinate belongs to. If the cell is a plain 1x1x1
+    /// cell, only that cell is cleared.
+    /// </summary>
+    public void EditorClearSpanGroupAt(
+        int x,
+        int y,
+        int z)
+    {
+        GridCellData cell =
+            GetCell(x, y, z);
+
+        if (cell == null)
+        {
+            return;
+        }
+
+        Vector3Int anchorCoordinate =
+            cell.IsCovered
+                ? cell.AnchorCoordinate
+                : new Vector3Int(x, y, z);
+
+        GridCellData anchorCell =
+            GetCell(
+                anchorCoordinate.x,
+                anchorCoordinate.y,
+                anchorCoordinate.z
+            );
+
+        if (anchorCell == null)
+        {
+            /*
+             * Anchor reference stale/out of bounds — is cell ko
+             * khud independently clear kar dete hain.
+             */
+            cell.SetOccupied(false);
+            cell.ClearSpanState();
+
+            return;
+        }
+
+        /*
+         * Safety clamp: a group can never legitimately be bigger than
+         * the grid itself. Without this, any corrupted/stale span value
+         * on an anchor (e.g. from bad data) could wipe far more of the
+         * grid than intended instead of failing safely.
+         */
+        int groupSpanX =
+            Mathf.Clamp(anchorCell.SpanX, 1, gridWidth);
+
+        int groupSpanY =
+            Mathf.Clamp(anchorCell.SpanY, 1, gridHeight);
+
+        int groupSpanZ =
+            Mathf.Clamp(anchorCell.SpanZ, 1, gridDepth);
+
+        for (int dz = 0; dz < groupSpanZ; dz++)
+        {
+            for (int dy = 0; dy < groupSpanY; dy++)
+            {
+                for (int dx = 0; dx < groupSpanX; dx++)
+                {
+                    GridCellData groupCell =
+                        GetCell(
+                            anchorCoordinate.x + dx,
+                            anchorCoordinate.y + dy,
+                            anchorCoordinate.z + dz
+                        );
+
+                    if (groupCell == null)
+                    {
+                        continue;
+                    }
+
+                    groupCell.SetOccupied(false);
+                    groupCell.ClearSpanState();
+                }
+            }
+        }
+
+        RecalculateBakedMetadata();
+    }
+
+
+    public void EditorClearAllCells()
+    {
+        if (layers == null)
+        {
+            return;
+        }
+
+        foreach (GridDepthLayerData layer in layers)
+        {
+            if (layer?.Rows == null)
+            {
+                continue;
+            }
+
+            foreach (GridRowData row in layer.Rows)
+            {
+                if (row?.Cells == null)
+                {
+                    continue;
+                }
+
+                foreach (GridCellData cell in row.Cells)
+                {
+                    cell?.SetOccupied(false);
+                }
+            }
+        }
+
+        RecalculateBakedMetadata();
+    }
+
+
+    public void EditorFillRectangle(
+        int z,
+        int minX,
+        int minY,
+        int maxX,
+        int maxY,
+        Color color,
+        int definitionIndex = 0,
+        bool occupied = true)
+    {
+        for (int y = Mathf.Max(0, minY);
+             y <= Mathf.Min(gridHeight - 1, maxY);
+             y++)
+        {
+            for (int x = Mathf.Max(0, minX);
+                 x <= Mathf.Min(gridWidth - 1, maxX);
+                 x++)
+            {
+                EditorSetCell(x, y, z, occupied, color, definitionIndex);
+            }
+        }
+
+        RecalculateBakedMetadata();
+    }
+
+
+    /// <summary>
+    /// Classic bottom-heavy pyramid: widest row at y=0,
+    /// each row above one cell narrower, horizontally centered.
+    /// </summary>
+    public void EditorApplyPyramidPreset(
+        int z,
+        int bottomRowCount,
+        int rowCount,
+        IReadOnlyList<Color> palette,
+        int definitionIndex = 0)
+    {
+        bottomRowCount =
+            Mathf.Clamp(bottomRowCount, 1, gridWidth);
+
+        rowCount =
+            Mathf.Clamp(rowCount, 1, bottomRowCount);
+
+        for (int y = 0; y < rowCount; y++)
+        {
+            int countInRow =
+                Mathf.Max(1, bottomRowCount - y);
+
+            int startX =
+                Mathf.Max(
+                    0,
+                    (gridWidth - countInRow) / 2
+                );
+
+            Color rowColor =
+                palette != null && palette.Count > 0
+                    ? palette[y % palette.Count]
+                    : Color.white;
+
+            for (int x = startX;
+                 x < startX + countInRow && x < gridWidth;
+                 x++)
+            {
+                EditorSetCell(x, y, z, true, rowColor, definitionIndex);
+            }
+        }
+
+        RecalculateBakedMetadata();
+    }
+
+
+    /// <summary>
+    /// Fills a horizontal circular disc across X/Z at a single Y height.
+    /// Used to build round "cake tier" stacks (shrinking radius per Y).
+    /// </summary>
+    public void EditorApplyRingLayer(
+        int y,
+        float radius,
+        Color color,
+        int definitionIndex = 0,
+        bool hollow = false,
+        float ringThickness = 1f)
+    {
+        if (y < 0 || y >= gridHeight)
+        {
+            return;
+        }
+
+        float centerX =
+            (gridWidth - 1) * 0.5f;
+
+        float centerZ =
+            (gridDepth - 1) * 0.5f;
+
+        for (int z = 0; z < gridDepth; z++)
+        {
+            for (int x = 0; x < gridWidth; x++)
+            {
+                float distance =
+                    Vector2.Distance(
+                        new Vector2(x, z),
+                        new Vector2(centerX, centerZ)
+                    );
+
+                bool inside =
+                    distance <= radius;
+
+                if (inside && hollow)
+                {
+                    inside =
+                        distance >=
+                        radius - ringThickness;
+                }
+
+                if (inside)
+                {
+                    EditorSetCell(x, y, z, true, color, definitionIndex);
+                }
+            }
+        }
+
+        RecalculateBakedMetadata();
+    }
+
+
+    public void RecalculateBakedMetadata()
+    {
+        bakedOccupiedCellCount = 0;
+
+        Vector3Int minOccupied =
+            new Vector3Int(int.MaxValue, int.MaxValue, int.MaxValue);
+
+        Vector3Int maxOccupied =
+            new Vector3Int(int.MinValue, int.MinValue, int.MinValue);
+
+        bool foundAny = false;
+
+        if (layers != null)
+        {
+            for (int z = 0; z < layers.Count; z++)
+            {
+                GridDepthLayerData layer = layers[z];
+
+                if (layer?.Rows == null)
+                {
+                    continue;
+                }
+
+                for (int y = 0; y < layer.Rows.Count; y++)
+                {
+                    GridRowData row = layer.Rows[y];
+
+                    if (row?.Cells == null)
+                    {
+                        continue;
+                    }
+
+                    for (int x = 0; x < row.Cells.Count; x++)
+                    {
+                        GridCellData cell = row.Cells[x];
+
+                        if (cell == null || !cell.Occupied)
+                        {
+                            continue;
+                        }
+
+                        bakedOccupiedCellCount++;
+                        foundAny = true;
+
+                        minOccupied.x = Mathf.Min(minOccupied.x, x);
+                        minOccupied.y = Mathf.Min(minOccupied.y, y);
+                        minOccupied.z = Mathf.Min(minOccupied.z, z);
+
+                        maxOccupied.x = Mathf.Max(maxOccupied.x, x);
+                        maxOccupied.y = Mathf.Max(maxOccupied.y, y);
+                        maxOccupied.z = Mathf.Max(maxOccupied.z, z);
+                    }
+                }
+            }
+        }
+
+        occupiedMin = foundAny ? minOccupied : Vector3Int.zero;
+        occupiedMax = foundAny ? maxOccupied : Vector3Int.zero;
+
+        bakedOriginalOccupiedCellCount = bakedOccupiedCellCount;
+        bakedRemovedForStability = 0;
+        bakedStableBaseRow = occupiedMin.y;
+    }
+
 
     private struct SampledCell
     {
@@ -1486,12 +2092,93 @@ public sealed class GridCellData
     private Color color =
         Color.white;
 
+    [Tooltip(
+        "GridLevelData.BlockPalette mein index — is cell ke liye " +
+        "kaunsi shape (cube, cylinder, wagera) spawn hogi."
+    )]
+    [SerializeField]
+    private int definitionIndex;
+
+    [Tooltip(
+        "Sirf anchor cell par meaningful hai (1 se bara). Ye cell " +
+        "X/Y/Z directions mein kitne grid cells cover karti hai — " +
+        "jaise ek bara cylinder jo 2 cells vertically le."
+    )]
+    [SerializeField, Min(1)]
+    private int spanX = 1;
+
+    [SerializeField, Min(1)]
+    private int spanY = 1;
+
+    [SerializeField, Min(1)]
+    private int spanZ = 1;
+
+    [Tooltip(
+        "ON: ye cell kisi bare (multi-cell) piece ke footprint ka " +
+        "hissa hai lekin khud spawn nahi hogi — uska anchor cell " +
+        "(AnchorX/Y/Z) hi spawn karta hai."
+    )]
+    [SerializeField]
+    private bool isCovered;
+
+    [SerializeField]
+    private int anchorX = -1;
+
+    [SerializeField]
+    private int anchorY = -1;
+
+    [SerializeField]
+    private int anchorZ = -1;
+
+    [Tooltip(
+        "Sirf anchor cell par meaningful hai. Piece ko upright (jaisa " +
+        "authored hai) rakhna hai ya 90 degree tip karke lying rakhna hai."
+    )]
+    [SerializeField]
+    private PieceOrientation orientation =
+        PieceOrientation.UprightY;
+
+    [Tooltip(
+        "Sirf anchor cell par meaningful hai. Piece ko apne normal grid " +
+        "slot se cell-units mein hata deta hai — jaise brick-offset " +
+        "stacking, jahan upar wala block do niche wale blocks ke beech " +
+        "seam par (0.5 offset) khada hota hai, kisi ek cell ke exact " +
+        "center par nahi."
+    )]
+    [SerializeField]
+    private Vector3 localOffset =
+        Vector3.zero;
+
 
     public bool Occupied =>
         occupied;
 
     public Color Color =>
         color;
+
+    public int DefinitionIndex =>
+        definitionIndex;
+
+    public int SpanX =>
+        spanX;
+
+    public int SpanY =>
+        spanY;
+
+    public int SpanZ =>
+        spanZ;
+
+    public bool IsCovered =>
+        isCovered;
+
+    public Vector3Int AnchorCoordinate =>
+        new Vector3Int(anchorX, anchorY, anchorZ);
+
+    public PieceOrientation Orientation =>
+        orientation;
+
+    public Vector3 LocalOffset =>
+        localOffset;
 
 
     public GridCellData()
@@ -1501,12 +2188,93 @@ public sealed class GridCellData
 
     public GridCellData(
         bool occupied,
-        Color color)
+        Color color,
+        int definitionIndex = 0)
     {
         this.occupied =
             occupied;
 
         this.color =
             color;
+
+        this.definitionIndex =
+            definitionIndex;
+    }
+
+
+    public void SetOccupied(bool value)
+    {
+        occupied = value;
+    }
+
+
+    public void SetColor(Color value)
+    {
+        color = value;
+    }
+
+
+    public void SetDefinitionIndex(int value)
+    {
+        definitionIndex = value;
+    }
+
+
+    public void SetSpan(
+        int newSpanX,
+        int newSpanY,
+        int newSpanZ)
+    {
+        spanX = Mathf.Max(1, newSpanX);
+        spanY = Mathf.Max(1, newSpanY);
+        spanZ = Mathf.Max(1, newSpanZ);
+    }
+
+
+    public void SetCoveredBy(
+        Vector3Int anchorCoordinate)
+    {
+        isCovered = true;
+
+        anchorX = anchorCoordinate.x;
+        anchorY = anchorCoordinate.y;
+        anchorZ = anchorCoordinate.z;
+    }
+
+
+    public void SetOrientation(
+        PieceOrientation value)
+    {
+        orientation = value;
+    }
+
+
+    public void SetLocalOffset(
+        Vector3 value)
+    {
+        localOffset = value;
+    }
+
+
+    /// <summary>
+    /// Resets a cell back to a plain, independent (non-spanning,
+    /// non-covered) state — used whenever the painter overwrites/erases
+    /// a cell so it doesn't keep stale span/anchor data around.
+    /// </summary>
+    public void ClearSpanState()
+    {
+        spanX = 1;
+        spanY = 1;
+        spanZ = 1;
+
+        isCovered = false;
+
+        anchorX = -1;
+        anchorY = -1;
+        anchorZ = -1;
+
+        orientation = PieceOrientation.UprightY;
+
+        localOffset = Vector3.zero;
     }
 }

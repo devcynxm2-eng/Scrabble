@@ -62,15 +62,15 @@ public sealed class PhysicsObjectPool : MonoBehaviour
         }
 
 
-        PhysicsObjectDefinition definition =
-            levelData.ObjectDefinition;
+        IReadOnlyList<PhysicsObjectDefinition> palette =
+            levelData.BlockPalette;
 
 
-        if (definition == null ||
-            definition.Prefab == null)
+        if (palette == null ||
+            palette.Count == 0)
         {
             Debug.LogError(
-                "GridLevelData mein Object Definition missing hai.",
+                "GridLevelData mein Block Palette empty hai.",
                 levelData
             );
 
@@ -78,17 +78,32 @@ public sealed class PhysicsObjectPool : MonoBehaviour
         }
 
 
-        int requiredCount =
-            Mathf.Max(
-                levelData.BakedOccupiedCellCount,
-                definition.MinimumPrewarmCount
+        /*
+         * Har palette entry (shape) apni khud ki minimum prewarm count
+         * ke sath, plus worst-case ke liye poori occupied cell count —
+         * kyunke koi bhi shape theoretically har occupied cell par
+         * use ho sakti hai.
+         */
+        foreach (PhysicsObjectDefinition definition
+                 in palette)
+        {
+            if (definition == null ||
+                definition.Prefab == null)
+            {
+                continue;
+            }
+
+            int requiredCount =
+                Mathf.Max(
+                    levelData.BakedOccupiedCellCount,
+                    definition.MinimumPrewarmCount
+                );
+
+            EnsureCapacity(
+                definition,
+                requiredCount
             );
-
-
-        EnsureCapacity(
-            definition,
-            requiredCount
-        );
+        }
     }
 
 

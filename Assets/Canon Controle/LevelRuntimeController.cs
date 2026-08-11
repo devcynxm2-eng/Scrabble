@@ -744,6 +744,24 @@ public sealed class LevelRuntimeController : MonoBehaviour
     private Transform runtimeObjectsRoot;
 
 
+    [Header("Support Chain")]
+
+    [Tooltip(
+        "Ek locked block itna move kar jaye (uski spawn position se) " +
+        "to usay 'lost support' samjha jayega — abhi bhi upar wale " +
+        "blocks ke liye floor ki tarah kaam nahi karega."
+    )]
+    [SerializeField, Min(0.01f)]
+    private float supportMovementTolerance = 0.05f;
+
+    [Tooltip(
+        "Support khone ke kitne FixedUpdate frames baad upar wala " +
+        "block khud bhi dynamic ho jayega."
+    )]
+    [SerializeField, Range(1, 10)]
+    private int unsupportedFramesRequired = 2;
+
+
     [Header("Events")]
 
     [SerializeField]
@@ -753,9 +771,44 @@ public sealed class LevelRuntimeController : MonoBehaviour
     private UnityEvent onLevelComplete;
 
 
+    private sealed class DefinitionFitData
+    {
+        public Vector3 Scale;
+        public Vector3 BoundsCenterOffset;
+    }
+
+
+    private sealed class GridTrackingEntry
+    {
+        public Vector3 InitialPosition;
+        public int UnsupportedFrames;
+    }
+
+
     private readonly List<PhysicsTowerObject>
         activeObjects =
             new List<PhysicsTowerObject>();
+
+    /// <summary>
+    /// Keyed by (definition, span) since a bigger footprint (e.g. a
+    /// 2-cell-tall piece) needs its own fit scale, distinct from the
+    /// same definition used at 1x1x1.
+    /// </summary>
+    private readonly Dictionary<(PhysicsObjectDefinition, int spanKey), DefinitionFitData>
+        fitCache =
+            new Dictionary<(PhysicsObjectDefinition, int), DefinitionFitData>();
+
+    /// <summary>
+    /// What currently occupies each grid cell — used by the support
+    /// chain to answer "is the cell below me still standing?".
+    /// </summary>
+    private readonly Dictionary<Vector3Int, PhysicsTowerObject>
+        occupancyByCoordinate =
+            new Dictionary<Vector3Int, PhysicsTowerObject>();
+
+    private readonly Dictionary<PhysicsTowerObject, GridTrackingEntry>
+        trackingByInstance =
+            new Dictionary<PhysicsTowerObject, GridTrackingEntry>();
 
 
     private LevelTable cachedTable;
@@ -768,6 +821,13 @@ public sealed class LevelRuntimeController : MonoBehaviour
     private int remainingTargets;
 
     private bool levelGenerated;
+
+    /// <summary>
+    /// Lowest occupied grid row for the current level — the "floor"
+    /// row that always counts as supported by the table, even if the
+    /// designer didn't start painting at y=0.
+    /// </summary>
+    private int gridBaseRow;
 
 
     public GridLevelData CurrentLevelData =>
@@ -847,23 +907,13 @@ public sealed class LevelRuntimeController : MonoBehaviour
         }
 
 
-        if (!MeasureGridObject(
-                out Vector3 objectSize,
-                out Vector3 localBoundsCenterOffset))
-        {
-            return;
-        }
-
-
         remainingTargets =
             0;
 
 
         SpawnGrid(
             surfacePosition,
-            surfaceRotation,
-            objectSize,
-            localBoundsCenterOffset
+            surfaceRotation
         );
 
 
@@ -895,28 +945,40 @@ public sealed class LevelRuntimeController : MonoBehaviour
     }
 
 
-    private bool MeasureGridObject(
-        out Vector3 objectSize,
-        out Vector3 localBoundsCenterOffset)
+    /// <summary>
+    /// Measures a definition's prefab once (identity rotation, prefab's
+    /// authored scale) and derives the localScale + pivot-to-collider
+    /// offset needed so its collider bounds exactly fill levelData's
+    /// CellSize. Cached per-definition so mixed shapes (cube, cylinder,
+    /// ...) all land cleanly on the same uniform grid without measuring
+    /// on every single cell spawn.
+    /// </summary>
+    private bool TryGetFitData(
+        PhysicsObjectDefinition definition,
+        int spanX,
+        int spanY,
+        int spanZ,
+        PieceOrientation orientation,
+        out DefinitionFitData fitData)
     {
-        objectSize =
-            Vector3.zero;
+        int spanKey =
+            spanX * 10000 +
+            spanY * 100 +
+            spanZ +
+            (int)orientation * 1000000;
 
+        (PhysicsObjectDefinition, int) cacheKey =
+            (definition, spanKey);
 
-        localBoundsCenterOffset =
-            Vector3.zero;
+        if (fitCache.TryGetValue(
+                cacheKey,
+                out fitData))
+        {
+            return true;
+        }
 
+        fitData = null;
 
-        PhysicsObjectDefinition definition =
-            levelData.ObjectDefinition;
-
-
-        /*
-         * Temporary measurement object.
-         *
-         * Identity rotation par measure karte hain
-         * taake X/Y/Z collider dimensions proper milen.
-         */
         PhysicsTowerObject measurementObject =
             objectPool.Get(
                 definition,
@@ -924,7 +986,6 @@ public sealed class LevelRuntimeController : MonoBehaviour
                 Quaternion.identity,
                 runtimeObjectsRoot
             );
-
 
         if (measurementObject == null)
         {
@@ -936,9 +997,7 @@ public sealed class LevelRuntimeController : MonoBehaviour
             return false;
         }
 
-
         Physics.SyncTransforms();
-
 
         if (!measurementObject.TryGetPhysicsBounds(
                 out Bounds bounds))
@@ -948,42 +1007,129 @@ public sealed class LevelRuntimeController : MonoBehaviour
                 measurementObject
             );
 
-
-            objectPool.Release(
-                measurementObject
-            );
-
+            objectPool.Release(measurementObject);
 
             return false;
         }
 
-
-        objectSize =
+        Vector3 measuredSize =
             bounds.size;
 
-
-        localBoundsCenterOffset =
+        Vector3 measuredCenterOffset =
             bounds.center -
             measurementObject.transform.position;
 
+        objectPool.Release(measurementObject);
 
-        objectPool.Release(
-            measurementObject
-        );
-
-
-        if (objectSize.x <= 0.0001f ||
-            objectSize.y <= 0.0001f ||
-            objectSize.z <= 0.0001f)
+        if (measuredSize.x <= 0.0001f ||
+            measuredSize.y <= 0.0001f ||
+            measuredSize.z <= 0.0001f)
         {
             Debug.LogError(
-                "Physics object's collider size invalid hai.",
+                $"{definition.DisplayName}: collider size invalid hai.",
                 this
             );
 
             return false;
         }
 
+        Vector3 authoredScale =
+            definition.Prefab.transform.localScale;
+
+        Vector3 finalScale;
+
+        Vector3 finalOffset;
+
+        if (definition.AutoFitToCell)
+        {
+            /*
+             * Span > 1 par target size sirf spanCount * cellSize nahi —
+             * internal gaps bhi fill hote hain (spanX*cellSize.x +
+             * (spanX-1)*gap) taake merged piece apne poore footprint
+             * ke outer edges tak seamless dikhe, jaisa cells alag alag
+             * (gap ke sath) hote to unka combined outer span hota.
+             */
+            Vector3 gridAlignedTargetSize =
+                new Vector3(
+                    spanX * levelData.CellSize.x +
+                    (spanX - 1) * levelData.HorizontalGap,
+
+                    spanY * levelData.CellSize.y +
+                    (spanY - 1) * levelData.VerticalGap,
+
+                    spanZ * levelData.CellSize.z +
+                    (spanZ - 1) * levelData.DepthGap
+                );
+
+            /*
+             * gridAlignedTargetSize world/grid axes ke liye hai.
+             * Lekin fit-scale prefab ke apne UNROTATED local axes par
+             * compute hoti hai — agar orientation tip kar rahi hai
+             * (Lying X/Z) to local axes rotate hone ke baad world axes
+             * se match nahi karte, is liye target size ko yahan
+             * local axes par re-map karte hain (spawn time par
+             * PieceOrientationUtility.GetRotation() isi mapping ko
+             * wapas world space mein rotate kar degi).
+             */
+            Vector3 targetSize =
+                PieceOrientationUtility.GetLocalAxisTargetSize(
+                    gridAlignedTargetSize,
+                    orientation
+                );
+
+            /*
+             * boundsAtScale1 = measuredSize / authoredScale
+             * finalScale     = targetSize / boundsAtScale1
+             *                = targetSize * authoredScale / measuredSize
+             *
+             * Isi tarah offset bhi authored scale se scale-1 basis par
+             * normalize karke, phir finalScale par re-apply hota hai —
+             * taake off-center collider pivot bhi correct rahe.
+             */
+            finalScale =
+                new Vector3(
+                    targetSize.x * authoredScale.x / measuredSize.x,
+                    targetSize.y * authoredScale.y / measuredSize.y,
+                    targetSize.z * authoredScale.z / measuredSize.z
+                );
+
+            Vector3 offsetAtScale1 =
+                new Vector3(
+                    measuredCenterOffset.x / authoredScale.x,
+                    measuredCenterOffset.y / authoredScale.y,
+                    measuredCenterOffset.z / authoredScale.z
+                );
+
+            finalOffset =
+                Vector3.Scale(
+                    offsetAtScale1,
+                    finalScale
+                );
+        }
+        else
+        {
+            finalScale =
+                authoredScale;
+
+            finalOffset =
+                measuredCenterOffset;
+        }
+
+        finalScale =
+            Vector3.Scale(
+                finalScale,
+                definition.ManualScaleMultiplier
+            );
+
+        fitData =
+            new DefinitionFitData
+            {
+                Scale = finalScale,
+                BoundsCenterOffset = finalOffset
+            };
+
+        fitCache[cacheKey] =
+            fitData;
 
         return true;
     }
@@ -991,9 +1137,7 @@ public sealed class LevelRuntimeController : MonoBehaviour
 
     private void SpawnGrid(
         Vector3 surfacePosition,
-        Quaternion surfaceRotation,
-        Vector3 objectSize,
-        Vector3 localBoundsCenterOffset)
+        Quaternion surfaceRotation)
     {
         if (!levelData.TryGetOccupiedBounds(
                 out Vector3Int occupiedMin,
@@ -1008,18 +1152,26 @@ public sealed class LevelRuntimeController : MonoBehaviour
         }
 
 
+        gridBaseRow =
+            occupiedMin.y;
+
+
+        Vector3 cellSize =
+            levelData.CellSize;
+
+
         float stepX =
-            objectSize.x +
+            cellSize.x +
             levelData.HorizontalGap;
 
 
         float stepY =
-            objectSize.y +
+            cellSize.y +
             levelData.VerticalGap;
 
 
         float stepZ =
-            objectSize.z +
+            cellSize.z +
             levelData.DepthGap;
 
 
@@ -1042,10 +1194,6 @@ public sealed class LevelRuntimeController : MonoBehaviour
                 occupiedMax.z
             ) *
             0.5f;
-
-
-        PhysicsObjectDefinition definition =
-            levelData.ObjectDefinition;
 
 
         /*
@@ -1082,14 +1230,43 @@ public sealed class LevelRuntimeController : MonoBehaviour
 
 
                     /*
+                     * Covered cells (bare footprint ka hissa) khud
+                     * spawn nahi hoti — unka anchor cell hi spawn
+                     * karta hai (neeche is loop mein aage aake).
+                     */
+                    if (cell.IsCovered)
+                    {
+                        continue;
+                    }
+
+
+                    int spanX =
+                        Mathf.Max(1, cell.SpanX);
+
+                    int spanY =
+                        Mathf.Max(1, cell.SpanY);
+
+                    int spanZ =
+                        Mathf.Max(1, cell.SpanZ);
+
+
+                    /*
                      * X:
                      * Shape automatically center.
+                     *
+                     * Span > 1 ho to poore footprint (x..x+spanX-1)
+                     * ka center use hota hai, sirf anchor cell ka nahi.
                      */
                     float localX =
                         (
                             x -
                             occupiedCenterX
                         ) *
+                        stepX +
+                        (spanX - 1) *
+                        stepX *
+                        0.5f +
+                        cell.LocalOffset.x *
                         stepX;
 
 
@@ -1102,12 +1279,17 @@ public sealed class LevelRuntimeController : MonoBehaviour
                      * automatically ignore hota hai.
                      */
                     float localY =
-                        objectSize.y *
+                        cellSize.y *
                         0.5f +
                         (
                             y -
                             occupiedMin.y
                         ) *
+                        stepY +
+                        (spanY - 1) *
+                        stepY *
+                        0.5f +
+                        cell.LocalOffset.y *
                         stepY;
 
 
@@ -1120,6 +1302,11 @@ public sealed class LevelRuntimeController : MonoBehaviour
                             z -
                             occupiedCenterZ
                         ) *
+                        stepZ +
+                        (spanZ - 1) *
+                        stepZ *
+                        0.5f +
+                        cell.LocalOffset.z *
                         stepZ;
 
 
@@ -1133,6 +1320,50 @@ public sealed class LevelRuntimeController : MonoBehaviour
                         levelData.GridOffset;
 
 
+                    PhysicsObjectDefinition definition =
+                        levelData.GetPaletteEntry(
+                            cell.DefinitionIndex
+                        );
+
+                    if (definition == null ||
+                        definition.Prefab == null)
+                    {
+                        Debug.LogWarning(
+                            $"Cell ({x},{y},{z}): palette entry " +
+                            $"{cell.DefinitionIndex} invalid hai, skip.",
+                            levelData
+                        );
+
+                        continue;
+                    }
+
+                    PieceOrientation orientation =
+                        cell.Orientation;
+
+                    if (!TryGetFitData(
+                            definition,
+                            spanX,
+                            spanY,
+                            spanZ,
+                            orientation,
+                            out DefinitionFitData fitData))
+                    {
+                        continue;
+                    }
+
+
+                    /*
+                     * Orientation ka extra tip (Lying X/Z) surface
+                     * rotation ke UPAR apply hoti hai — piece ko table
+                     * ke sath sath khud bhi rotate karta hai.
+                     */
+                    Quaternion pieceRotation =
+                        surfaceRotation *
+                        PieceOrientationUtility.GetRotation(
+                            orientation
+                        );
+
+
                     Vector3 desiredBoundsCenter =
                         surfacePosition +
                         surfaceRotation *
@@ -1144,8 +1375,8 @@ public sealed class LevelRuntimeController : MonoBehaviour
                      * to collider bottom proper align hoga.
                      */
                     Vector3 rotatedBoundsOffset =
-                        surfaceRotation *
-                        localBoundsCenterOffset;
+                        pieceRotation *
+                        fitData.BoundsCenterOffset;
 
 
                     Vector3 spawnPosition =
@@ -1157,7 +1388,7 @@ public sealed class LevelRuntimeController : MonoBehaviour
                         objectPool.Get(
                             definition,
                             spawnPosition,
-                            surfaceRotation,
+                            pieceRotation,
                             runtimeObjectsRoot
                         );
 
@@ -1169,11 +1400,59 @@ public sealed class LevelRuntimeController : MonoBehaviour
 
 
                     /*
+                     * Pool.Get() prefab ki authored scale laga deta hai —
+                     * yahan usay cell-fit scale se override karte hain
+                     * taake mixed shapes (cube/cylinder) uniform grid
+                     * mein clean fit hon.
+                     */
+                    instance.transform.localScale =
+                        fitData.Scale;
+
+
+                    /*
                      * Color baked data se.
                      */
                     instance.SetVisualColor(
                         cell.Color
                     );
+
+
+                    Vector3Int anchorCoordinate =
+                        new Vector3Int(x, y, z);
+
+                    instance.SetGridCoordinate(
+                        anchorCoordinate
+                    );
+
+                    /*
+                     * Bare footprint ke SAARE cells is instance ko
+                     * point karte hain — is se agar upar kuch spawn ho
+                     * to woh footprint ke kisi bhi column par "supported"
+                     * sahi detect hoga.
+                     */
+                    for (int fz = 0; fz < spanZ; fz++)
+                    {
+                        for (int fy = 0; fy < spanY; fy++)
+                        {
+                            for (int fx = 0; fx < spanX; fx++)
+                            {
+                                occupancyByCoordinate[
+                                    new Vector3Int(
+                                        x + fx,
+                                        y + fy,
+                                        z + fz
+                                    )
+                                ] = instance;
+                            }
+                        }
+                    }
+
+                    trackingByInstance[instance] =
+                        new GridTrackingEntry
+                        {
+                            InitialPosition = spawnPosition,
+                            UnsupportedFrames = 0
+                        };
 
 
                     instance.Cleared +=
@@ -1192,6 +1471,108 @@ public sealed class LevelRuntimeController : MonoBehaviour
                 }
             }
         }
+    }
+
+
+    private void FixedUpdate()
+    {
+        if (!levelGenerated ||
+            activeObjects.Count == 0)
+        {
+            return;
+        }
+
+        /*
+         * Snapshot: activeObjects FixedUpdate ke dauran
+         * HandleObjectCleared se modify ho sakti hai
+         * (ActivatePhysics() khud kuch remove nahi karta,
+         * lekin safety ke liye copy le lete hain).
+         */
+        for (int i = activeObjects.Count - 1; i >= 0; i--)
+        {
+            PhysicsTowerObject instance =
+                activeObjects[i];
+
+            if (instance == null || !instance.IsLocked)
+            {
+                continue;
+            }
+
+            if (!trackingByInstance.TryGetValue(
+                    instance,
+                    out GridTrackingEntry entry))
+            {
+                continue;
+            }
+
+            if (IsSupported(instance.GridCoordinate))
+            {
+                entry.UnsupportedFrames = 0;
+                continue;
+            }
+
+            entry.UnsupportedFrames++;
+
+            if (entry.UnsupportedFrames >=
+                unsupportedFramesRequired)
+            {
+                instance.ActivatePhysics();
+            }
+        }
+    }
+
+
+    /// <summary>
+    /// Bottom row hamesha table par khadi hoti hai (supported).
+    /// Baaki rows: neeche wala cell abhi bhi standing honi chahiye —
+    /// ya to locked, ya activated-lekin-abhi-tak-apni-spawn-position
+    /// ke close (soft cascade, ek dhakka lagne se turant sab kuch
+    /// nahi girta).
+    /// </summary>
+    private bool IsSupported(
+        Vector3Int coordinate)
+    {
+        if (coordinate.y <= gridBaseRow)
+        {
+            return true;
+        }
+
+        Vector3Int below =
+            new Vector3Int(
+                coordinate.x,
+                coordinate.y - 1,
+                coordinate.z
+            );
+
+        if (!occupancyByCoordinate.TryGetValue(
+                below,
+                out PhysicsTowerObject supportInstance) ||
+            supportInstance == null)
+        {
+            return false;
+        }
+
+        if (supportInstance.IsLocked)
+        {
+            return true;
+        }
+
+        if (!trackingByInstance.TryGetValue(
+                supportInstance,
+                out GridTrackingEntry supportEntry))
+        {
+            return false;
+        }
+
+        float movedDistance =
+            Vector3.Distance(
+                supportInstance.transform.position,
+                supportEntry.InitialPosition
+            );
+
+        return
+            movedDistance <=
+            supportMovementTolerance;
     }
 
 
@@ -1316,6 +1697,44 @@ public sealed class LevelRuntimeController : MonoBehaviour
             target
         );
 
+        trackingByInstance.Remove(
+            target
+        );
+
+        /*
+         * Multi-cell footprint wale piece ke liye occupancyByCoordinate
+         * mein uske SAARE covered cells target ko point karte hain
+         * (sirf anchor nahi) — is liye scan karke sab remove karte hain,
+         * warna stale entries agle level mein reused instance ko
+         * galat tarah "still standing" dikha sakti hain.
+         */
+        List<Vector3Int> coordinatesToRemove = null;
+
+        foreach (KeyValuePair<Vector3Int, PhysicsTowerObject> entry
+                 in occupancyByCoordinate)
+        {
+            if (entry.Value != target)
+            {
+                continue;
+            }
+
+            if (coordinatesToRemove == null)
+            {
+                coordinatesToRemove =
+                    new List<Vector3Int>();
+            }
+
+            coordinatesToRemove.Add(entry.Key);
+        }
+
+        if (coordinatesToRemove != null)
+        {
+            foreach (Vector3Int coordinate in coordinatesToRemove)
+            {
+                occupancyByCoordinate.Remove(coordinate);
+            }
+        }
+
 
         if (target.CountsAsTarget)
         {
@@ -1398,6 +1817,17 @@ public sealed class LevelRuntimeController : MonoBehaviour
 
         activeObjects.Clear();
 
+        occupancyByCoordinate.Clear();
+
+        trackingByInstance.Clear();
+
+        /*
+         * Fit cache CellSize-specific hai — agar LoadLevel() se
+         * different GridLevelData aa jaye (alag CellSize) to purani
+         * cached scale ghalat hogi.
+         */
+        fitCache.Clear();
+
 
         remainingTargets =
             0;
@@ -1451,11 +1881,38 @@ public sealed class LevelRuntimeController : MonoBehaviour
         }
 
 
-        if (levelData.ObjectDefinition == null ||
-            levelData.ObjectDefinition.Prefab == null)
+        if (levelData.BlockPalette == null ||
+            levelData.BlockPalette.Count == 0)
         {
             Debug.LogError(
-                "Grid Level Data mein Object Definition/Prefab missing hai.",
+                "Grid Level Data mein Block Palette empty hai.",
+                levelData
+            );
+
+            return false;
+        }
+
+        bool hasValidPaletteEntry =
+            false;
+
+        foreach (PhysicsObjectDefinition entry
+                 in levelData.BlockPalette)
+        {
+            if (entry != null &&
+                entry.Prefab != null)
+            {
+                hasValidPaletteEntry =
+                    true;
+
+                break;
+            }
+        }
+
+        if (!hasValidPaletteEntry)
+        {
+            Debug.LogError(
+                "Grid Level Data ki Block Palette mein koi valid " +
+                "Prefab wali entry nahi hai.",
                 levelData
             );
 

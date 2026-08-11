@@ -10,9 +10,9 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 55fc724be4a339441a4b3657fa5d8a5c, type: 3}
-  m_Name: CanDefinition
-  m_EditorClassIdentifier:
-  prefab: {fileID: 2158590959970879959, guid: 9db96b0768974e847aa3a7230454a45f, type: 3}
+  m_Name: CanDefinition 1
+  m_EditorClassIdentifier: 
+  prefab: {fileID: 2158590959970879959, guid: 4d0af81a01355104cb3c6f57602fd82b, type: 3}
   displayName: Cube
   minimumPrewarmCount: 16
   autoFitToCell: 1
