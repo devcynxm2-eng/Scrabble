@@ -955,8 +955,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   levelData: {fileID: 11400000, guid: bb41eedee3af0f35886bdea46cd4b66a, type: 2}
-  levelsInOrder:
-  - {fileID: 11400000, guid: bb41eedee3af0f35886bdea46cd4b66a, type: 2}
+  levelDatabase: {fileID: 11400000, guid: 66ce54f819f24e64931bf2fbcbf62ec2, type: 2}
   startFromLevelOne: 1
   nextLevelButton: {fileID: 0}
   levelCompleteText: {fileID: 0}

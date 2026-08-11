@@ -8,6 +8,9 @@ using UnityEngine;
 [CustomEditor(typeof(GridLevelData))]
 public sealed class GridLevelDataEditor : Editor
 {
+    private const string LevelDatabasePath =
+        "Assets/Canon Controle/GridLevelDatabase.asset";
+
     private int paintLayerZ;
     private int paintTierY;
     private Color paintColor = Color.white;
@@ -47,19 +50,325 @@ public sealed class GridLevelDataEditor : Editor
     private int presetRowCount = 6;
     private float presetRingRadius = 4f;
 
+    private int levelNumberToEdit = 1;
+
     private const float CellButtonSize = 18f;
 
 
     public override void OnInspectorGUI()
     {
-        DrawDefaultInspector();
-
         GridLevelData levelData =
             (GridLevelData)target;
+
+        DrawLevelCreatorSection(levelData);
+
+        DrawDefaultInspector();
 
         DrawImageBakeSection(levelData);
         DrawManualPainterSection(levelData);
         DrawSaveLevelSection(levelData);
+    }
+
+
+    private void DrawLevelCreatorSection(
+        GridLevelData levelData)
+    {
+        GridLevelDatabase database =
+            GetOrCreateLevelDatabase();
+
+        EnsureDatabaseUsesSnapshots(database);
+
+        EditorGUILayout.LabelField(
+            "Level Creator",
+            EditorStyles.boldLabel
+        );
+
+        EditorGUILayout.HelpBox(
+            $"Saved Levels: {database.Count}\n" +
+            "Yeh GridLevelData single working canvas hai. SAVE LEVEL " +
+            "database mein snapshot create/update karta hai.",
+            MessageType.Info
+        );
+
+        levelNumberToEdit =
+            Mathf.Max(
+                1,
+                EditorGUILayout.IntField(
+                    "Level Number To Edit",
+                    levelNumberToEdit
+                )
+            );
+
+        using (
+            new EditorGUI.DisabledScope(
+                database.GetLevelByNumber(
+                    levelNumberToEdit
+                ) == null))
+        {
+            if (GUILayout.Button(
+                    "LOAD SAVED LEVEL FOR EDIT"))
+            {
+                LoadSavedLevelForEdit(
+                    levelData,
+                    database,
+                    levelNumberToEdit
+                );
+
+                serializedObject.Update();
+                GUIUtility.ExitGUI();
+            }
+        }
+
+        if (GUILayout.Button(
+                "SAVE CURRENT + START NEXT LEVEL DESIGN",
+                GUILayout.Height(42f)))
+        {
+            serializedObject.ApplyModifiedProperties();
+
+            SaveWorkingLevel(
+                levelData,
+                database
+            );
+
+            StartNextLevelDesign(
+                levelData,
+                database
+            );
+
+            serializedObject.Update();
+            GUIUtility.ExitGUI();
+        }
+
+        EditorGUILayout.Space(10f);
+    }
+
+
+    private static void SaveWorkingLevel(
+        GridLevelData workingLevel,
+        GridLevelDatabase database)
+    {
+        if (workingLevel == null ||
+            database == null)
+        {
+            return;
+        }
+
+        EnsureDatabaseUsesSnapshots(database);
+
+        int levelNumber =
+            Mathf.Max(1, workingLevel.LevelNumber);
+
+        GridLevelData savedLevel =
+            database.GetLevelByNumber(levelNumber);
+
+        bool isNewSnapshot = savedLevel == null;
+
+        if (isNewSnapshot)
+        {
+            savedLevel =
+                CreateInstance<GridLevelData>();
+
+            AssetDatabase.AddObjectToAsset(
+                savedLevel,
+                database
+            );
+        }
+
+        EditorUtility.CopySerialized(
+            workingLevel,
+            savedLevel
+        );
+
+        savedLevel.name =
+            $"SavedLevel_{levelNumber:000}";
+
+        savedLevel.hideFlags =
+            HideFlags.HideInHierarchy;
+
+        savedLevel.EditorSetLevelNumber(levelNumber);
+
+        Undo.RecordObject(
+            database,
+            "Save Grid Level Snapshot"
+        );
+
+        database.EditorRegisterLevel(savedLevel);
+
+        EditorUtility.SetDirty(savedLevel);
+        EditorUtility.SetDirty(database);
+        EditorUtility.SetDirty(workingLevel);
+        AssetDatabase.SaveAssets();
+
+        Debug.Log(
+            isNewSnapshot
+                ? $"Level {levelNumber} saved in central database."
+                : $"Level {levelNumber} updated in central database.",
+            workingLevel
+        );
+    }
+
+
+    private static void LoadSavedLevelForEdit(
+        GridLevelData workingLevel,
+        GridLevelDatabase database,
+        int levelNumber)
+    {
+        EnsureDatabaseUsesSnapshots(database);
+
+        GridLevelData savedLevel =
+            database.GetLevelByNumber(levelNumber);
+
+        if (savedLevel == null)
+        {
+            Debug.LogWarning(
+                $"Saved Level {levelNumber} database mein nahi mila.",
+                database
+            );
+
+            return;
+        }
+
+        Undo.RecordObject(
+            workingLevel,
+            $"Load Level {levelNumber} For Edit"
+        );
+
+        string workingAssetName = workingLevel.name;
+
+        EditorUtility.CopySerialized(
+            savedLevel,
+            workingLevel
+        );
+
+        workingLevel.name = workingAssetName;
+        workingLevel.hideFlags = HideFlags.None;
+
+        EditorUtility.SetDirty(workingLevel);
+
+        Debug.Log(
+            $"Level {levelNumber} loaded in single working grid.",
+            workingLevel
+        );
+    }
+
+
+    private static void StartNextLevelDesign(
+        GridLevelData workingLevel,
+        GridLevelDatabase database)
+    {
+        int nextLevelNumber = 1;
+
+        for (int i = 0; i < database.Count; i++)
+        {
+            GridLevelData savedLevel = database.GetLevel(i);
+
+            if (savedLevel != null)
+            {
+                nextLevelNumber = Mathf.Max(
+                    nextLevelNumber,
+                    savedLevel.LevelNumber + 1
+                );
+            }
+        }
+
+        Undo.RecordObject(
+            workingLevel,
+            "Start Next Grid Level Design"
+        );
+
+        workingLevel.EditorSetLevelNumber(nextLevelNumber);
+        workingLevel.EditorClearAllCells();
+        EditorUtility.SetDirty(workingLevel);
+
+        Debug.Log(
+            $"Blank Level {nextLevelNumber} working grid par ready hai.",
+            workingLevel
+        );
+    }
+
+
+    private static GridLevelDatabase
+        GetOrCreateLevelDatabase()
+    {
+        GridLevelDatabase database =
+            AssetDatabase.LoadAssetAtPath<GridLevelDatabase>(
+                LevelDatabasePath
+            );
+
+        if (database != null)
+        {
+            return database;
+        }
+
+        database =
+            CreateInstance<GridLevelDatabase>();
+
+        AssetDatabase.CreateAsset(
+            database,
+            LevelDatabasePath
+        );
+
+        AssetDatabase.SaveAssets();
+
+        return database;
+    }
+
+
+    private static void EnsureDatabaseUsesSnapshots(
+        GridLevelDatabase database)
+    {
+        if (database == null)
+        {
+            return;
+        }
+
+        bool changed = false;
+
+        for (int i = 0; i < database.Count; i++)
+        {
+            GridLevelData existingLevel =
+                database.GetLevel(i);
+
+            if (existingLevel == null ||
+                AssetDatabase.GetAssetPath(existingLevel) ==
+                LevelDatabasePath)
+            {
+                continue;
+            }
+
+            GridLevelData snapshot =
+                CreateInstance<GridLevelData>();
+
+            EditorUtility.CopySerialized(
+                existingLevel,
+                snapshot
+            );
+
+            snapshot.name =
+                $"SavedLevel_{existingLevel.LevelNumber:000}";
+
+            snapshot.hideFlags =
+                HideFlags.HideInHierarchy;
+
+            AssetDatabase.AddObjectToAsset(
+                snapshot,
+                database
+            );
+
+            database.EditorReplaceLevel(
+                existingLevel,
+                snapshot
+            );
+
+            EditorUtility.SetDirty(snapshot);
+            changed = true;
+        }
+
+        if (changed)
+        {
+            EditorUtility.SetDirty(database);
+            AssetDatabase.SaveAssets();
+        }
     }
 
 
@@ -78,8 +387,10 @@ public sealed class GridLevelDataEditor : Editor
 
         EditorGUILayout.HelpBox(
             string.IsNullOrEmpty(assetPath)
-                ? "Level pehle Project window mein asset ki tarah create karein."
-                : $"Current level asset:\n{assetPath}",
+                ? "Single working GridLevelData asset missing hai."
+                : $"Single working grid:\n{assetPath}\n" +
+                  $"SAVE LEVEL database mein Level " +
+                  $"{levelData.LevelNumber} create/update karega.",
             string.IsNullOrEmpty(assetPath)
                 ? MessageType.Warning
                 : MessageType.None
@@ -95,10 +406,14 @@ public sealed class GridLevelDataEditor : Editor
             {
                 serializedObject.ApplyModifiedProperties();
                 EditorUtility.SetDirty(levelData);
-                AssetDatabase.SaveAssetIfDirty(levelData);
+
+                SaveWorkingLevel(
+                    levelData,
+                    GetOrCreateLevelDatabase()
+                );
 
                 Debug.Log(
-                    $"Level saved successfully: {assetPath}",
+                    $"Level {levelData.LevelNumber} saved successfully.",
                     levelData
                 );
             }

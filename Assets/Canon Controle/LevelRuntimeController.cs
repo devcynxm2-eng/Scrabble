@@ -736,12 +736,11 @@ public sealed class LevelRuntimeController : MonoBehaviour
     private GridLevelData levelData;
 
     [Tooltip(
-        "Game mein levels jis order mein chalne hain. Element 0 hamesha " +
-        "Level 1 hoga."
+        "Level Creator ke banaye tamam levels ki central database. " +
+        "Runtime mein individual levels manually assign nahi karne."
     )]
     [SerializeField]
-    private List<GridLevelData> levelsInOrder =
-        new List<GridLevelData>();
+    private GridLevelDatabase levelDatabase;
 
     [SerializeField]
     private bool startFromLevelOne = true;
@@ -929,8 +928,8 @@ public sealed class LevelRuntimeController : MonoBehaviour
             newLevelData;
 
         int sequenceIndex =
-            levelsInOrder != null
-                ? levelsInOrder.IndexOf(newLevelData)
+            levelDatabase != null
+                ? levelDatabase.IndexOf(newLevelData)
                 : -1;
 
         if (sequenceIndex >= 0)
@@ -1948,7 +1947,7 @@ public sealed class LevelRuntimeController : MonoBehaviour
         }
 
         currentLevelIndex = nextIndex;
-        LoadLevel(levelsInOrder[nextIndex]);
+        LoadLevel(levelDatabase.GetLevel(nextIndex));
     }
 
 
@@ -1960,8 +1959,8 @@ public sealed class LevelRuntimeController : MonoBehaviour
 
     private void SelectStartingLevel()
     {
-        if (levelsInOrder == null ||
-            levelsInOrder.Count == 0)
+        if (levelDatabase == null ||
+            levelDatabase.Count == 0)
         {
             currentLevelIndex = 0;
             return;
@@ -1975,14 +1974,14 @@ public sealed class LevelRuntimeController : MonoBehaviour
             if (firstLevelIndex >= 0)
             {
                 currentLevelIndex = firstLevelIndex;
-                levelData = levelsInOrder[firstLevelIndex];
+                levelData = levelDatabase.GetLevel(firstLevelIndex);
             }
 
             return;
         }
 
         int configuredIndex =
-            levelsInOrder.IndexOf(levelData);
+            levelDatabase.IndexOf(levelData);
 
         currentLevelIndex =
             configuredIndex >= 0
@@ -1990,9 +1989,9 @@ public sealed class LevelRuntimeController : MonoBehaviour
                 : Mathf.Max(0, FindNextLevelIndex(0));
 
         if (levelData == null &&
-            currentLevelIndex < levelsInOrder.Count)
+            currentLevelIndex < levelDatabase.Count)
         {
-            levelData = levelsInOrder[currentLevelIndex];
+            levelData = levelDatabase.GetLevel(currentLevelIndex);
         }
     }
 
@@ -2000,16 +1999,16 @@ public sealed class LevelRuntimeController : MonoBehaviour
     private int FindNextLevelIndex(
         int startingIndex)
     {
-        if (levelsInOrder == null)
+        if (levelDatabase == null)
         {
             return -1;
         }
 
         for (int i = Mathf.Max(0, startingIndex);
-             i < levelsInOrder.Count;
+             i < levelDatabase.Count;
              i++)
         {
-            if (levelsInOrder[i] != null)
+            if (levelDatabase.GetLevel(i) != null)
             {
                 return i;
             }
@@ -2285,7 +2284,8 @@ public sealed class LevelRuntimeController : MonoBehaviour
             return;
         }
 
-        GridLevelData nextLevel = levelsInOrder[nextIndex];
+        GridLevelData nextLevel =
+            levelDatabase.GetLevel(nextIndex);
 
         buttonLabel.text =
             nextLevel != null

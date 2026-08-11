@@ -15,9 +15,6 @@ public enum GridCellColorMode
     SingleColor
 }
 
-[CreateAssetMenu(
-    fileName = "GridLevel_001",
-    menuName = "Royal Smash/Grid Level Data")]
 public sealed class GridLevelData : ScriptableObject
 {
     [Header("Level")]
@@ -495,6 +492,13 @@ public sealed class GridLevelData : ScriptableObject
         {
             blockPalette.Add(definition);
         }
+    }
+
+
+    public void EditorSetLevelNumber(
+        int newLevelNumber)
+    {
+        levelNumber = Mathf.Max(1, newLevelNumber);
     }
 
     public void EditorEnsureGridAllocated(
@@ -1001,7 +1005,13 @@ public sealed class GridLevelData : ScriptableObject
 
                 foreach (GridCellData cell in row.Cells)
                 {
-                    cell?.SetOccupied(false);
+                    if (cell == null)
+                    {
+                        continue;
+                    }
+
+                    cell.SetOccupied(false);
+                    cell.ClearSpanState();
                 }
             }
         }
