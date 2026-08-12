@@ -170,5 +170,18 @@ public sealed class GridLevelDatabase : ScriptableObject
         levels.Clear();
     }
 
+
+    public void EditorClearAddressableLevels()
+    {
+        if (addressableLevels == null)
+        {
+            addressableLevels =
+                new List<GridLevelAddressEntry>();
+            return;
+        }
+
+        addressableLevels.Clear();
+    }
+
 #endif
 }
