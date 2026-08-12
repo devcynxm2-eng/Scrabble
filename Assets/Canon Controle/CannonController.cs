@@ -1133,7 +1133,7 @@ public sealed class CannonController : MonoBehaviour
     private bool autoCreateBallsHud = true;
 
     [SerializeField, Min(1)]
-    private int fallbackBallLimit = 10;
+    private int fallbackBallLimit = 30;
 
 
     [Header("Trajectory")]

@@ -387,7 +387,7 @@ MonoBehaviour:
   levelRuntimeController: {fileID: 733110022}
   ballsRemainingText: {fileID: 0}
   autoCreateBallsHud: 1
-  fallbackBallLimit: 20
+  fallbackBallLimit: 30
   exactStraightShot: 0
   preferLowArcTrajectory: 1
   fallbackToStraightIfUnreachable: 1
@@ -963,10 +963,15 @@ MonoBehaviour:
   objectPool: {fileID: 733110023}
   levelOrigin: {fileID: 906670222}
   runtimeObjectsRoot: {fileID: 1061262791}
-  supportMovementTolerance: 0.05
   unsupportedFramesRequired: 2
+  unsupportedTipImpulse: 0.18
+  unsupportedTipTorque: 0.28
   linkMirroredDepthLayerPhysics: 1
   mirroredLayerImpulseMultiplier: 1
+  mirroredActivationDelayRange: {x: 0.025, y: 0.11}
+  mirroredImpulseVariation: {x: 0.78, y: 1.16}
+  mirroredDirectionVariationDegrees: 8
+  mirroredRandomTorqueMultiplier: 0.09
   onLevelGenerated:
     m_PersistentCalls:
       m_Calls: []

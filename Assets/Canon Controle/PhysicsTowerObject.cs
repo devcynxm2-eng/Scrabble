@@ -219,6 +219,20 @@ public sealed class PhysicsTowerObject : MonoBehaviour
     /// </summary>
     public Vector3Int GridCoordinate { get; private set; }
 
+    /// <summary>
+    /// Grid mein is piece ka complete occupied footprint. Support check
+    /// anchor ke sirf ek cell ki bajaye is poore bottom footprint ko use
+    /// karta hai.
+    /// </summary>
+    public Vector3Int GridSpan { get; private set; } = Vector3Int.one;
+
+    /// <summary>
+    /// Designer ka cell-unit offset, including Center On Seam 0.5
+    /// offsets. Runtime support calculation actual shifted footprint ko
+    /// isi value se resolve karta hai.
+    /// </summary>
+    public Vector3 GridLocalOffset { get; private set; }
+
 
     private void Awake()
     {
@@ -271,10 +285,18 @@ public sealed class PhysicsTowerObject : MonoBehaviour
     }
 
 
-    public void SetGridCoordinate(
-        Vector3Int coordinate)
+    public void SetGridFootprint(
+        Vector3Int coordinate,
+        Vector3Int span,
+        Vector3 localOffset)
     {
         GridCoordinate = coordinate;
+        GridSpan = new Vector3Int(
+            Mathf.Max(1, span.x),
+            Mathf.Max(1, span.y),
+            Mathf.Max(1, span.z)
+        );
+        GridLocalOffset = localOffset;
     }
 
 
@@ -506,7 +528,8 @@ public sealed class PhysicsTowerObject : MonoBehaviour
     /// wala block hat jaye).
     /// </summary>
     public void ActivatePhysics(
-        Vector3 impulse = default)
+        Vector3 impulse = default,
+        Vector3 torqueImpulse = default)
     {
         if (!IsLocked ||
             isCleared)
@@ -544,6 +567,15 @@ public sealed class PhysicsTowerObject : MonoBehaviour
             );
         }
 
+        if (torqueImpulse.sqrMagnitude >
+            0.0001f)
+        {
+            body.AddTorque(
+                torqueImpulse,
+                ForceMode.Impulse
+            );
+        }
+
         Activated?.Invoke(
             this,
             impulse
@@ -569,6 +601,12 @@ public sealed class PhysicsTowerObject : MonoBehaviour
 
         GridCoordinate =
             default;
+
+        GridSpan =
+            Vector3Int.one;
+
+        GridLocalOffset =
+            Vector3.zero;
 
         /*
          * Old level ke event references

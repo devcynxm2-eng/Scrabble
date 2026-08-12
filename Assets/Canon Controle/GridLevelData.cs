@@ -11,7 +11,7 @@ public sealed class GridLevelData : ScriptableObject
     private int levelNumber = 1;
 
     [SerializeField, Min(1)]
-    private int availableBalls = 10;
+    private int availableBalls = 30;
 
 
     [Header("Table")]

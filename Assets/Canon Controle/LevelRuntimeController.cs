@@ -780,19 +780,24 @@ public sealed class LevelRuntimeController : MonoBehaviour
     [Header("Support Chain")]
 
     [Tooltip(
-        "Ek locked block itna move kar jaye (uski spawn position se) " +
-        "to usay 'lost support' samjha jayega — abhi bhi upar wale " +
-        "blocks ke liye floor ki tarah kaam nahi karega."
-    )]
-    [SerializeField, Min(0.01f)]
-    private float supportMovementTolerance = 0.05f;
-
-    [Tooltip(
         "Support khone ke kitne FixedUpdate frames baad upar wala " +
         "block khud bhi dynamic ho jayega."
     )]
     [SerializeField, Range(1, 10)]
     private int unsupportedFramesRequired = 2;
+
+    [Tooltip(
+        "Half-supported piece ko missing-support side par tip karne wala " +
+        "small sideways impulse."
+    )]
+    [SerializeField, Min(0f)]
+    private float unsupportedTipImpulse = 0.18f;
+
+    [Tooltip(
+        "Exact edge-balance ko break karne wala natural rotation impulse."
+    )]
+    [SerializeField, Min(0f)]
+    private float unsupportedTipTorque = 0.28f;
 
 
     [Header("Mirrored Depth Physics")]
@@ -809,6 +814,33 @@ public sealed class LevelRuntimeController : MonoBehaviour
     )]
     [SerializeField, Range(0f, 1.5f)]
     private float mirroredLayerImpulseMultiplier = 1f;
+
+    [Tooltip(
+        "Mirrored depth layers exact same frame par na giren. Har linked " +
+        "block ko is range mein chhota natural delay milta hai."
+    )]
+    [SerializeField]
+    private Vector2 mirroredActivationDelayRange =
+        new Vector2(0.025f, 0.11f);
+
+    [Tooltip(
+        "Mirrored impulse ki strength mein per-block random variation."
+    )]
+    [SerializeField]
+    private Vector2 mirroredImpulseVariation =
+        new Vector2(0.78f, 1.16f);
+
+    [Tooltip(
+        "Mirrored force direction mein maximum random angle variation."
+    )]
+    [SerializeField, Range(0f, 25f)]
+    private float mirroredDirectionVariationDegrees = 8f;
+
+    [Tooltip(
+        "Linked blocks ko alag natural spin dene ke liye random torque."
+    )]
+    [SerializeField, Range(0f, 1f)]
+    private float mirroredRandomTorqueMultiplier = 0.09f;
 
 
     [Header("Events")]
@@ -873,6 +905,8 @@ public sealed class LevelRuntimeController : MonoBehaviour
 
     private bool isPropagatingMirroredActivation;
 
+    private int levelGenerationRevision;
+
     private int currentLevelIndex;
 
     private AsyncOperationHandle<GridLevelData>
@@ -895,6 +929,8 @@ public sealed class LevelRuntimeController : MonoBehaviour
     /// designer didn't start painting at y=0.
     /// </summary>
     private int gridBaseRow;
+
+    private Quaternion gridSurfaceRotation = Quaternion.identity;
 
 
     public GridLevelData CurrentLevelData =>
@@ -1260,6 +1296,8 @@ public sealed class LevelRuntimeController : MonoBehaviour
         Vector3 surfacePosition,
         Quaternion surfaceRotation)
     {
+        gridSurfaceRotation = surfaceRotation;
+
         if (!levelData.TryGetOccupiedBounds(
                 out Vector3Int occupiedMin,
                 out Vector3Int occupiedMax))
@@ -1547,8 +1585,14 @@ public sealed class LevelRuntimeController : MonoBehaviour
                     Vector3Int anchorCoordinate =
                         new Vector3Int(x, y, z);
 
-                    instance.SetGridCoordinate(
-                        anchorCoordinate
+                    instance.SetGridFootprint(
+                        anchorCoordinate,
+                        new Vector3Int(
+                            spanX,
+                            spanY,
+                            spanZ
+                        ),
+                        cell.LocalOffset
                     );
 
                     /*
@@ -1635,7 +1679,9 @@ public sealed class LevelRuntimeController : MonoBehaviour
                 continue;
             }
 
-            if (IsSupported(instance.GridCoordinate))
+            if (IsSupported(
+                    instance,
+                    out Vector3 unsupportedLocalDirection))
             {
                 entry.UnsupportedFrames = 0;
                 continue;
@@ -1646,63 +1692,218 @@ public sealed class LevelRuntimeController : MonoBehaviour
             if (entry.UnsupportedFrames >=
                 unsupportedFramesRequired)
             {
-                instance.ActivatePhysics();
+                Vector3 worldFallDirection =
+                    gridSurfaceRotation *
+                    unsupportedLocalDirection.normalized;
+
+                Vector3 worldUp =
+                    gridSurfaceRotation * Vector3.up;
+
+                Vector3 tippingTorque =
+                    Vector3.Cross(
+                        worldUp,
+                        worldFallDirection
+                    ).normalized *
+                    unsupportedTipTorque *
+                    Random.Range(0.9f, 1.1f);
+
+                instance.ActivatePhysics(
+                    worldFallDirection *
+                    unsupportedTipImpulse *
+                    Random.Range(0.9f, 1.1f),
+                    tippingTorque
+                );
             }
         }
     }
 
 
     /// <summary>
-    /// Bottom row hamesha table par khadi hoti hai (supported).
-    /// Baaki rows: neeche wala cell abhi bhi standing honi chahiye —
-    /// ya to locked, ya activated-lekin-abhi-tak-apni-spawn-position
-    /// ke close (soft cascade, ek dhakka lagne se turant sab kuch
-    /// nahi girta).
+    /// Bottom row table par khadi hoti hai. Baqi pieces ke poore bottom
+    /// footprint mein kam az kam ek LOCKED support hona chahiye. Hit hua
+    /// dynamic block foran support count hona band ho jata hai, chahe woh
+    /// abhi apni spawn position se zyada move na bhi hua ho.
     /// </summary>
     private bool IsSupported(
-        Vector3Int coordinate)
+        PhysicsTowerObject instance,
+        out Vector3 unsupportedLocalDirection)
     {
+        unsupportedLocalDirection = Vector3.zero;
+
+        if (instance == null)
+        {
+            unsupportedLocalDirection = Vector3.right;
+            return false;
+        }
+
+        Vector3Int coordinate =
+            instance.GridCoordinate;
+
         if (coordinate.y <= gridBaseRow)
         {
             return true;
         }
 
-        Vector3Int below =
-            new Vector3Int(
-                coordinate.x,
-                coordinate.y - 1,
-                coordinate.z
+        Vector3Int span =
+            instance.GridSpan;
+
+        Vector3 localOffset =
+            instance.GridLocalOffset;
+
+        int minimumX =
+            coordinate.x +
+            Mathf.FloorToInt(localOffset.x);
+
+        int maximumX =
+            coordinate.x +
+            Mathf.Max(1, span.x) - 1 +
+            Mathf.CeilToInt(localOffset.x);
+
+        int minimumZ =
+            coordinate.z +
+            Mathf.FloorToInt(localOffset.z);
+
+        int maximumZ =
+            coordinate.z +
+            Mathf.Max(1, span.z) - 1 +
+            Mathf.CeilToInt(localOffset.z);
+
+        bool seamOnX =
+            !Mathf.Approximately(
+                localOffset.x,
+                Mathf.Round(localOffset.x)
             );
 
-        if (!occupancyByCoordinate.TryGetValue(
-                below,
-                out PhysicsTowerObject supportInstance) ||
-            supportInstance == null)
+        bool seamOnZ =
+            !Mathf.Approximately(
+                localOffset.z,
+                Mathf.Round(localOffset.z)
+            );
+
+        bool hasAnySupport = false;
+        bool minimumXSupported = false;
+        bool maximumXSupported = false;
+        bool minimumZSupported = false;
+        bool maximumZSupported = false;
+
+        for (int z = minimumZ; z <= maximumZ; z++)
         {
+            for (int x = minimumX; x <= maximumX; x++)
+            {
+                Vector3Int below =
+                    new Vector3Int(
+                        x,
+                        coordinate.y - 1,
+                        z
+                    );
+
+                if (occupancyByCoordinate.TryGetValue(
+                        below,
+                        out PhysicsTowerObject supportInstance) &&
+                    supportInstance != null &&
+                    supportInstance != instance &&
+                    supportInstance.IsLocked)
+                {
+                    hasAnySupport = true;
+                    minimumXSupported |= x == minimumX;
+                    maximumXSupported |= x == maximumX;
+                    minimumZSupported |= z == minimumZ;
+                    maximumZSupported |= z == maximumZ;
+                }
+            }
+        }
+
+        if (!hasAnySupport)
+        {
+            unsupportedLocalDirection =
+                GetNaturalUnsupportedDirection(
+                    coordinate,
+                    localOffset
+                );
+
             return false;
         }
 
-        if (supportInstance.IsLocked)
+        if (seamOnX &&
+            (!minimumXSupported || !maximumXSupported))
         {
-            return true;
-        }
+            if (!minimumXSupported)
+            {
+                unsupportedLocalDirection += Vector3.left;
+            }
 
-        if (!trackingByInstance.TryGetValue(
-                supportInstance,
-                out GridTrackingEntry supportEntry))
-        {
+            if (!maximumXSupported)
+            {
+                unsupportedLocalDirection += Vector3.right;
+            }
+
+            if (unsupportedLocalDirection.sqrMagnitude < 0.001f)
+            {
+                unsupportedLocalDirection =
+                    localOffset.x >= 0f
+                        ? Vector3.right
+                        : Vector3.left;
+            }
+
             return false;
         }
 
-        float movedDistance =
-            Vector3.Distance(
-                supportInstance.transform.position,
-                supportEntry.InitialPosition
+        if (seamOnZ &&
+            (!minimumZSupported || !maximumZSupported))
+        {
+            if (!minimumZSupported)
+            {
+                unsupportedLocalDirection += Vector3.back;
+            }
+
+            if (!maximumZSupported)
+            {
+                unsupportedLocalDirection += Vector3.forward;
+            }
+
+            if (unsupportedLocalDirection.sqrMagnitude < 0.001f)
+            {
+                unsupportedLocalDirection =
+                    localOffset.z >= 0f
+                        ? Vector3.forward
+                        : Vector3.back;
+            }
+
+            return false;
+        }
+
+        return true;
+    }
+
+
+    private static Vector3 GetNaturalUnsupportedDirection(
+        Vector3Int coordinate,
+        Vector3 localOffset)
+    {
+        Vector3 direction =
+            new Vector3(
+                localOffset.x,
+                0f,
+                localOffset.z
             );
 
-        return
-            movedDistance <=
-            supportMovementTolerance;
+        if (direction.sqrMagnitude > 0.001f)
+        {
+            return direction.normalized;
+        }
+
+        int hash =
+            coordinate.x * 73856093 ^
+            coordinate.y * 19349663 ^
+            coordinate.z * 83492791;
+
+        float x =
+            (hash & 1) == 0 ? -1f : 1f;
+
+        float z =
+            (hash & 2) == 0 ? -0.45f : 0.45f;
+
+        return new Vector3(x, 0f, z).normalized;
     }
 
 
@@ -1827,36 +2028,120 @@ public sealed class LevelRuntimeController : MonoBehaviour
         Vector3Int sourceCoordinate =
             source.GridCoordinate;
 
-        Vector3 mirroredImpulse =
+        int activationRevision =
+            levelGenerationRevision;
+
+        for (int z = 0;
+             z < levelData.GridDepth;
+             z++)
+        {
+            Vector3Int mirroredCoordinate =
+                new Vector3Int(
+                    sourceCoordinate.x,
+                    sourceCoordinate.y,
+                    z
+                );
+
+            if (!occupancyByCoordinate.TryGetValue(
+                    mirroredCoordinate,
+                    out PhysicsTowerObject mirroredObject) ||
+                mirroredObject == null ||
+                mirroredObject == source ||
+                !mirroredObject.IsLocked)
+            {
+                continue;
+            }
+
+            StartCoroutine(
+                ActivateMirroredObjectNaturally(
+                    mirroredObject,
+                    mirroredCoordinate,
+                    sourceImpulse,
+                    activationRevision
+                )
+            );
+        }
+    }
+
+
+    private IEnumerator ActivateMirroredObjectNaturally(
+        PhysicsTowerObject mirroredObject,
+        Vector3Int mirroredCoordinate,
+        Vector3 sourceImpulse,
+        int activationRevision)
+    {
+        float minimumDelay =
+            Mathf.Max(0f, mirroredActivationDelayRange.x);
+
+        float maximumDelay =
+            Mathf.Max(minimumDelay, mirroredActivationDelayRange.y);
+
+        float delay =
+            Random.Range(minimumDelay, maximumDelay);
+
+        if (delay > 0f)
+        {
+            yield return new WaitForSeconds(delay);
+        }
+
+        if (activationRevision != levelGenerationRevision ||
+            mirroredObject == null ||
+            !mirroredObject.IsLocked ||
+            !occupancyByCoordinate.TryGetValue(
+                mirroredCoordinate,
+                out PhysicsTowerObject currentObject) ||
+            currentObject != mirroredObject)
+        {
+            yield break;
+        }
+
+        float minimumStrength =
+            Mathf.Max(0f, mirroredImpulseVariation.x);
+
+        float maximumStrength =
+            Mathf.Max(minimumStrength, mirroredImpulseVariation.y);
+
+        float randomStrength =
+            Random.Range(minimumStrength, maximumStrength);
+
+        Vector3 randomAngles =
+            new Vector3(
+                Random.Range(
+                    -mirroredDirectionVariationDegrees,
+                    mirroredDirectionVariationDegrees
+                ),
+                Random.Range(
+                    -mirroredDirectionVariationDegrees,
+                    mirroredDirectionVariationDegrees
+                ),
+                Random.Range(
+                    -mirroredDirectionVariationDegrees,
+                    mirroredDirectionVariationDegrees
+                )
+            );
+
+        Vector3 variedImpulse =
+            Quaternion.Euler(randomAngles) *
             sourceImpulse *
-            mirroredLayerImpulseMultiplier;
+            mirroredLayerImpulseMultiplier *
+            randomStrength;
+
+        Vector3 randomTorque =
+            sourceImpulse.sqrMagnitude > 0.0001f
+                ? Random.onUnitSphere *
+                  sourceImpulse.magnitude *
+                  mirroredRandomTorqueMultiplier *
+                  Random.Range(0.65f, 1.25f)
+                : Vector3.zero;
 
         isPropagatingMirroredActivation = true;
 
         try
         {
-            for (int z = 0;
-                 z < levelData.GridDepth;
-                 z++)
-            {
-                if (!occupancyByCoordinate.TryGetValue(
-                        new Vector3Int(
-                            sourceCoordinate.x,
-                            sourceCoordinate.y,
-                            z
-                        ),
-                        out PhysicsTowerObject mirroredObject) ||
-                    mirroredObject == null ||
-                    mirroredObject == source ||
-                    !mirroredObject.IsLocked)
-                {
-                    continue;
-                }
-
-                mirroredObject.ActivatePhysics(
-                    mirroredImpulse
-                );
-            }
+            mirroredObject.ActivatePhysics(
+                variedImpulse,
+                randomTorque
+            );
         }
         finally
         {
@@ -2534,6 +2819,8 @@ public sealed class LevelRuntimeController : MonoBehaviour
 
     public void ClearCurrentLevel()
     {
+        levelGenerationRevision++;
+
         levelGenerated =
             false;
 
