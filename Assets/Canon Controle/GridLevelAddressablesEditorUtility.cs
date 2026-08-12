@@ -22,12 +22,6 @@ public static class GridLevelAddressablesEditorUtility
     public const string AddressablesLabel =
         "level";
 
-    public const string WorkingLevelPath =
-        "Assets/Canon Controle/GridLevel_001.asset";
-
-    private const string ResetRequestPath =
-        "Assets/Canon Controle/RESET_SAVED_LEVELS_ONCE.txt";
-
     private static bool migrationQueued;
 
 
@@ -82,122 +76,10 @@ public static class GridLevelAddressablesEditorUtility
                 DatabasePath
             );
 
-        if (File.Exists(ResetRequestPath))
-        {
-            DeleteAllSavedLevels(database, true);
-            AssetDatabase.DeleteAsset(ResetRequestPath);
-            AssetDatabase.Refresh();
-            return;
-        }
-
         if (database != null)
         {
             EnsurePerLevelAddressableAssets(database);
         }
-    }
-
-
-    public static int DeleteAllSavedLevels(
-        GridLevelDatabase database,
-        bool prepareBlankWorkingLevel)
-    {
-        int removedAssets = 0;
-
-        AddressableAssetSettings settings =
-            AddressableAssetSettingsDefaultObject.GetSettings(false);
-        AddressableAssetGroup group = settings != null
-            ? settings.FindGroup(AddressablesGroupName)
-            : null;
-
-        if (group != null)
-        {
-            List<AddressableAssetEntry> entries =
-                new List<AddressableAssetEntry>(group.entries);
-
-            foreach (AddressableAssetEntry entry in entries)
-            {
-                if (entry == null ||
-                    (!entry.address.StartsWith("levels/") &&
-                     !entry.labels.Contains(AddressablesLabel)))
-                {
-                    continue;
-                }
-
-                group.RemoveAssetEntry(entry, false);
-            }
-
-            EditorUtility.SetDirty(group);
-            EditorUtility.SetDirty(settings);
-        }
-
-        if (AssetDatabase.IsValidFolder(LevelsFolder))
-        {
-            string[] guids = AssetDatabase.FindAssets(
-                "t:GridLevelData",
-                new[] { LevelsFolder }
-            );
-
-            foreach (string guid in guids)
-            {
-                string assetPath = AssetDatabase.GUIDToAssetPath(guid);
-
-                if (!assetPath.StartsWith(LevelsFolder + "/") ||
-                    !Path.GetFileNameWithoutExtension(assetPath)
-                        .StartsWith("Level_"))
-                {
-                    continue;
-                }
-
-                if (AssetDatabase.DeleteAsset(assetPath))
-                {
-                    removedAssets++;
-                }
-            }
-        }
-
-        if (database != null)
-        {
-            database.EditorClearAddressableLevels();
-            database.EditorClearLegacyLevels();
-            EditorUtility.SetDirty(database);
-        }
-
-        if (prepareBlankWorkingLevel)
-        {
-            GridLevelData workingLevel =
-                AssetDatabase.LoadAssetAtPath<GridLevelData>(
-                    WorkingLevelPath
-                );
-
-            if (workingLevel != null)
-            {
-                Undo.RecordObject(
-                    workingLevel,
-                    "Reset Saved Levels"
-                );
-                workingLevel.EditorPrepareManualFoundation(1);
-                workingLevel.EditorConfigureTables(
-                    false,
-                    workingLevel.GridWidth / 2,
-                    workingLevel.SecondTableGap,
-                    workingLevel.TwoTableForwardOffset
-                );
-                workingLevel.EditorClearAllCells();
-                EditorUtility.SetDirty(workingLevel);
-                Selection.activeObject = workingLevel;
-            }
-        }
-
-        AssetDatabase.SaveAssets();
-        AssetDatabase.Refresh();
-
-        Debug.Log(
-            $"Saved level reset complete. {removedAssets} Level_XXX " +
-            "assets removed; database and Addressables catalog cleared. " +
-            "Working grid is blank Level 1."
-        );
-
-        return removedAssets;
     }
 
 
@@ -247,38 +129,6 @@ public static class GridLevelAddressablesEditorUtility
         GridLevelDatabase database,
         out bool created)
     {
-        return SaveWorkingLevelInternal(
-            workingLevel,
-            database,
-            out created,
-            true,
-            true
-        );
-    }
-
-
-    public static GridLevelData SaveWorkingLevelInBatch(
-        GridLevelData workingLevel,
-        GridLevelDatabase database,
-        out bool created)
-    {
-        return SaveWorkingLevelInternal(
-            workingLevel,
-            database,
-            out created,
-            false,
-            false
-        );
-    }
-
-
-    private static GridLevelData SaveWorkingLevelInternal(
-        GridLevelData workingLevel,
-        GridLevelDatabase database,
-        out bool created,
-        bool synchronizeExistingLevels,
-        bool saveAssetsImmediately)
-    {
         created = false;
 
         if (workingLevel == null ||
@@ -287,11 +137,7 @@ public static class GridLevelAddressablesEditorUtility
             return null;
         }
 
-        if (synchronizeExistingLevels)
-        {
-            EnsurePerLevelAddressableAssets(database);
-        }
-
+        EnsurePerLevelAddressableAssets(database);
         EnsureLevelsFolderExists();
 
         int levelNumber =
@@ -332,10 +178,7 @@ public static class GridLevelAddressablesEditorUtility
         EditorUtility.SetDirty(savedLevel);
         EditorUtility.SetDirty(database);
         EditorUtility.SetDirty(workingLevel);
-        if (saveAssetsImmediately)
-        {
-            AssetDatabase.SaveAssets();
-        }
+        AssetDatabase.SaveAssets();
 
         return savedLevel;
     }

@@ -898,10 +898,6 @@ public sealed class LevelRuntimeController : MonoBehaviour
 
     private LevelTable currentTable;
 
-    private LevelTable cachedSecondTable;
-
-    private LevelTable currentSecondTable;
-
 
     private int remainingTargets;
 
@@ -1066,32 +1062,13 @@ public sealed class LevelRuntimeController : MonoBehaviour
         }
 
 
-        Vector3 secondSurfacePosition = surfacePosition;
-        Quaternion secondSurfaceRotation = surfaceRotation;
-
-        if (levelData.UseSecondTable &&
-            (currentSecondTable == null ||
-             !currentSecondTable.TryGetTowerSurface(
-                 out secondSurfacePosition,
-                 out secondSurfaceRotation)))
-        {
-            Debug.LogError(
-                "Second table ki tower surface calculate nahi ho saki.",
-                currentSecondTable
-            );
-            return;
-        }
-
-
         remainingTargets =
             0;
 
 
         SpawnGrid(
             surfacePosition,
-            surfaceRotation,
-            secondSurfacePosition,
-            secondSurfaceRotation
+            surfaceRotation
         );
 
 
@@ -1317,9 +1294,7 @@ public sealed class LevelRuntimeController : MonoBehaviour
 
     private void SpawnGrid(
         Vector3 surfacePosition,
-        Quaternion surfaceRotation,
-        Vector3 secondSurfacePosition,
-        Quaternion secondSurfaceRotation)
+        Quaternion surfaceRotation)
     {
         gridSurfaceRotation = surfaceRotation;
 
@@ -1368,44 +1343,6 @@ public sealed class LevelRuntimeController : MonoBehaviour
                 occupiedMax.x
             ) *
             0.5f;
-
-        int tableSplitColumn =
-            levelData.SecondTableSplitColumn;
-
-        float firstTableCenterX = occupiedCenterX;
-        float secondTableCenterX = occupiedCenterX;
-
-        if (levelData.UseSecondTable)
-        {
-            if (!TryGetOccupiedXBounds(
-                    occupiedMin,
-                    occupiedMax,
-                    false,
-                    tableSplitColumn,
-                    out int firstMinimumX,
-                    out int firstMaximumX) ||
-                !TryGetOccupiedXBounds(
-                    occupiedMin,
-                    occupiedMax,
-                    true,
-                    tableSplitColumn,
-                    out int secondMinimumX,
-                    out int secondMaximumX))
-            {
-                Debug.LogError(
-                    "Two-table level ke dono grid halves mein painted " +
-                    "pieces required hain.",
-                    levelData
-                );
-                return;
-            }
-
-            firstTableCenterX =
-                (firstMinimumX + firstMaximumX) * 0.5f;
-
-            secondTableCenterX =
-                (secondMinimumX + secondMaximumX) * 0.5f;
-        }
 
 
         float occupiedCenterZ =
@@ -1469,25 +1406,6 @@ public sealed class LevelRuntimeController : MonoBehaviour
                     int spanZ =
                         Mathf.Max(1, cell.SpanZ);
 
-                    bool useSecondSurface =
-                        levelData.UseSecondTable &&
-                        x >= tableSplitColumn;
-
-                    float cellOccupiedCenterX =
-                        useSecondSurface
-                            ? secondTableCenterX
-                            : firstTableCenterX;
-
-                    Vector3 cellSurfacePosition =
-                        useSecondSurface
-                            ? secondSurfacePosition
-                            : surfacePosition;
-
-                    Quaternion cellSurfaceRotation =
-                        useSecondSurface
-                            ? secondSurfaceRotation
-                            : surfaceRotation;
-
 
                     /*
                      * X:
@@ -1499,7 +1417,7 @@ public sealed class LevelRuntimeController : MonoBehaviour
                     float localX =
                         (
                             x -
-                            cellOccupiedCenterX
+                            occupiedCenterX
                         ) *
                         stepX +
                         (spanX - 1) *
@@ -1597,7 +1515,7 @@ public sealed class LevelRuntimeController : MonoBehaviour
                      * ke sath sath khud bhi rotate karta hai.
                      */
                     Quaternion pieceRotation =
-                        cellSurfaceRotation *
+                        surfaceRotation *
                         PieceOrientationUtility.GetRotation(
                             orientation,
                             cell.CustomZRotation
@@ -1605,8 +1523,8 @@ public sealed class LevelRuntimeController : MonoBehaviour
 
 
                     Vector3 desiredBoundsCenter =
-                        cellSurfacePosition +
-                        cellSurfaceRotation *
+                        surfacePosition +
+                        surfaceRotation *
                         localCellCenter;
 
 
@@ -1727,47 +1645,6 @@ public sealed class LevelRuntimeController : MonoBehaviour
                 }
             }
         }
-    }
-
-
-    private bool TryGetOccupiedXBounds(
-        Vector3Int occupiedMin,
-        Vector3Int occupiedMax,
-        bool secondTable,
-        int splitColumn,
-        out int minimumX,
-        out int maximumX)
-    {
-        minimumX = int.MaxValue;
-        maximumX = int.MinValue;
-
-        for (int z = occupiedMin.z; z <= occupiedMax.z; z++)
-        {
-            for (int y = occupiedMin.y; y <= occupiedMax.y; y++)
-            {
-                for (int x = occupiedMin.x; x <= occupiedMax.x; x++)
-                {
-                    bool belongsToSecond = x >= splitColumn;
-
-                    if (belongsToSecond != secondTable)
-                    {
-                        continue;
-                    }
-
-                    GridCellData cell = levelData.GetCell(x, y, z);
-
-                    if (cell == null || !cell.Occupied)
-                    {
-                        continue;
-                    }
-
-                    minimumX = Mathf.Min(minimumX, x);
-                    maximumX = Mathf.Max(maximumX, x);
-                }
-            }
-        }
-
-        return minimumX <= maximumX;
     }
 
 
@@ -2052,35 +1929,17 @@ public sealed class LevelRuntimeController : MonoBehaviour
         {
             if (cachedTable != null)
             {
-                Destroy(cachedTable.gameObject);
-            }
-
-            if (cachedSecondTable != null)
-            {
-                Destroy(cachedSecondTable.gameObject);
-                cachedSecondTable = null;
+                Destroy(
+                    cachedTable.gameObject
+                );
             }
 
 
-            Transform sceneTableRoot = GetLevelOrigin();
-
-            /*
-             * The editor keeps one visible table below levelOrigin so the
-             * designer can see the level while painting it. Reuse that table
-             * for the first runtime level. Without this adoption a two-table
-             * level created two new instances beside the preview table, which
-             * looked like three tables (one of them empty).
-             */
-            cachedTable = FindReusableSceneTable(sceneTableRoot);
-
-            if (cachedTable == null)
-            {
-                cachedTable =
-                    Instantiate(
-                        requiredPrefab,
-                        sceneTableRoot
-                    );
-            }
+            cachedTable =
+                Instantiate(
+                    requiredPrefab,
+                    GetLevelOrigin()
+                );
 
 
             cachedTable.name =
@@ -2092,150 +1951,63 @@ public sealed class LevelRuntimeController : MonoBehaviour
                 requiredPrefab;
         }
 
+
         currentTable =
             cachedTable;
+
+
+        Transform tableTransform =
+            currentTable.transform;
+
 
         Transform levelRoot =
             GetLevelOrigin();
 
-        ConfigureTableTransform(
-            currentTable,
-            requiredPrefab,
-            levelRoot
-        );
 
-        if (currentTable.TowerSurfaceCollider == null)
+        if (tableTransform.parent !=
+            levelRoot)
         {
-            Debug.LogError(
-                "Table prefab par Tower Surface Collider missing hai.",
-                currentTable
+            tableTransform.SetParent(
+                levelRoot,
+                false
             );
-            return false;
         }
 
-        if (!levelData.UseSecondTable)
-        {
-            if (cachedSecondTable != null)
-            {
-                cachedSecondTable.gameObject.SetActive(false);
-            }
 
-            currentSecondTable = null;
-            currentTable.transform.localPosition =
-                levelData.TablePositionOffset;
-            return true;
-        }
+        tableTransform.localPosition =
+            levelData.TablePositionOffset;
 
-        if (cachedSecondTable == null)
-        {
-            cachedSecondTable =
-                Instantiate(requiredPrefab, levelRoot);
-
-            cachedSecondTable.name =
-                requiredPrefab.name + "_Runtime_Second";
-        }
-
-        currentSecondTable = cachedSecondTable;
-
-        ConfigureTableTransform(
-            currentSecondTable,
-            requiredPrefab,
-            levelRoot
-        );
-
-        if (!currentTable.TryGetTowerSurfaceSize(
-                out Vector2 tableSurfaceSize))
-        {
-            Debug.LogError(
-                "Table top size calculate nahi ho saki.",
-                currentTable
-            );
-            return false;
-        }
-
-        float horizontalCenterDistance =
-            tableSurfaceSize.x * 0.8f +
-            levelData.SecondTableGap * 0.5f;
-
-        float depthCenterDistance =
-            tableSurfaceSize.y +
-            levelData.SecondTableGap;
-
-        Quaternion localTableRotation =
-            Quaternion.Euler(levelData.TableRotationEuler);
-
-        Vector3 halfOffset =
-            localTableRotation *
-            Vector3.right *
-            (horizontalCenterDistance * 0.5f);
-
-        Vector3 halfDepthStagger =
-            localTableRotation *
-            Vector3.forward *
-            (depthCenterDistance * 0.35f);
-
-        Vector3 forwardOffset =
-            localTableRotation *
-            Vector3.forward *
-            levelData.TwoTableForwardOffset;
-
-        currentTable.transform.localPosition =
-            levelData.TablePositionOffset - halfOffset -
-            halfDepthStagger + forwardOffset;
-
-        currentSecondTable.transform.localPosition =
-            levelData.TablePositionOffset + halfOffset +
-            halfDepthStagger + forwardOffset;
-
-        return true;
-    }
-
-
-    private LevelTable FindReusableSceneTable(
-        Transform levelRoot)
-    {
-        if (levelRoot == null)
-        {
-            return null;
-        }
-
-        LevelTable[] sceneTables =
-            levelRoot.GetComponentsInChildren<LevelTable>(true);
-
-        foreach (LevelTable sceneTable in sceneTables)
-        {
-            if (sceneTable == null ||
-                sceneTable == cachedSecondTable)
-            {
-                continue;
-            }
-
-            return sceneTable;
-        }
-
-        return null;
-    }
-
-
-    private void ConfigureTableTransform(
-        LevelTable table,
-        LevelTable prefab,
-        Transform levelRoot)
-    {
-        Transform tableTransform = table.transform;
-
-        if (tableTransform.parent != levelRoot)
-        {
-            tableTransform.SetParent(levelRoot, false);
-        }
 
         tableTransform.localRotation =
             Quaternion.Euler(
                 levelData.TableRotationEuler
             );
 
-        tableTransform.localScale = prefab.transform.localScale;
-        table.gameObject.SetActive(true);
+
+        tableTransform.localScale =
+            requiredPrefab
+                .transform
+                .localScale;
+
+
+        currentTable.gameObject.SetActive(
+            true
+        );
+
+
+        if (currentTable.TowerSurfaceCollider ==
+            null)
+        {
+            Debug.LogError(
+                "Table prefab par Tower Surface Collider missing hai.",
+                currentTable
+            );
+
+            return false;
+        }
+
+
+        return true;
     }
 
 
@@ -2996,23 +2768,9 @@ public sealed class LevelRuntimeController : MonoBehaviour
             }
         }
 
-        if (cachedSecondTable != null)
-        {
-            if (Application.isPlaying)
-            {
-                Destroy(cachedSecondTable.gameObject);
-            }
-            else
-            {
-                DestroyImmediate(cachedSecondTable.gameObject);
-            }
-        }
-
         cachedTable = null;
-        cachedSecondTable = null;
         cachedTablePrefab = null;
         currentTable = null;
-        currentSecondTable = null;
     }
 
 
@@ -3123,16 +2881,8 @@ public sealed class LevelRuntimeController : MonoBehaviour
             );
         }
 
-        if (currentSecondTable != null)
-        {
-            currentSecondTable.gameObject.SetActive(false);
-        }
-
 
         currentTable =
-            null;
-
-        currentSecondTable =
             null;
     }
 

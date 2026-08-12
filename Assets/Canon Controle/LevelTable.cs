@@ -63,37 +63,6 @@ public sealed class LevelTable : MonoBehaviour
         return true;
     }
 
-
-    /// <summary>
-    /// Tower top collider ka actual world-space X/Z usable size.
-    /// Generator is se ensure karta hai ke structure table ke bahar na ho.
-    /// </summary>
-    public bool TryGetTowerSurfaceSize(
-        out Vector2 surfaceSize)
-    {
-        surfaceSize = Vector2.zero;
-
-        if (towerSurfaceCollider == null)
-        {
-            return false;
-        }
-
-        Vector3 scale =
-            towerSurfaceCollider.transform.lossyScale;
-
-        surfaceSize = new Vector2(
-            Mathf.Abs(
-                towerSurfaceCollider.size.x * scale.x
-            ),
-            Mathf.Abs(
-                towerSurfaceCollider.size.z * scale.z
-            )
-        );
-
-        return surfaceSize.x > 0.001f &&
-               surfaceSize.y > 0.001f;
-    }
-
     private void Reset()
     {
         /*
