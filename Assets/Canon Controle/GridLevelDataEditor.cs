@@ -2,6 +2,7 @@
 
 using System.IO;
 using System.Collections.Generic;
+using System.Text;
 using UnityEditor;
 using UnityEngine;
 
@@ -58,6 +59,31 @@ public sealed class GridLevelDataEditor : Editor
 
     private int levelNumberToEdit = 1;
 
+    private int autoDesignSeed = 12345;
+    private int autoDesignDifficulty = 4;
+    private int autoDesignGridWidth = 16;
+    private int autoDesignRows = 7;
+    private int autoDesignBaseWidth = 10;
+    private int autoDesignLayers = 2;
+    private float autoDesignLayerGap = 0.15f;
+    private bool autoDesignUseSeams = true;
+    private bool autoDesignAllowTwoTables = true;
+    private float autoDesignTableGap = 0.65f;
+    private float autoDesignTwoTableForwardOffset = 0.8f;
+    private int autoBatchStartLevel = 11;
+    private int autoBatchLevelCount = 20;
+    private bool autoBatchProgressDifficulty = true;
+
+    private static readonly int[][] ProgressionArchetypes =
+    {
+        new[] { 0, 7 },
+        new[] { 0, 1, 6, 7 },
+        new[] { 0, 2, 3, 6, 9 },
+        new[] { 2, 3, 4, 5, 8, 9 },
+        new[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 }
+    };
+    private string autoDesignSummary;
+
     private const float CellButtonSize = 18f;
 
 
@@ -74,6 +100,8 @@ public sealed class GridLevelDataEditor : Editor
 
         DrawDefaultInspector();
 
+        DrawAutomaticLevelDesigner(levelData);
+
         DrawManualPainterSection(levelData);
         DrawSaveLevelSection(levelData);
 
@@ -89,6 +117,822 @@ public sealed class GridLevelDataEditor : Editor
         {
             QueueLiveGamePreviewRefresh(levelData);
         }
+    }
+
+
+    private void DrawAutomaticLevelDesigner(
+        GridLevelData levelData)
+    {
+        EditorGUILayout.Space(16f);
+
+        EditorGUILayout.LabelField(
+            "Automatic Level Designer (Test)",
+            EditorStyles.boldLabel
+        );
+
+        EditorGUILayout.HelpBox(
+            "Controlled-random, support-valid tower current single " +
+            "working grid par generate hota hai. Generator ten structural " +
+            "families use karta hai, including pyramid, gates, pillars, " +
+            "crown, forts, spires, skyline, hourglass aur temple. Same Seed " +
+            "same design banata hai. Generate working design replace karega; " +
+            "saved Addressable level tab tak change nahi hoga jab tak " +
+            "SAVE button use na karein.",
+            MessageType.Info
+        );
+
+        autoDesignSeed =
+            EditorGUILayout.IntField(
+                "Seed",
+                autoDesignSeed
+            );
+
+        autoDesignDifficulty =
+            EditorGUILayout.IntSlider(
+                "Difficulty",
+                autoDesignDifficulty,
+                1,
+                10
+            );
+
+        autoDesignGridWidth =
+            EditorGUILayout.IntSlider(
+                "Grid Width",
+                autoDesignGridWidth,
+                6,
+                24
+            );
+
+        autoDesignRows =
+            EditorGUILayout.IntSlider(
+                "Tower Rows",
+                autoDesignRows,
+                3,
+                16
+            );
+
+        autoDesignBaseWidth =
+            EditorGUILayout.IntSlider(
+                "Base Width",
+                autoDesignBaseWidth,
+                4,
+                Mathf.Max(4, autoDesignGridWidth - 2)
+            );
+
+        autoDesignLayers =
+            EditorGUILayout.IntSlider(
+                "Depth Layers",
+                autoDesignLayers,
+                1,
+                3
+            );
+
+        using (
+            new EditorGUI.DisabledScope(
+                autoDesignLayers <= 1))
+        {
+            autoDesignLayerGap =
+                Mathf.Max(
+                    0f,
+                    EditorGUILayout.FloatField(
+                        "Layer Gap",
+                        autoDesignLayerGap
+                    )
+                );
+        }
+
+        autoDesignUseSeams =
+            EditorGUILayout.Toggle(
+                "Use Seam Brick Rows",
+                autoDesignUseSeams
+            );
+
+        autoDesignAllowTwoTables =
+            EditorGUILayout.Toggle(
+                "Allow Two-Table Levels",
+                autoDesignAllowTwoTables
+            );
+
+        using (
+            new EditorGUI.DisabledScope(
+                !autoDesignAllowTwoTables))
+        {
+            autoDesignTableGap =
+                Mathf.Max(
+                    0f,
+                    EditorGUILayout.FloatField(
+                        "Gap Between Tables",
+                        autoDesignTableGap
+                    )
+                );
+
+            autoDesignTwoTableForwardOffset =
+                Mathf.Max(
+                    0f,
+                    EditorGUILayout.FloatField(
+                        "Two Tables Front Shift",
+                        autoDesignTwoTableForwardOffset
+                    )
+                );
+        }
+
+        bool hasValidShape = false;
+
+        if (levelData.BlockPalette != null)
+        {
+            foreach (PhysicsObjectDefinition definition
+                     in levelData.BlockPalette)
+            {
+                if (definition != null && definition.Prefab != null)
+                {
+                    hasValidShape = true;
+                    break;
+                }
+            }
+        }
+
+        if (!hasValidShape)
+        {
+            EditorGUILayout.HelpBox(
+                "Generator ke liye Block Palette mein kam az kam ek " +
+                "valid prefab shape required hai.",
+                MessageType.Warning
+            );
+        }
+
+        EditorGUILayout.BeginHorizontal();
+
+        if (GUILayout.Button("NEW RANDOM SEED"))
+        {
+            autoDesignSeed =
+                unchecked(
+                    (int)System.DateTime.UtcNow.Ticks
+                );
+        }
+
+        using (new EditorGUI.DisabledScope(!hasValidShape))
+        {
+            if (GUILayout.Button(
+                    "GENERATE TEST DESIGN",
+                    GUILayout.Height(38f)))
+            {
+                GenerateAutomaticLevel(
+                    levelData,
+                    false
+                );
+            }
+        }
+
+        EditorGUILayout.EndHorizontal();
+
+        using (new EditorGUI.DisabledScope(!hasValidShape))
+        {
+            if (GUILayout.Button(
+                    "GENERATE + SAVE AS CURRENT LEVEL",
+                    GUILayout.Height(34f)))
+            {
+                GenerateAutomaticLevel(
+                    levelData,
+                    true
+                );
+            }
+        }
+
+        EditorGUILayout.Space(8f);
+
+        EditorGUILayout.LabelField(
+            "Production Batch Workflow",
+            EditorStyles.boldLabel
+        );
+
+        EditorGUILayout.HelpBox(
+            "Approved manual archetype templates, automatic stability " +
+            "validation aur test-batch gate ke liye production pipeline " +
+            "use karein. Purana direct batch intentionally locked hai.",
+            MessageType.Info
+        );
+
+        if (GUILayout.Button(
+                "OPEN LEVEL PRODUCTION PIPELINE",
+                GUILayout.Height(38f)))
+        {
+            LevelProductionPipelineWindow.Open();
+        }
+
+        using (new EditorGUI.DisabledScope(true))
+        {
+
+        autoBatchStartLevel =
+            Mathf.Max(
+                1,
+                EditorGUILayout.IntField(
+                    "Start Level Number",
+                    autoBatchStartLevel
+                )
+            );
+
+        autoBatchLevelCount =
+            EditorGUILayout.IntSlider(
+                "Number Of Levels",
+                autoBatchLevelCount,
+                20,
+                30
+            );
+
+        autoBatchProgressDifficulty =
+            EditorGUILayout.Toggle(
+                "Progress Difficulty",
+                autoBatchProgressDifficulty
+            );
+
+        int batchEndLevel =
+            autoBatchStartLevel +
+            autoBatchLevelCount - 1;
+
+        EditorGUILayout.HelpBox(
+            $"Level {autoBatchStartLevel} se Level {batchEndLevel} tak " +
+            "separate ScriptableObjects generate/save honge. Existing " +
+            "levels in this range update/overwrite ho jayenge. Har level " +
+            "ka layout uniqueness-check se verify hoga. Progress Difficulty " +
+            "ON ho to Levels 1-10 simple one-table structures se start " +
+            "honge; gates, seams, depth aur two-table challenges gradually " +
+            "late phases mein unlock honge.",
+            MessageType.Warning
+        );
+
+        using (new EditorGUI.DisabledScope(!hasValidShape))
+        {
+            if (GUILayout.Button(
+                    $"GENERATE + SAVE {autoBatchLevelCount} LEVELS",
+                    GUILayout.Height(42f)))
+            {
+                bool approved =
+                    EditorUtility.DisplayDialog(
+                        "Generate Batch Levels?",
+                        $"Level {autoBatchStartLevel}–{batchEndLevel} " +
+                        "generate honge. Is range ke existing saved " +
+                        "levels overwrite ho sakte hain.",
+                        "Generate Levels",
+                        "Cancel"
+                    );
+
+                if (approved)
+                {
+                    GenerateAutomaticLevelBatch(levelData);
+                    GUIUtility.ExitGUI();
+                }
+            }
+        }
+
+        }
+
+        if (!string.IsNullOrEmpty(autoDesignSummary))
+        {
+            EditorGUILayout.HelpBox(
+                autoDesignSummary,
+                MessageType.None
+            );
+        }
+    }
+
+
+    private void GenerateAutomaticLevel(
+        GridLevelData levelData,
+        bool saveAfterGeneration)
+    {
+        serializedObject.ApplyModifiedProperties();
+
+        Undo.RecordObject(
+            levelData,
+            "Generate Automatic Grid Level"
+        );
+
+        GridLevelProceduralGenerator.Settings settings =
+            new GridLevelProceduralGenerator.Settings(
+                autoDesignSeed,
+                autoDesignDifficulty,
+                autoDesignGridWidth,
+                autoDesignRows,
+                autoDesignBaseWidth,
+                autoDesignLayers,
+                autoDesignLayerGap,
+                autoDesignUseSeams,
+                -1,
+                autoDesignAllowTwoTables &&
+                PositiveModulo(autoDesignSeed, 10) == 1,
+                autoDesignTableGap,
+                autoDesignTwoTableForwardOffset
+            );
+
+        bool generated =
+            GridLevelProceduralGenerator.Generate(
+                levelData,
+                settings,
+                out autoDesignSummary
+            );
+
+        if (!generated)
+        {
+            Debug.LogWarning(autoDesignSummary, levelData);
+            return;
+        }
+
+        EditorUtility.SetDirty(levelData);
+        AssetDatabase.SaveAssetIfDirty(levelData);
+
+        if (saveAfterGeneration)
+        {
+            SaveWorkingLevel(
+                levelData,
+                GetOrCreateLevelDatabase()
+            );
+        }
+
+        if (Application.isPlaying &&
+            SessionState.GetBool(
+                LivePreviewSessionKey,
+                false
+            ))
+        {
+            QueueLiveGamePreviewRefresh(levelData);
+        }
+
+        serializedObject.Update();
+
+        Debug.Log(autoDesignSummary, levelData);
+    }
+
+
+    private void GenerateAutomaticLevelBatch(
+        GridLevelData levelData)
+    {
+        serializedObject.ApplyModifiedProperties();
+
+        Undo.RecordObject(
+            levelData,
+            "Generate Automatic Level Batch"
+        );
+
+        GridLevelDatabase database =
+            GetOrCreateLevelDatabase();
+
+        int requestedCount =
+            Mathf.Clamp(autoBatchLevelCount, 20, 30);
+
+        int generatedCount = 0;
+        int firstLevel = Mathf.Max(1, autoBatchStartLevel);
+        string lastGenerationSummary = string.Empty;
+        HashSet<string> structuralSignatures =
+            new HashSet<string>();
+
+        int requestedLastLevel =
+            firstLevel + requestedCount - 1;
+
+        /*
+         * Partial continuation (e.g. start at Level 24) bhi earlier
+         * saved levels ke layouts repeat nahi karegi. Target overwrite
+         * range ko intentionally preload nahi karte.
+         */
+        for (int databaseIndex = 0;
+             databaseIndex < database.Count;
+             databaseIndex++)
+        {
+            int savedLevelNumber =
+                database.GetLevelNumber(databaseIndex);
+
+            if (savedLevelNumber >= firstLevel &&
+                savedLevelNumber <= requestedLastLevel)
+            {
+                continue;
+            }
+
+            GridLevelData savedLevel =
+                GridLevelAddressablesEditorUtility.GetLevelAsset(
+                    database,
+                    savedLevelNumber
+                );
+
+            if (savedLevel != null)
+            {
+                structuralSignatures.Add(
+                    BuildStructuralSignature(savedLevel)
+                );
+            }
+        }
+
+        try
+        {
+            for (int i = 0; i < requestedCount; i++)
+            {
+                int levelNumber = firstLevel + i;
+
+                EditorUtility.DisplayProgressBar(
+                    "Automatic Level Designer",
+                    $"Generating Level {levelNumber} " +
+                    $"({i + 1}/{requestedCount})",
+                    (float)i / requestedCount
+                );
+
+                int levelSeed =
+                    unchecked(
+                        autoDesignSeed +
+                        i * 104729
+                    );
+
+                int levelDifficulty =
+                    autoBatchProgressDifficulty
+                        ? GetProgressionDifficulty(levelNumber)
+                        : autoDesignDifficulty;
+
+                int levelRows =
+                    autoBatchProgressDifficulty
+                        ? GetProgressionRows(levelNumber, levelSeed)
+                        : Mathf.Clamp(
+                            autoDesignRows +
+                            PositiveModulo(levelSeed, 5) - 2,
+                            4,
+                            10
+                        );
+
+                int levelBaseWidth =
+                    autoBatchProgressDifficulty
+                        ? GetProgressionBaseWidth(
+                            levelNumber,
+                            levelSeed,
+                            autoDesignGridWidth
+                        )
+                        : Mathf.Clamp(
+                            autoDesignBaseWidth +
+                            PositiveModulo(levelSeed / 7, 5) - 2,
+                            4,
+                            autoDesignGridWidth - 2
+                        );
+
+                int levelLayers =
+                    autoBatchProgressDifficulty
+                        ? GetProgressionLayers(
+                            levelNumber,
+                            autoDesignLayers
+                        )
+                        : autoDesignLayers;
+
+                bool levelUsesSeams =
+                    autoDesignUseSeams &&
+                    (!autoBatchProgressDifficulty || levelNumber >= 21);
+
+                bool levelUsesTwoTables =
+                    autoDesignAllowTwoTables &&
+                    (!autoBatchProgressDifficulty
+                        ? PositiveModulo(levelNumber, 7) == 2
+                        : IsProgressionTwoTableLevel(levelNumber));
+
+                levelData.EditorSetLevelNumber(levelNumber);
+
+                bool generated = false;
+
+                const int maximumUniqueAttempts = 120;
+
+                for (int attempt = 0;
+                     attempt < maximumUniqueAttempts;
+                     attempt++)
+                {
+                    int retryGroup =
+                        attempt / Mathf.Max(
+                            1,
+                            GetProgressionArchetypeCount(levelNumber)
+                        );
+
+                    int retryRows =
+                        Mathf.Clamp(
+                            levelRows +
+                            GetBalancedRetryVariation(
+                                retryGroup * 3
+                            ),
+                            4,
+                            10
+                        );
+
+                    int retryBaseWidth =
+                        Mathf.Clamp(
+                            levelBaseWidth +
+                            GetBalancedRetryVariation(
+                                retryGroup
+                            ),
+                            4,
+                            autoDesignGridWidth - 2
+                        );
+
+                    GridLevelProceduralGenerator.Settings settings =
+                        new GridLevelProceduralGenerator.Settings(
+                            unchecked(
+                                levelSeed + attempt * 48611
+                            ),
+                            levelDifficulty,
+                            autoDesignGridWidth,
+                            retryRows,
+                            retryBaseWidth,
+                            levelLayers,
+                            autoDesignLayerGap,
+                            levelUsesSeams,
+                            autoBatchProgressDifficulty
+                                ? GetProgressionArchetypeIndex(
+                                    levelNumber,
+                                    attempt
+                                )
+                                : levelNumber - 1 + attempt,
+                            levelUsesTwoTables,
+                            autoDesignTableGap,
+                            autoDesignTwoTableForwardOffset
+                        );
+
+                    generated =
+                        GridLevelProceduralGenerator.Generate(
+                            levelData,
+                            settings,
+                            out lastGenerationSummary
+                        );
+
+                    if (!generated)
+                    {
+                        break;
+                    }
+
+                    string signature =
+                        BuildStructuralSignature(levelData);
+
+                    if (structuralSignatures.Add(signature))
+                    {
+                        break;
+                    }
+
+                    generated = false;
+                    lastGenerationSummary =
+                        "Duplicate structure detected; trying another variant.";
+                }
+
+                if (!generated)
+                {
+                    Debug.LogError(
+                        $"Batch stopped at Level {levelNumber}: " +
+                        lastGenerationSummary +
+                        " 120 cross-pattern variants try kiye gaye.",
+                        levelData
+                    );
+                    break;
+                }
+
+                EditorUtility.SetDirty(levelData);
+
+                SaveWorkingLevel(
+                    levelData,
+                    database
+                );
+
+                generatedCount++;
+            }
+        }
+        finally
+        {
+            EditorUtility.ClearProgressBar();
+            EditorUtility.SetDirty(levelData);
+            AssetDatabase.SaveAssets();
+        }
+
+        int lastSavedLevel =
+            generatedCount > 0
+                ? firstLevel + generatedCount - 1
+                : firstLevel;
+
+        autoDesignSummary =
+            generatedCount == requestedCount
+                ? $"Batch complete: Level {firstLevel}–{lastSavedLevel} " +
+                  $"({generatedCount} levels) generate, save aur " +
+                  "Addressable register ho gaye. Working canvas par " +
+                  $"Level {lastSavedLevel} open hai."
+                : $"Batch incomplete: {generatedCount}/{requestedCount} " +
+                  "levels saved. " + lastGenerationSummary;
+
+        serializedObject.Update();
+        Debug.Log(autoDesignSummary, levelData);
+
+        if (Application.isPlaying &&
+            SessionState.GetBool(
+                LivePreviewSessionKey,
+                false
+            ))
+        {
+            QueueLiveGamePreviewRefresh(levelData);
+        }
+    }
+
+
+    private static int PositiveModulo(
+        int value,
+        int modulus)
+    {
+        int result = value % modulus;
+        return result < 0 ? result + modulus : result;
+    }
+
+
+    private static int GetBalancedRetryVariation(int index)
+    {
+        if (index <= 0)
+        {
+            return 0;
+        }
+
+        int magnitude = (index + 1) / 2;
+
+        return (index & 1) == 1
+            ? -magnitude
+            : magnitude;
+    }
+
+
+    private static int GetProgressionPhase(int levelNumber)
+    {
+        if (levelNumber <= 10)
+        {
+            return 0;
+        }
+
+        if (levelNumber <= 25)
+        {
+            return 1;
+        }
+
+        if (levelNumber <= 45)
+        {
+            return 2;
+        }
+
+        if (levelNumber <= 70)
+        {
+            return 3;
+        }
+
+        return 4;
+    }
+
+
+    private static int GetProgressionDifficulty(int levelNumber)
+    {
+        return Mathf.Clamp(
+            1 + Mathf.FloorToInt(
+                Mathf.Clamp01((levelNumber - 1) / 99f) * 9f
+            ),
+            1,
+            10
+        );
+    }
+
+
+    private static int GetProgressionRows(
+        int levelNumber,
+        int seed)
+    {
+        int phase = GetProgressionPhase(levelNumber);
+        int[] minimumRows = { 4, 5, 6, 7, 8 };
+        int[] maximumRows = { 5, 6, 7, 9, 10 };
+
+        return minimumRows[phase] +
+               PositiveModulo(
+                   seed / 11,
+                   maximumRows[phase] - minimumRows[phase] + 1
+               );
+    }
+
+
+    private static int GetProgressionBaseWidth(
+        int levelNumber,
+        int seed,
+        int gridWidth)
+    {
+        int phase = GetProgressionPhase(levelNumber);
+        int[] minimumWidth = { 5, 6, 7, 8, 9 };
+        int[] maximumWidth = { 7, 8, 10, 12, 14 };
+        int safeMaximum = Mathf.Min(
+            maximumWidth[phase],
+            gridWidth - 2
+        );
+        int safeMinimum = Mathf.Min(
+            minimumWidth[phase],
+            safeMaximum
+        );
+
+        return safeMinimum +
+               PositiveModulo(
+                   seed / 17,
+                   safeMaximum - safeMinimum + 1
+               );
+    }
+
+
+    private static int GetProgressionLayers(
+        int levelNumber,
+        int maximumLayers)
+    {
+        if (levelNumber <= 15)
+        {
+            return 1;
+        }
+
+        if (levelNumber <= 35)
+        {
+            return Mathf.Min(maximumLayers, 2);
+        }
+
+        return Mathf.Clamp(maximumLayers, 1, 3);
+    }
+
+
+    private static bool IsProgressionTwoTableLevel(
+        int levelNumber)
+    {
+        // Multi-table is a late, occasional challenge rather than filler.
+        return levelNumber >= 60 &&
+               (levelNumber == 60 ||
+                levelNumber == 70 ||
+                levelNumber == 80 ||
+                levelNumber == 90 ||
+                levelNumber == 100);
+    }
+
+
+    private static int GetProgressionArchetypeCount(
+        int levelNumber)
+    {
+        return ProgressionArchetypes[
+            GetProgressionPhase(levelNumber)
+        ].Length;
+    }
+
+
+    private static int GetProgressionArchetypeIndex(
+        int levelNumber,
+        int attempt)
+    {
+        int[] allowed = ProgressionArchetypes[
+            GetProgressionPhase(levelNumber)
+        ];
+        int sequence = Mathf.Max(0, levelNumber - 1) + attempt;
+        int family = allowed[PositiveModulo(sequence, allowed.Length)];
+        int variant = sequence / allowed.Length;
+
+        return family +
+               variant *
+               GridLevelProceduralGenerator.StructuralPatternCount;
+    }
+
+
+    private static string BuildStructuralSignature(
+        GridLevelData levelData)
+    {
+        StringBuilder signature = new StringBuilder(2048);
+
+        signature.Append(levelData.UseSecondTable ? "T2|" : "T1|");
+        signature.Append(levelData.GridWidth).Append('x');
+        signature.Append(levelData.GridHeight).Append('x');
+        signature.Append(levelData.GridDepth).Append('|');
+
+        for (int z = 0; z < levelData.GridDepth; z++)
+        {
+            for (int y = 0; y < levelData.GridHeight; y++)
+            {
+                for (int x = 0; x < levelData.GridWidth; x++)
+                {
+                    GridCellData cell = levelData.GetCell(x, y, z);
+
+                    if (cell == null ||
+                        !cell.Occupied ||
+                        cell.IsCovered)
+                    {
+                        continue;
+                    }
+
+                    signature
+                        .Append(x).Append(',')
+                        .Append(y).Append(',')
+                        .Append(z).Append(':')
+                        .Append(cell.SpanX).Append(',')
+                        .Append(cell.SpanY).Append(',')
+                        .Append(cell.SpanZ).Append(':')
+                        .Append(
+                            Mathf.RoundToInt(
+                                cell.LocalOffset.x * 100f
+                            )
+                        ).Append(',')
+                        .Append(
+                            Mathf.RoundToInt(
+                                cell.LocalOffset.z * 100f
+                            )
+                        ).Append(';');
+                }
+            }
+        }
+
+        return signature.ToString();
     }
 
 

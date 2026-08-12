@@ -3,6 +3,23 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Serialization;
 
+public enum LevelDesignOrigin
+{
+    Unknown,
+    ManualFoundation,
+    ProceduralTemplate
+}
+
+
+public enum LevelReviewStatus
+{
+    Untested,
+    InPlaytest,
+    ApprovedAsArchetype,
+    Rejected,
+    ProductionApproved
+}
+
 public sealed class GridLevelData : ScriptableObject
 {
     [Header("Level")]
@@ -12,6 +29,42 @@ public sealed class GridLevelData : ScriptableObject
 
     [SerializeField, Min(1)]
     private int availableBalls = 30;
+
+
+    [Header("Design QA")]
+
+    [Tooltip(
+        "Manual foundation level hai ya approved template se generated.")]
+    [SerializeField]
+    private LevelDesignOrigin designOrigin = LevelDesignOrigin.Unknown;
+
+    [SerializeField]
+    private LevelReviewStatus reviewStatus = LevelReviewStatus.Untested;
+
+    [Tooltip("Short category, e.g. Pyramid, Twin Tower, Arch.")]
+    [SerializeField]
+    private string archetypeTag = string.Empty;
+
+    [SerializeField, Range(0, 5)]
+    private int funRating;
+
+    [SerializeField, Range(0, 5)]
+    private int stabilityRating;
+
+    [SerializeField, Range(0, 10)]
+    private int testedDifficulty;
+
+    [SerializeField, Min(0)]
+    private int playtestAttempts;
+
+    [SerializeField, TextArea(2, 5)]
+    private string playtestNotes = string.Empty;
+
+    [SerializeField, HideInInspector]
+    private string generatedFromTemplate = string.Empty;
+
+    [SerializeField, HideInInspector]
+    private int generationSeed;
 
 
     [Header("Table")]
@@ -26,6 +79,27 @@ public sealed class GridLevelData : ScriptableObject
     [SerializeField]
     private Vector3 tableRotationEuler =
         Vector3.zero;
+
+    [Tooltip(
+        "ON: level do identical tables par split hoga. Left grid half " +
+        "pehli table aur right half doosri table par center hogi."
+    )]
+    [SerializeField]
+    private bool useSecondTable;
+
+    [Tooltip("Dono tables ki top surfaces ke darmian world-space gap.")]
+    [SerializeField, Min(0f)]
+    private float secondTableGap = 0.65f;
+
+    [Tooltip(
+        "Two-table setup ko gameplay front (local +Z) mein shift karta " +
+        "hai, taa-ke camera framing mein dono compact nazar aayen."
+    )]
+    [SerializeField, Min(0f)]
+    private float twoTableForwardOffset = 0.8f;
+
+    [SerializeField, HideInInspector]
+    private int secondTableSplitColumn = 8;
 
 
     [Header("Grid Blocks")]
@@ -117,6 +191,26 @@ public sealed class GridLevelData : ScriptableObject
 
     public int AvailableBalls => availableBalls;
 
+    public LevelDesignOrigin DesignOrigin => designOrigin;
+
+    public LevelReviewStatus ReviewStatus => reviewStatus;
+
+    public string ArchetypeTag => archetypeTag;
+
+    public int FunRating => funRating;
+
+    public int StabilityRating => stabilityRating;
+
+    public int TestedDifficulty => testedDifficulty;
+
+    public int PlaytestAttempts => playtestAttempts;
+
+    public string PlaytestNotes => playtestNotes;
+
+    public string GeneratedFromTemplate => generatedFromTemplate;
+
+    public int GenerationSeed => generationSeed;
+
     public LevelTable TablePrefab => tablePrefab;
 
     public Vector3 TablePositionOffset =>
@@ -125,8 +219,24 @@ public sealed class GridLevelData : ScriptableObject
     public Vector3 TableRotationEuler =>
         tableRotationEuler;
 
+    public bool UseSecondTable => useSecondTable;
+
+    public float SecondTableGap => secondTableGap;
+
+    public float TwoTableForwardOffset => twoTableForwardOffset;
+
+    public int SecondTableSplitColumn =>
+        Mathf.Clamp(
+            secondTableSplitColumn,
+            1,
+            Mathf.Max(1, gridWidth - 1)
+        );
+
     public IReadOnlyList<PhysicsObjectDefinition> BlockPalette =>
         blockPalette;
+
+    public IReadOnlyList<Color> ColorPalette =>
+        colorPalette;
 
     public Vector3 CellSize =>
         cellSize;
@@ -359,6 +469,85 @@ public sealed class GridLevelData : ScriptableObject
         int newLevelNumber)
     {
         levelNumber = Mathf.Max(1, newLevelNumber);
+    }
+
+
+    public void EditorSetAvailableBalls(
+        int newAvailableBalls)
+    {
+        availableBalls = Mathf.Max(1, newAvailableBalls);
+    }
+
+
+    public void EditorMarkProcedural(
+        string templateName,
+        int seed,
+        int difficulty)
+    {
+        designOrigin = LevelDesignOrigin.ProceduralTemplate;
+        reviewStatus = LevelReviewStatus.Untested;
+        generatedFromTemplate = templateName ?? string.Empty;
+        generationSeed = seed;
+        testedDifficulty = Mathf.Clamp(difficulty, 0, 10);
+        funRating = 0;
+        stabilityRating = 0;
+        playtestAttempts = 0;
+        playtestNotes = string.Empty;
+    }
+
+
+    public void EditorPrepareManualFoundation(int newLevelNumber)
+    {
+        levelNumber = Mathf.Max(1, newLevelNumber);
+        designOrigin = LevelDesignOrigin.ManualFoundation;
+        reviewStatus = LevelReviewStatus.Untested;
+        archetypeTag = string.Empty;
+        funRating = 0;
+        stabilityRating = 0;
+        testedDifficulty = 0;
+        playtestAttempts = 0;
+        playtestNotes = string.Empty;
+        generatedFromTemplate = string.Empty;
+        generationSeed = 0;
+    }
+
+
+    public void EditorSetGridSize(
+        int newWidth,
+        int newHeight)
+    {
+        gridWidth = Mathf.Clamp(newWidth, 1, 64);
+        gridHeight = Mathf.Clamp(newHeight, 1, 64);
+        EditorEnsureGridAllocated(false);
+    }
+
+
+    public void EditorConfigureTables(
+        bool enableSecondTable,
+        int splitColumn,
+        float tableGap,
+        float forwardOffset = 0.8f)
+    {
+        useSecondTable = enableSecondTable;
+        secondTableSplitColumn =
+            Mathf.Clamp(splitColumn, 1, Mathf.Max(1, gridWidth - 1));
+        secondTableGap = Mathf.Max(0f, tableGap);
+        twoTableForwardOffset = Mathf.Max(0f, forwardOffset);
+    }
+
+
+    public void EditorSetGridOffset(Vector3 offset)
+    {
+        gridOffset = offset;
+    }
+
+
+    public void EditorSetPhysicalGaps(
+        float newHorizontalGap,
+        float newVerticalGap)
+    {
+        horizontalGap = Mathf.Max(0f, newHorizontalGap);
+        verticalGap = Mathf.Max(0f, newVerticalGap);
     }
 
     public void EditorEnsureGridAllocated(
