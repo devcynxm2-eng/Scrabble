@@ -418,20 +418,59 @@ public sealed class ProceduralLevelGeneratorWindow : EditorWindow
 
         int clusterGap = random.Next(1, 3);
 
+        int worldIndexForTable = (levelNumber - 1) / Mathf.Max(1, levelsPerWorld);
+
+        LevelTable plannedTable =
+            tablePool[worldIndexForTable % tablePool.Count];
+
+        /*
+         * The tower has to physically stand on the table. Cell counts
+         * are therefore capped by the table's own surface, measured
+         * from its collider rather than assumed - otherwise edge blocks
+         * spawn over thin air and drop the moment physics starts.
+         * Measuring (instead of hard-coding) means any table added
+         * later automatically sets its own limits.
+         */
+        GetTableCapacity(
+            plannedTable,
+            out int capacityX,
+            out int capacityZ
+        );
+
+        /*
+         * Drop clusters until the row fits, then shrink the clusters
+         * themselves; a level with fewer, well-formed structures beats
+         * one with structures sliced off at the table edge.
+         */
+        while (clusterCount > 1 &&
+               clusterCount * 3 + (clusterCount - 1) * clusterGap > capacityX)
+        {
+            clusterCount--;
+        }
+
+        int widthAvailableForClusters =
+            capacityX - (clusterCount - 1) * clusterGap;
+
+        clusterWidth = Mathf.Clamp(
+            Mathf.Min(clusterWidth, widthAvailableForClusters / Mathf.Max(1, clusterCount)),
+            3,
+            Mathf.Max(3, capacityX)
+        );
+
         int width = Mathf.Clamp(
             clusterCount * clusterWidth + (clusterCount - 1) * clusterGap,
             minGridWidth,
-            maxGridWidth
+            Mathf.Min(maxGridWidth, capacityX)
         );
 
-        float multiLayerChance = Mathf.Lerp(0.3f, 0.9f, progress);
+        /*
+         * Graduated rather than binary. The previous form picked either
+         * 1 or maxDepthLayers, so raising the setting to 3 produced 1
+         * and 3 but never 2 - the middle option was unreachable.
+         */
+        int deepestAllowed = Mathf.Min(maxDepthLayers, capacityZ);
 
-        int depthLayers =
-            random.Next(100) < Mathf.RoundToInt(multiLayerChance * 100f)
-                ? maxDepthLayers
-                : 1;
-
-        depthLayers = Mathf.Clamp(depthLayers, 1, maxDepthLayers);
+        int depthLayers = ChooseDepthLayers(deepestAllowed, progress, random);
 
         int shapesAvailable = Mathf.Clamp(
             1 + Mathf.FloorToInt(progress * (shapePool.Count - 1)),
@@ -439,8 +478,7 @@ public sealed class ProceduralLevelGeneratorWindow : EditorWindow
             shapePool.Count
         );
 
-        int worldIndex = (levelNumber - 1) / Mathf.Max(1, levelsPerWorld);
-        LevelTable table = tablePool[worldIndex % tablePool.Count];
+        LevelTable table = plannedTable;
 
         int minimumBlocks = Mathf.Max(
             10,
@@ -536,6 +574,78 @@ public sealed class ProceduralLevelGeneratorWindow : EditorWindow
 
             return (int)(hash & 0x7FFFFFFF);
         }
+    }
+
+    /// <summary>
+    /// How many grid cells fit on a table's playing surface along X
+    /// (width) and Z (depth), measured from its actual tower-surface
+    /// collider at the level's cell size.
+    /// </summary>
+    private void GetTableCapacity(
+        LevelTable table,
+        out int capacityX,
+        out int capacityZ)
+    {
+        capacityX = maxGridWidth;
+        capacityZ = maxDepthLayers;
+
+        if (table == null ||
+            table.TowerSurfaceCollider == null)
+        {
+            return;
+        }
+
+        BoxCollider surface = table.TowerSurfaceCollider;
+        Vector3 lossyScale = surface.transform.lossyScale;
+
+        float worldX = surface.size.x * Mathf.Abs(lossyScale.x);
+        float worldZ = surface.size.z * Mathf.Abs(lossyScale.z);
+
+        float stepX = Mathf.Max(0.0001f, cellSize.x);
+        float stepZ = Mathf.Max(0.0001f, cellSize.z);
+
+        capacityX = Mathf.Max(3, Mathf.FloorToInt(worldX / stepX));
+        capacityZ = Mathf.Max(1, Mathf.FloorToInt(worldZ / stepZ));
+    }
+
+    /// <summary>
+    /// Picks a depth between 1 and the deepest the table allows,
+    /// weighted so early levels stay shallow and later ones use the
+    /// full available depth. Every value in between is reachable.
+    /// </summary>
+    private static int ChooseDepthLayers(
+        int deepestAllowed,
+        float progress,
+        System.Random random)
+    {
+        deepestAllowed = Mathf.Max(1, deepestAllowed);
+
+        if (deepestAllowed == 1)
+        {
+            return 1;
+        }
+
+        float roll = (float)random.NextDouble();
+
+        /*
+         * Chance of going beyond a single layer at all, rising with
+         * progress; the extra depth beyond 2 is reserved for later
+         * levels so the back ranks arrive gradually.
+         */
+        float multiLayerChance = Mathf.Lerp(0.3f, 0.9f, progress);
+
+        if (roll > multiLayerChance)
+        {
+            return 1;
+        }
+
+        int maximumForProgress = Mathf.Clamp(
+            2 + Mathf.FloorToInt(progress * (deepestAllowed - 1)),
+            2,
+            deepestAllowed
+        );
+
+        return random.Next(2, maximumForProgress + 1);
     }
 
     /// <summary>
