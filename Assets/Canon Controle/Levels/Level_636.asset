@@ -803,7 +803,7 @@ MonoBehaviour:
         localOffset: {x: 0, y: 0, z: 0}
       - occupied: 1
         color: {r: 0.05, g: 0.8, b: 0.52, a: 1}
-        definitionIndex: 0
+        definitionIndex: 1
         spanX: 1
         spanY: 1
         spanZ: 1

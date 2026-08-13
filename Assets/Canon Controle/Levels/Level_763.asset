@@ -22,8 +22,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 692378ae6e9fc314c9bcf964a4f199ac, type: 2}
   - {fileID: 11400000, guid: 0b652a129a53c9946a0ea421e8463d3f, type: 2}
   cellSize: {x: 0.2, y: 0.2, z: 0.2}
-  gridWidth: 13
-  gridHeight: 8
+  gridWidth: 7
+  gridHeight: 12
   gridDepth: 2
   mirrorPaintAcrossLayers: 0
   gridOffset: {x: 0, y: 0, z: 0}
@@ -42,7 +42,7 @@ MonoBehaviour:
     - cells:
       - occupied: 1
         color: {r: 1, g: 0.2, b: 0.3, a: 1}
-        definitionIndex: 2
+        definitionIndex: 1
         spanX: 1
         spanY: 1
         spanZ: 1
@@ -68,46 +68,7 @@ MonoBehaviour:
         localOffset: {x: 0, y: 0, z: 0}
       - occupied: 1
         color: {r: 1, g: 0.2, b: 0.3, a: 1}
-        definitionIndex: 2
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 1
-        color: {r: 1, g: 0.2, b: 0.3, a: 1}
-        definitionIndex: 2
+        definitionIndex: 1
         spanX: 1
         spanY: 1
         spanZ: 1
@@ -133,46 +94,7 @@ MonoBehaviour:
         localOffset: {x: 0, y: 0, z: 0}
       - occupied: 1
         color: {r: 1, g: 0.2, b: 0.3, a: 1}
-        definitionIndex: 2
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 1
-        color: {r: 1, g: 0.2, b: 0.3, a: 1}
-        definitionIndex: 2
+        definitionIndex: 1
         spanX: 1
         spanY: 1
         spanZ: 1
@@ -198,7 +120,7 @@ MonoBehaviour:
         localOffset: {x: 0, y: 0, z: 0}
       - occupied: 1
         color: {r: 1, g: 0.2, b: 0.3, a: 1}
-        definitionIndex: 2
+        definitionIndex: 1
         spanX: 1
         spanY: 1
         spanZ: 1
@@ -212,7 +134,7 @@ MonoBehaviour:
     - cells:
       - occupied: 1
         color: {r: 1, g: 0.2, b: 0.3, a: 1}
-        definitionIndex: 2
+        definitionIndex: 1
         spanX: 1
         spanY: 1
         spanZ: 1
@@ -238,46 +160,7 @@ MonoBehaviour:
         localOffset: {x: 0, y: 0, z: 0}
       - occupied: 1
         color: {r: 1, g: 0.2, b: 0.3, a: 1}
-        definitionIndex: 2
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 1
-        color: {r: 1, g: 0.2, b: 0.3, a: 1}
-        definitionIndex: 2
+        definitionIndex: 1
         spanX: 1
         spanY: 1
         spanZ: 1
@@ -303,20 +186,7 @@ MonoBehaviour:
         localOffset: {x: 0, y: 0, z: 0}
       - occupied: 1
         color: {r: 1, g: 0.2, b: 0.3, a: 1}
-        definitionIndex: 2
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
+        definitionIndex: 1
         spanX: 1
         spanY: 1
         spanZ: 1
@@ -342,33 +212,7 @@ MonoBehaviour:
         localOffset: {x: 0, y: 0, z: 0}
       - occupied: 1
         color: {r: 1, g: 0.2, b: 0.3, a: 1}
-        definitionIndex: 2
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
+        definitionIndex: 1
         spanX: 1
         spanY: 1
         spanZ: 1
@@ -382,7 +226,7 @@ MonoBehaviour:
     - cells:
       - occupied: 1
         color: {r: 1, g: 0.2, b: 0.3, a: 1}
-        definitionIndex: 2
+        definitionIndex: 1
         spanX: 1
         spanY: 1
         spanZ: 1
@@ -408,46 +252,7 @@ MonoBehaviour:
         localOffset: {x: 0, y: 0, z: 0}
       - occupied: 1
         color: {r: 1, g: 0.2, b: 0.3, a: 1}
-        definitionIndex: 2
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 1
-        color: {r: 1, g: 0.2, b: 0.3, a: 1}
-        definitionIndex: 2
+        definitionIndex: 1
         spanX: 1
         spanY: 1
         spanZ: 1
@@ -472,35 +277,9 @@ MonoBehaviour:
         customZRotation: 0
         localOffset: {x: 0, y: 0, z: 0}
       - occupied: 1
-        color: {r: 1, g: 0.2, b: 0.3, a: 1}
+        color: {r: 0.1, g: 0.58, b: 1, a: 1}
         definitionIndex: 2
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
+        spanX: 3
         spanY: 1
         spanZ: 1
         isCovered: 0
@@ -511,41 +290,28 @@ MonoBehaviour:
         customZRotation: 0
         localOffset: {x: 0, y: 0, z: 0}
       - occupied: 1
-        color: {r: 1, g: 0.2, b: 0.3, a: 1}
+        color: {r: 0.1, g: 0.58, b: 1, a: 1}
         definitionIndex: 2
         spanX: 1
         spanY: 1
         spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
+        isCovered: 1
+        anchorX: 4
+        anchorY: 2
+        anchorZ: 0
         orientation: 0
         customZRotation: 0
         localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
+      - occupied: 1
+        color: {r: 0.1, g: 0.58, b: 1, a: 1}
+        definitionIndex: 2
         spanX: 1
         spanY: 1
         spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
+        isCovered: 1
+        anchorX: 4
+        anchorY: 2
+        anchorZ: 0
         orientation: 0
         customZRotation: 0
         localOffset: {x: 0, y: 0, z: 0}
@@ -641,88 +407,10 @@ MonoBehaviour:
         orientation: 0
         customZRotation: 0
         localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 1
-        color: {r: 0.1, g: 0.58, b: 1, a: 1}
-        definitionIndex: 2
-        spanX: 4
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 1
-        color: {r: 0.1, g: 0.58, b: 1, a: 1}
-        definitionIndex: 2
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 1
-        anchorX: 7
-        anchorY: 3
-        anchorZ: 0
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 1
-        color: {r: 0.1, g: 0.58, b: 1, a: 1}
-        definitionIndex: 2
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 1
-        anchorX: 7
-        anchorY: 3
-        anchorZ: 0
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 1
-        color: {r: 0.1, g: 0.58, b: 1, a: 1}
-        definitionIndex: 2
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 1
-        anchorX: 7
-        anchorY: 3
-        anchorZ: 0
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
     - cells:
       - occupied: 1
         color: {r: 1, g: 0.2, b: 0.3, a: 1}
-        definitionIndex: 2
+        definitionIndex: 1
         spanX: 1
         spanY: 1
         spanZ: 1
@@ -748,85 +436,7 @@ MonoBehaviour:
         localOffset: {x: 0, y: 0, z: 0}
       - occupied: 1
         color: {r: 1, g: 0.2, b: 0.3, a: 1}
-        definitionIndex: 2
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
+        definitionIndex: 1
         spanX: 1
         spanY: 1
         spanZ: 1
@@ -892,7 +502,7 @@ MonoBehaviour:
     - cells:
       - occupied: 1
         color: {r: 1, g: 0.2, b: 0.3, a: 1}
-        definitionIndex: 2
+        definitionIndex: 1
         spanX: 1
         spanY: 1
         spanZ: 1
@@ -918,85 +528,7 @@ MonoBehaviour:
         localOffset: {x: 0, y: 0, z: 0}
       - occupied: 1
         color: {r: 1, g: 0.2, b: 0.3, a: 1}
-        definitionIndex: 2
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
+        definitionIndex: 1
         spanX: 1
         spanY: 1
         spanZ: 1
@@ -1062,7 +594,7 @@ MonoBehaviour:
     - cells:
       - occupied: 1
         color: {r: 1, g: 0.2, b: 0.3, a: 1}
-        definitionIndex: 2
+        definitionIndex: 1
         spanX: 1
         spanY: 1
         spanZ: 1
@@ -1088,85 +620,7 @@ MonoBehaviour:
         localOffset: {x: 0, y: 0, z: 0}
       - occupied: 1
         color: {r: 1, g: 0.2, b: 0.3, a: 1}
-        definitionIndex: 2
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
+        definitionIndex: 1
         spanX: 1
         spanY: 1
         spanZ: 1
@@ -1308,6 +762,296 @@ MonoBehaviour:
         orientation: 0
         customZRotation: 0
         localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+    - cells:
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+    - cells:
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+    - cells:
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+    - cells:
       - occupied: 0
         color: {r: 1, g: 1, b: 1, a: 1}
         definitionIndex: 0
@@ -1401,9 +1145,9 @@ MonoBehaviour:
         localOffset: {x: 0, y: 0, z: 0}
   - rows:
     - cells:
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
+      - occupied: 1
+        color: {r: 1, g: 0.2, b: 0.3, a: 1}
+        definitionIndex: 1
         spanX: 1
         spanY: 1
         spanZ: 1
@@ -1429,46 +1173,7 @@ MonoBehaviour:
         localOffset: {x: 0, y: 0, z: 0}
       - occupied: 1
         color: {r: 1, g: 0.2, b: 0.3, a: 1}
-        definitionIndex: 2
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 1
-        color: {r: 1, g: 0.2, b: 0.3, a: 1}
-        definitionIndex: 2
+        definitionIndex: 1
         spanX: 1
         spanY: 1
         spanZ: 1
@@ -1494,33 +1199,7 @@ MonoBehaviour:
         localOffset: {x: 0, y: 0, z: 0}
       - occupied: 1
         color: {r: 1, g: 0.2, b: 0.3, a: 1}
-        definitionIndex: 2
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 1
-        color: {r: 1, g: 0.2, b: 0.3, a: 1}
-        definitionIndex: 2
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
+        definitionIndex: 1
         spanX: 1
         spanY: 1
         spanZ: 1
@@ -1546,20 +1225,7 @@ MonoBehaviour:
         localOffset: {x: 0, y: 0, z: 0}
       - occupied: 1
         color: {r: 1, g: 0.2, b: 0.3, a: 1}
-        definitionIndex: 2
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 1
-        color: {r: 1, g: 0.2, b: 0.3, a: 1}
-        definitionIndex: 2
+        definitionIndex: 1
         spanX: 1
         spanY: 1
         spanZ: 1
@@ -1571,9 +1237,9 @@ MonoBehaviour:
         customZRotation: 0
         localOffset: {x: 0, y: 0, z: 0}
     - cells:
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
+      - occupied: 1
+        color: {r: 1, g: 0.2, b: 0.3, a: 1}
+        definitionIndex: 1
         spanX: 1
         spanY: 1
         spanZ: 1
@@ -1599,7 +1265,7 @@ MonoBehaviour:
         localOffset: {x: 0, y: 0, z: 0}
       - occupied: 1
         color: {r: 1, g: 0.2, b: 0.3, a: 1}
-        definitionIndex: 2
+        definitionIndex: 1
         spanX: 1
         spanY: 1
         spanZ: 1
@@ -1613,58 +1279,6 @@ MonoBehaviour:
       - occupied: 0
         color: {r: 1, g: 1, b: 1, a: 1}
         definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 1
-        color: {r: 1, g: 0.2, b: 0.3, a: 1}
-        definitionIndex: 2
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 1
-        color: {r: 1, g: 0.2, b: 0.3, a: 1}
-        definitionIndex: 2
         spanX: 1
         spanY: 1
         spanZ: 1
@@ -1678,7 +1292,7 @@ MonoBehaviour:
       - occupied: 1
         color: {r: 0.1, g: 0.58, b: 1, a: 1}
         definitionIndex: 2
-        spanX: 4
+        spanX: 3
         spanY: 1
         spanZ: 1
         isCovered: 0
@@ -1695,7 +1309,7 @@ MonoBehaviour:
         spanY: 1
         spanZ: 1
         isCovered: 1
-        anchorX: 8
+        anchorX: 4
         anchorY: 1
         anchorZ: 1
         orientation: 0
@@ -1708,28 +1322,94 @@ MonoBehaviour:
         spanY: 1
         spanZ: 1
         isCovered: 1
-        anchorX: 8
+        anchorX: 4
         anchorY: 1
         anchorZ: 1
         orientation: 0
         customZRotation: 0
         localOffset: {x: 0, y: 0, z: 0}
+    - cells:
       - occupied: 1
-        color: {r: 0.1, g: 0.58, b: 1, a: 1}
-        definitionIndex: 2
+        color: {r: 1, g: 0.2, b: 0.3, a: 1}
+        definitionIndex: 1
         spanX: 1
         spanY: 1
         spanZ: 1
-        isCovered: 1
-        anchorX: 8
-        anchorY: 1
-        anchorZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
         orientation: 0
         customZRotation: 0
         localOffset: {x: 0, y: 0, z: 0}
       - occupied: 1
         color: {r: 1, g: 0.2, b: 0.3, a: 1}
-        definitionIndex: 2
+        definitionIndex: 1
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 1
+        color: {r: 1, g: 0.2, b: 0.3, a: 1}
+        definitionIndex: 1
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 1
+        color: {r: 1, g: 0.2, b: 0.3, a: 1}
+        definitionIndex: 1
         spanX: 1
         spanY: 1
         spanZ: 1
@@ -1741,87 +1421,9 @@ MonoBehaviour:
         customZRotation: 0
         localOffset: {x: 0, y: 0, z: 0}
     - cells:
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
       - occupied: 1
-        color: {r: 0.1, g: 0.58, b: 1, a: 1}
-        definitionIndex: 2
-        spanX: 4
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 1
-        color: {r: 0.1, g: 0.58, b: 1, a: 1}
-        definitionIndex: 2
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 1
-        anchorX: 2
-        anchorY: 2
-        anchorZ: 1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 1
-        color: {r: 0.1, g: 0.58, b: 1, a: 1}
-        definitionIndex: 2
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 1
-        anchorX: 2
-        anchorY: 2
-        anchorZ: 1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 1
-        color: {r: 0.1, g: 0.58, b: 1, a: 1}
-        definitionIndex: 2
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 1
-        anchorX: 2
-        anchorY: 2
-        anchorZ: 1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
+        color: {r: 1, g: 0.2, b: 0.3, a: 1}
+        definitionIndex: 1
         spanX: 1
         spanY: 1
         spanZ: 1
@@ -1847,151 +1449,7 @@ MonoBehaviour:
         localOffset: {x: 0, y: 0, z: 0}
       - occupied: 1
         color: {r: 1, g: 0.2, b: 0.3, a: 1}
-        definitionIndex: 2
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 1
-        color: {r: 1, g: 0.2, b: 0.3, a: 1}
-        definitionIndex: 2
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-    - cells:
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
+        definitionIndex: 1
         spanX: 1
         spanY: 1
         spanZ: 1
@@ -2018,7 +1476,7 @@ MonoBehaviour:
       - occupied: 1
         color: {r: 0.1, g: 0.58, b: 1, a: 1}
         definitionIndex: 2
-        spanX: 4
+        spanX: 3
         spanY: 1
         spanZ: 1
         isCovered: 0
@@ -2035,7 +1493,7 @@ MonoBehaviour:
         spanY: 1
         spanZ: 1
         isCovered: 1
-        anchorX: 8
+        anchorX: 4
         anchorY: 3
         anchorZ: 1
         orientation: 0
@@ -2048,120 +1506,16 @@ MonoBehaviour:
         spanY: 1
         spanZ: 1
         isCovered: 1
-        anchorX: 8
+        anchorX: 4
         anchorY: 3
         anchorZ: 1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 1
-        color: {r: 0.1, g: 0.58, b: 1, a: 1}
-        definitionIndex: 2
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 1
-        anchorX: 8
-        anchorY: 3
-        anchorZ: 1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
         orientation: 0
         customZRotation: 0
         localOffset: {x: 0, y: 0, z: 0}
     - cells:
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
+      - occupied: 1
+        color: {r: 1, g: 0.2, b: 0.3, a: 1}
+        definitionIndex: 1
         spanX: 1
         spanY: 1
         spanZ: 1
@@ -2187,20 +1541,7 @@ MonoBehaviour:
         localOffset: {x: 0, y: 0, z: 0}
       - occupied: 1
         color: {r: 1, g: 0.2, b: 0.3, a: 1}
-        definitionIndex: 2
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
+        definitionIndex: 1
         spanX: 1
         spanY: 1
         spanZ: 1
@@ -2226,112 +1567,7 @@ MonoBehaviour:
         localOffset: {x: 0, y: 0, z: 0}
       - occupied: 1
         color: {r: 1, g: 0.2, b: 0.3, a: 1}
-        definitionIndex: 2
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-    - cells:
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
+        definitionIndex: 1
         spanX: 1
         spanY: 1
         spanZ: 1
@@ -2356,9 +1592,23 @@ MonoBehaviour:
         customZRotation: 0
         localOffset: {x: 0, y: 0, z: 0}
       - occupied: 1
+        color: {r: 1, g: 0.2, b: 0.3, a: 1}
+        definitionIndex: 1
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+    - cells:
+      - occupied: 1
         color: {r: 0.1, g: 0.58, b: 1, a: 1}
         definitionIndex: 2
-        spanX: 4
+        spanX: 3
         spanY: 1
         spanZ: 1
         isCovered: 0
@@ -2375,7 +1625,7 @@ MonoBehaviour:
         spanY: 1
         spanZ: 1
         isCovered: 1
-        anchorX: 8
+        anchorX: 0
         anchorY: 5
         anchorZ: 1
         orientation: 0
@@ -2388,20 +1638,7 @@ MonoBehaviour:
         spanY: 1
         spanZ: 1
         isCovered: 1
-        anchorX: 8
-        anchorY: 5
-        anchorZ: 1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 1
-        color: {r: 0.1, g: 0.58, b: 1, a: 1}
-        definitionIndex: 2
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 1
-        anchorX: 8
+        anchorX: 0
         anchorY: 5
         anchorZ: 1
         orientation: 0
@@ -2420,298 +1657,10 @@ MonoBehaviour:
         orientation: 0
         customZRotation: 0
         localOffset: {x: 0, y: 0, z: 0}
-    - cells:
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 1
-        color: {r: 1, g: 0.2, b: 0.3, a: 1}
-        definitionIndex: 2
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 1
-        color: {r: 1, g: 0.2, b: 0.3, a: 1}
-        definitionIndex: 2
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-    - cells:
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
       - occupied: 1
         color: {r: 0.1, g: 0.58, b: 1, a: 1}
         definitionIndex: 2
-        spanX: 2
+        spanX: 3
         spanY: 1
         spanZ: 1
         isCovered: 0
@@ -2728,9 +1677,548 @@ MonoBehaviour:
         spanY: 1
         spanZ: 1
         isCovered: 1
-        anchorX: 9
-        anchorY: 7
+        anchorX: 4
+        anchorY: 5
         anchorZ: 1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 1
+        color: {r: 0.1, g: 0.58, b: 1, a: 1}
+        definitionIndex: 2
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 1
+        anchorX: 4
+        anchorY: 5
+        anchorZ: 1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+    - cells:
+      - occupied: 1
+        color: {r: 1, g: 0.2, b: 0.3, a: 1}
+        definitionIndex: 1
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 1
+        color: {r: 1, g: 0.2, b: 0.3, a: 1}
+        definitionIndex: 1
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+    - cells:
+      - occupied: 1
+        color: {r: 1, g: 0.2, b: 0.3, a: 1}
+        definitionIndex: 1
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 1
+        color: {r: 1, g: 0.2, b: 0.3, a: 1}
+        definitionIndex: 1
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+    - cells:
+      - occupied: 1
+        color: {r: 1, g: 0.2, b: 0.3, a: 1}
+        definitionIndex: 1
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 1
+        color: {r: 1, g: 0.2, b: 0.3, a: 1}
+        definitionIndex: 1
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+    - cells:
+      - occupied: 1
+        color: {r: 1, g: 0.2, b: 0.3, a: 1}
+        definitionIndex: 1
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 1
+        color: {r: 1, g: 0.2, b: 0.3, a: 1}
+        definitionIndex: 1
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+    - cells:
+      - occupied: 1
+        color: {r: 1, g: 0.2, b: 0.3, a: 1}
+        definitionIndex: 1
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 1
+        color: {r: 1, g: 0.2, b: 0.3, a: 1}
+        definitionIndex: 1
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+    - cells:
+      - occupied: 1
+        color: {r: 0.1, g: 0.58, b: 1, a: 1}
+        definitionIndex: 2
+        spanX: 3
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 1
+        color: {r: 0.1, g: 0.58, b: 1, a: 1}
+        definitionIndex: 2
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 1
+        anchorX: 0
+        anchorY: 11
+        anchorZ: 1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 1
+        color: {r: 0.1, g: 0.58, b: 1, a: 1}
+        definitionIndex: 2
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 1
+        anchorX: 0
+        anchorY: 11
+        anchorZ: 1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+      - occupied: 0
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
         orientation: 0
         customZRotation: 0
         localOffset: {x: 0, y: 0, z: 0}
@@ -2762,4 +2250,4 @@ MonoBehaviour:
         localOffset: {x: 0, y: 0, z: 0}
   occupiedCellCount: 66
   occupiedMin: {x: 0, y: 0, z: 0}
-  occupiedMax: {x: 12, y: 7, z: 1}
+  occupiedMax: {x: 6, y: 11, z: 1}

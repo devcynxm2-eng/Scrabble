@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Level_007
   m_EditorClassIdentifier: Assembly-CSharp::GridLevelData
   levelNumber: 7
-  availableBalls: 11
+  availableBalls: 10
   tablePrefab: {fileID: 3767945316376700881, guid: b7b94326cb608794c97210e1c40ec165, type: 3}
   tablePositionOffset: {x: 0, y: 0, z: 0}
   tableRotationEuler: {x: 0, y: 0, z: 0}

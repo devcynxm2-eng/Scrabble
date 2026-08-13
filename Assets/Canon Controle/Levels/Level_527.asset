@@ -41,7 +41,7 @@ MonoBehaviour:
     - cells:
       - occupied: 1
         color: {r: 1, g: 0.42, b: 0.1, a: 1}
-        definitionIndex: 1
+        definitionIndex: 0
         spanX: 5
         spanY: 1
         spanZ: 1
@@ -54,7 +54,7 @@ MonoBehaviour:
         localOffset: {x: 0, y: 0, z: 0}
       - occupied: 1
         color: {r: 1, g: 0.42, b: 0.1, a: 1}
-        definitionIndex: 1
+        definitionIndex: 0
         spanX: 1
         spanY: 1
         spanZ: 1
@@ -67,7 +67,7 @@ MonoBehaviour:
         localOffset: {x: 0, y: 0, z: 0}
       - occupied: 1
         color: {r: 1, g: 0.42, b: 0.1, a: 1}
-        definitionIndex: 1
+        definitionIndex: 0
         spanX: 1
         spanY: 1
         spanZ: 1
@@ -80,7 +80,7 @@ MonoBehaviour:
         localOffset: {x: 0, y: 0, z: 0}
       - occupied: 1
         color: {r: 1, g: 0.42, b: 0.1, a: 1}
-        definitionIndex: 1
+        definitionIndex: 0
         spanX: 1
         spanY: 1
         spanZ: 1
@@ -93,7 +93,7 @@ MonoBehaviour:
         localOffset: {x: 0, y: 0, z: 0}
       - occupied: 1
         color: {r: 1, g: 0.42, b: 0.1, a: 1}
-        definitionIndex: 1
+        definitionIndex: 0
         spanX: 1
         spanY: 1
         spanZ: 1
@@ -278,7 +278,7 @@ MonoBehaviour:
     - cells:
       - occupied: 1
         color: {r: 1, g: 0.42, b: 0.1, a: 1}
-        definitionIndex: 1
+        definitionIndex: 0
         spanX: 5
         spanY: 1
         spanZ: 1
@@ -291,7 +291,7 @@ MonoBehaviour:
         localOffset: {x: 0, y: 0, z: 0}
       - occupied: 1
         color: {r: 1, g: 0.42, b: 0.1, a: 1}
-        definitionIndex: 1
+        definitionIndex: 0
         spanX: 1
         spanY: 1
         spanZ: 1
@@ -304,7 +304,7 @@ MonoBehaviour:
         localOffset: {x: 0, y: 0, z: 0}
       - occupied: 1
         color: {r: 1, g: 0.42, b: 0.1, a: 1}
-        definitionIndex: 1
+        definitionIndex: 0
         spanX: 1
         spanY: 1
         spanZ: 1
@@ -317,7 +317,7 @@ MonoBehaviour:
         localOffset: {x: 0, y: 0, z: 0}
       - occupied: 1
         color: {r: 1, g: 0.42, b: 0.1, a: 1}
-        definitionIndex: 1
+        definitionIndex: 0
         spanX: 1
         spanY: 1
         spanZ: 1
@@ -330,7 +330,7 @@ MonoBehaviour:
         localOffset: {x: 0, y: 0, z: 0}
       - occupied: 1
         color: {r: 1, g: 0.42, b: 0.1, a: 1}
-        definitionIndex: 1
+        definitionIndex: 0
         spanX: 1
         spanY: 1
         spanZ: 1
@@ -515,7 +515,7 @@ MonoBehaviour:
     - cells:
       - occupied: 1
         color: {r: 1, g: 0.42, b: 0.1, a: 1}
-        definitionIndex: 1
+        definitionIndex: 0
         spanX: 5
         spanY: 1
         spanZ: 1
@@ -528,7 +528,7 @@ MonoBehaviour:
         localOffset: {x: 0, y: 0, z: 0}
       - occupied: 1
         color: {r: 1, g: 0.42, b: 0.1, a: 1}
-        definitionIndex: 1
+        definitionIndex: 0
         spanX: 1
         spanY: 1
         spanZ: 1
@@ -541,7 +541,7 @@ MonoBehaviour:
         localOffset: {x: 0, y: 0, z: 0}
       - occupied: 1
         color: {r: 1, g: 0.42, b: 0.1, a: 1}
-        definitionIndex: 1
+        definitionIndex: 0
         spanX: 1
         spanY: 1
         spanZ: 1
@@ -554,7 +554,7 @@ MonoBehaviour:
         localOffset: {x: 0, y: 0, z: 0}
       - occupied: 1
         color: {r: 1, g: 0.42, b: 0.1, a: 1}
-        definitionIndex: 1
+        definitionIndex: 0
         spanX: 1
         spanY: 1
         spanZ: 1
@@ -567,7 +567,7 @@ MonoBehaviour:
         localOffset: {x: 0, y: 0, z: 0}
       - occupied: 1
         color: {r: 1, g: 0.42, b: 0.1, a: 1}
-        definitionIndex: 1
+        definitionIndex: 0
         spanX: 1
         spanY: 1
         spanZ: 1
@@ -1148,7 +1148,7 @@ MonoBehaviour:
     - cells:
       - occupied: 1
         color: {r: 1, g: 0.42, b: 0.1, a: 1}
-        definitionIndex: 1
+        definitionIndex: 0
         spanX: 5
         spanY: 1
         spanZ: 1
@@ -1161,7 +1161,7 @@ MonoBehaviour:
         localOffset: {x: 0, y: 0, z: 0}
       - occupied: 1
         color: {r: 1, g: 0.42, b: 0.1, a: 1}
-        definitionIndex: 1
+        definitionIndex: 0
         spanX: 1
         spanY: 1
         spanZ: 1
@@ -1174,7 +1174,7 @@ MonoBehaviour:
         localOffset: {x: 0, y: 0, z: 0}
       - occupied: 1
         color: {r: 1, g: 0.42, b: 0.1, a: 1}
-        definitionIndex: 1
+        definitionIndex: 0
         spanX: 1
         spanY: 1
         spanZ: 1
@@ -1187,7 +1187,7 @@ MonoBehaviour:
         localOffset: {x: 0, y: 0, z: 0}
       - occupied: 1
         color: {r: 1, g: 0.42, b: 0.1, a: 1}
-        definitionIndex: 1
+        definitionIndex: 0
         spanX: 1
         spanY: 1
         spanZ: 1
@@ -1200,7 +1200,7 @@ MonoBehaviour:
         localOffset: {x: 0, y: 0, z: 0}
       - occupied: 1
         color: {r: 1, g: 0.42, b: 0.1, a: 1}
-        definitionIndex: 1
+        definitionIndex: 0
         spanX: 1
         spanY: 1
         spanZ: 1
@@ -1411,7 +1411,7 @@ MonoBehaviour:
         localOffset: {x: 0, y: 0, z: 0}
       - occupied: 1
         color: {r: 1, g: 0.42, b: 0.1, a: 1}
-        definitionIndex: 1
+        definitionIndex: 0
         spanX: 2
         spanY: 1
         spanZ: 1
@@ -1424,7 +1424,7 @@ MonoBehaviour:
         localOffset: {x: 0, y: 0, z: 0}
       - occupied: 1
         color: {r: 1, g: 0.42, b: 0.1, a: 1}
-        definitionIndex: 1
+        definitionIndex: 0
         spanX: 1
         spanY: 1
         spanZ: 1
@@ -1648,7 +1648,7 @@ MonoBehaviour:
         localOffset: {x: 0, y: 0, z: 0}
       - occupied: 1
         color: {r: 1, g: 0.42, b: 0.1, a: 1}
-        definitionIndex: 1
+        definitionIndex: 0
         spanX: 2
         spanY: 1
         spanZ: 1
@@ -1661,7 +1661,7 @@ MonoBehaviour:
         localOffset: {x: 0, y: 0, z: 0}
       - occupied: 1
         color: {r: 1, g: 0.42, b: 0.1, a: 1}
-        definitionIndex: 1
+        definitionIndex: 0
         spanX: 1
         spanY: 1
         spanZ: 1
@@ -1885,7 +1885,7 @@ MonoBehaviour:
         localOffset: {x: 0, y: 0, z: 0}
       - occupied: 1
         color: {r: 1, g: 0.42, b: 0.1, a: 1}
-        definitionIndex: 1
+        definitionIndex: 0
         spanX: 2
         spanY: 1
         spanZ: 1
@@ -1898,7 +1898,7 @@ MonoBehaviour:
         localOffset: {x: 0, y: 0, z: 0}
       - occupied: 1
         color: {r: 1, g: 0.42, b: 0.1, a: 1}
-        definitionIndex: 1
+        definitionIndex: 0
         spanX: 1
         spanY: 1
         spanZ: 1
