@@ -14,13 +14,22 @@ public sealed class GridLevelDataEditor : Editor
     private const string LivePreviewSessionKey =
         "RoyalSmash.LiveWorkingLevelPreview";
 
+    private const string LivePreviewLaunchSessionKey =
+        "RoyalSmash.LiveWorkingLevelPreviewLaunch";
+
     private static bool livePreviewRefreshQueued;
 
     private int paintLayerZ;
+    private int paintTableIndex;
     private int paintTierY;
     private Color paintColor = Color.white;
     private int paintDefinitionIndex;
     private bool eraseMode;
+    private bool editPlacedBlockMode;
+    private Vector3Int selectedCellCoordinate =
+        new Vector3Int(-1, -1, -1);
+    private int selectedBlockTableIndex;
+    private string blockMoveFeedback = string.Empty;
 
     private PhysicsTowerObject prefabShapeToAdd;
 
@@ -65,6 +74,18 @@ public sealed class GridLevelDataEditor : Editor
     {
         GridLevelData levelData =
             (GridLevelData)target;
+
+        if (levelData.EditorMigrateLegacyTable())
+        {
+            serializedObject.Update();
+            EditorUtility.SetDirty(levelData);
+        }
+
+        if (levelData.EditorMigrateSharedGridTableAssignments())
+        {
+            serializedObject.Update();
+            EditorUtility.SetDirty(levelData);
+        }
 
         EditorGUI.BeginChangeCheck();
 
@@ -128,6 +149,11 @@ public sealed class GridLevelDataEditor : Editor
                     true
                 );
 
+                SessionState.SetBool(
+                    LivePreviewLaunchSessionKey,
+                    true
+                );
+
                 /*
                  * Working canvas disk par sync hota hai taa-ke Play Mode
                  * domain reload exact current design read kare. Central
@@ -169,6 +195,11 @@ public sealed class GridLevelDataEditor : Editor
                 {
                     SessionState.SetBool(
                         LivePreviewSessionKey,
+                        false
+                    );
+
+                    SessionState.SetBool(
+                        LivePreviewLaunchSessionKey,
                         false
                     );
 
@@ -228,6 +259,29 @@ public sealed class GridLevelDataEditor : Editor
             }
         };
     }
+
+
+    private static void NotifyLevelDesignChanged(
+        GridLevelData levelData)
+    {
+        if (levelData == null)
+        {
+            return;
+        }
+
+        EditorUtility.SetDirty(levelData);
+
+        if (Application.isPlaying &&
+            SessionState.GetBool(
+                LivePreviewSessionKey,
+                false
+            ))
+        {
+            QueueLiveGamePreviewRefresh(levelData);
+        }
+    }
+
+
 
 
     private void DrawLevelCreatorSection(
@@ -520,8 +574,10 @@ public sealed class GridLevelDataEditor : Editor
 
         DrawDepthLayerSetup(levelData);
 
+        DrawTableTargetPicker(levelData);
+
         if (GUILayout.Button(
-                $"Allocate / Resize Grid To " +
+                $"Allocate / Resize ALL TABLE GRIDS To " +
                 $"{levelData.GridWidth} x " +
                 $"{levelData.GridHeight} x " +
                 $"{levelData.GridDepth}"))
@@ -531,7 +587,18 @@ public sealed class GridLevelDataEditor : Editor
                 "Resize Grid Level"
             );
 
-            levelData.EditorEnsureGridAllocated(true);
+            int tableGridCount =
+                Mathf.Max(1, levelData.TableCount);
+
+            for (int tableIndex = 0;
+                 tableIndex < tableGridCount;
+                 tableIndex++)
+            {
+                levelData.EditorEnsureGridAllocated(
+                    tableIndex,
+                    true
+                );
+            }
 
             EditorUtility.SetDirty(levelData);
         }
@@ -552,7 +619,8 @@ public sealed class GridLevelDataEditor : Editor
             return;
         }
 
-        if (!levelData.IsGridAllocated)
+        if (!levelData.IsGridAllocatedForTable(
+                paintTableIndex))
         {
             EditorGUILayout.HelpBox(
                 "Pehle grid allocate karein taake paint kar sakein.",
@@ -678,7 +746,8 @@ public sealed class GridLevelDataEditor : Editor
         }
 
         if (levelData.GridDepth > 1 &&
-            levelData.IsGridAllocated &&
+            levelData.IsGridAllocatedForTable(
+                paintTableIndex) &&
             GUILayout.Button(
                 $"COPY LAYER {paintLayerZ + 1} TO ALL LAYERS"))
         {
@@ -688,7 +757,8 @@ public sealed class GridLevelDataEditor : Editor
             );
 
             levelData.EditorCopyDepthLayerToAll(
-                paintLayerZ
+                paintLayerZ,
+                paintTableIndex
             );
 
             EditorUtility.SetDirty(levelData);
@@ -698,6 +768,114 @@ public sealed class GridLevelDataEditor : Editor
             levelData.MirrorPaintAcrossLayers
                 ? $"Mirror ON: ek layer par banaya design sab layers par show hoga. Current layer gap: {levelData.DepthGap:0.###}."
                 : $"Mirror OFF: Layer buttons se har layer separately edit hogi. Current layer gap: {levelData.DepthGap:0.###}.",
+            MessageType.Info
+        );
+    }
+
+
+    private void DrawTableTargetPicker(
+        GridLevelData levelData)
+    {
+        int tableCount =
+            Mathf.Max(1, levelData.TableCount);
+
+        string[] tableLabels =
+            new string[tableCount];
+
+        for (int index = 0;
+             index < tableLabels.Length;
+             index++)
+        {
+            LevelTable table =
+                levelData.GetTablePrefab(index);
+
+            tableLabels[index] =
+                $"Table {index + 1}: " +
+                $"{(table != null ? table.name : "Missing Prefab")}" +
+                (index == 0 ? " (PRIMARY)" : string.Empty);
+        }
+
+        paintTableIndex =
+            Mathf.Clamp(
+                paintTableIndex,
+                0,
+                tableLabels.Length - 1
+            );
+
+        int requestedTableIndex =
+            EditorGUILayout.Popup(
+                new GUIContent(
+                    "Current Block Table",
+                    "Ab jo blocks paint honge woh selected table ki top surface par spawn honge."
+                ),
+                paintTableIndex,
+                tableLabels
+            );
+
+        if (requestedTableIndex != paintTableIndex)
+        {
+            paintTableIndex = requestedTableIndex;
+            selectedCellCoordinate =
+                new Vector3Int(-1, -1, -1);
+            blockMoveFeedback = string.Empty;
+        }
+
+        if (!levelData.IsGridAllocatedForTable(
+                paintTableIndex))
+        {
+            Undo.RecordObject(
+                levelData,
+                $"Create Table {paintTableIndex + 1} Grid"
+            );
+
+            levelData.EditorEnsureGridAllocated(
+                paintTableIndex,
+                false
+            );
+
+            EditorUtility.SetDirty(levelData);
+        }
+
+        Vector3 tablePosition =
+            levelData.GetTablePositionOffset(
+                paintTableIndex
+            );
+
+        Vector3 tableRotation =
+            levelData.GetTableRotationEuler(
+                paintTableIndex
+            );
+
+        string runtimeRotation =
+            levelData.IsTableRuntimeRotationEnabled(
+                paintTableIndex)
+                ? $"ON ({levelData.GetTableRuntimeRotationSpeed(paintTableIndex):0.###} deg/s around " +
+                  $"{levelData.GetTableRuntimeRotationAxis(paintTableIndex)})"
+                : "OFF";
+
+        string runtimeMovement =
+            levelData.IsTableRuntimeHorizontalMovementEnabled(
+                paintTableIndex)
+                ? $"ON ({levelData.GetTableRuntimeMovementDistance(paintTableIndex):0.###} distance, " +
+                  $"{levelData.GetTableRuntimeMovementSpeed(paintTableIndex):0.###} cycles/s along " +
+                  $"{levelData.GetTableRuntimeMovementAxis(paintTableIndex)})"
+                : "OFF";
+
+        string physicsRelease =
+            levelData.ShouldReleaseTableBlocksAfterMovementCycles(
+                paintTableIndex)
+                ? $"ON (random " +
+                  $"{levelData.GetTableMinimumMovementCyclesBeforeRelease(paintTableIndex)}-" +
+                  $"{levelData.GetTableMaximumMovementCyclesBeforeRelease(paintTableIndex)} cycles)"
+                : "OFF";
+
+        EditorGUILayout.HelpBox(
+            $"TABLE {paintTableIndex + 1} ka independent LOCAL grid active hai. " +
+            $"Table Position: {tablePosition}, Rotation: {tableRotation}. " +
+            $"Runtime Rotation: {runtimeRotation}. " +
+            $"Left/Right Movement: {runtimeMovement}. " +
+            $"Physics Release: {physicsRelease}. " +
+            "Grid center runtime mein isi table ki top surface follow karega.",
             MessageType.Info
         );
     }
@@ -1192,6 +1370,7 @@ public sealed class GridLevelDataEditor : Editor
                 $"Next click paints: {paintSpanX}x{paintSpanY}x{paintSpanZ} cells"
             );
         }
+
     }
 
 
@@ -1372,12 +1551,31 @@ public sealed class GridLevelDataEditor : Editor
                 paintColor
             );
 
-        eraseMode =
-            EditorGUILayout.ToggleLeft(
-                "Erase Mode (click cells to clear)",
-                eraseMode
-            );
+        EditorGUILayout.LabelField(
+            "Grid Tool",
+            EditorStyles.boldLabel
+        );
+
+        int activeTool =
+            editPlacedBlockMode
+                ? 1
+                : eraseMode ? 2 : 0;
+
+        activeTool = GUILayout.Toolbar(
+            activeTool,
+            new[]
+            {
+                "PAINT",
+                "EDIT BLOCK",
+                "ERASE"
+            }
+        );
+
+        editPlacedBlockMode = activeTool == 1;
+        eraseMode = activeTool == 2;
     }
+
+
 
 
     private void DrawPresetTools(
@@ -1397,9 +1595,11 @@ public sealed class GridLevelDataEditor : Editor
                 "Clear Grid Level"
             );
 
-            levelData.EditorClearAllCells();
+            levelData.EditorClearAllCells(
+                paintTableIndex
+            );
 
-            EditorUtility.SetDirty(levelData);
+            NotifyLevelDesignChanged(levelData);
         }
 
         if (GUILayout.Button("Fill Current Layer"))
@@ -1416,17 +1616,20 @@ public sealed class GridLevelDataEditor : Editor
                 levelData.GridWidth - 1,
                 levelData.GridHeight - 1,
                 paintColor,
-                paintDefinitionIndex
+                paintDefinitionIndex,
+                true,
+                paintTableIndex
             );
 
             if (levelData.MirrorPaintAcrossLayers)
             {
                 levelData.EditorCopyDepthLayerToAll(
-                    paintLayerZ
+                    paintLayerZ,
+                    paintTableIndex
                 );
             }
 
-            EditorUtility.SetDirty(levelData);
+            NotifyLevelDesignChanged(levelData);
         }
 
         EditorGUILayout.EndHorizontal();
@@ -1466,17 +1669,19 @@ public sealed class GridLevelDataEditor : Editor
                 presetBottomRowCount,
                 presetRowCount,
                 ReadPalette(),
-                paintDefinitionIndex
+                paintDefinitionIndex,
+                paintTableIndex
             );
 
             if (levelData.MirrorPaintAcrossLayers)
             {
                 levelData.EditorCopyDepthLayerToAll(
-                    paintLayerZ
+                    paintLayerZ,
+                    paintTableIndex
                 );
             }
 
-            EditorUtility.SetDirty(levelData);
+            NotifyLevelDesignChanged(levelData);
         }
 
 
@@ -1516,10 +1721,13 @@ public sealed class GridLevelDataEditor : Editor
                 paintTierY,
                 presetRingRadius,
                 paintColor,
-                paintDefinitionIndex
+                paintDefinitionIndex,
+                false,
+                1f,
+                paintTableIndex
             );
 
-            EditorUtility.SetDirty(levelData);
+            NotifyLevelDesignChanged(levelData);
         }
     }
 
@@ -1556,7 +1764,9 @@ public sealed class GridLevelDataEditor : Editor
         GridLevelData levelData)
     {
         EditorGUILayout.LabelField(
-            "Grid Paint (click cells to toggle)",
+            editPlacedBlockMode
+                ? $"TABLE {paintTableIndex + 1} Grid Edit (select a block)"
+                : $"TABLE {paintTableIndex + 1} Grid Paint (independent grid)",
             EditorStyles.boldLabel
         );
 
@@ -1610,6 +1820,8 @@ public sealed class GridLevelDataEditor : Editor
 
         EditorGUILayout.Space(4f);
 
+        DrawSelectedBlockEditor(levelData);
+
         /*
          * Top row drawn first so the tower reads bottom-to-top
          * the same way it will spawn at runtime.
@@ -1625,16 +1837,38 @@ public sealed class GridLevelDataEditor : Editor
                  x++)
             {
                 GridCellData cell =
-                    levelData.GetCell(x, y, paintLayerZ);
+                    levelData.GetCell(
+                        x,
+                        y,
+                        paintLayerZ,
+                        paintTableIndex
+                    );
 
                 bool isOccupied =
                     cell != null && cell.Occupied;
+
+                Vector3Int displayedAnchor =
+                    isOccupied && cell.IsCovered
+                        ? cell.AnchorCoordinate
+                        : new Vector3Int(
+                            x,
+                            y,
+                            paintLayerZ
+                        );
+
+                bool isSelected =
+                    editPlacedBlockMode &&
+                    isOccupied &&
+                    selectedBlockTableIndex == paintTableIndex &&
+                    displayedAnchor == selectedCellCoordinate;
 
                 Color previousBackground =
                     GUI.backgroundColor;
 
                 GUI.backgroundColor =
-                    isOccupied
+                    isSelected
+                        ? new Color(1f, 0.82f, 0.18f, 1f)
+                        : isOccupied
                         ? cell.Color
                         : new Color(1f, 1f, 1f, 0.12f);
 
@@ -1653,11 +1887,63 @@ public sealed class GridLevelDataEditor : Editor
                           )
                         : "";
 
-                if (GUILayout.Button(
+                GUIContent cellContent =
+                    new GUIContent(
                         cellLabel,
+                        isOccupied
+                            ? $"Table {paintTableIndex + 1}"
+                            : editPlacedBlockMode
+                                ? "Selected block ko yahan move karein"
+                                : $"Table {paintTableIndex + 1} par paint karein"
+                    );
+
+                if (GUILayout.Button(
+                        cellContent,
                         GUILayout.Width(CellButtonSize),
                         GUILayout.Height(CellButtonSize)))
                 {
+                    if (editPlacedBlockMode)
+                    {
+                        Vector3Int clickedCoordinate =
+                            new Vector3Int(
+                                x,
+                                y,
+                                paintLayerZ
+                            );
+
+                        if (!isOccupied &&
+                            TryGetSelectedBlock(
+                                levelData,
+                                out _,
+                                out _))
+                        {
+                            TryMoveSelectedBlock(
+                                levelData,
+                                clickedCoordinate
+                            );
+                        }
+                        else
+                        {
+                            selectedCellCoordinate =
+                                isOccupied && cell.IsCovered
+                                    ? cell.AnchorCoordinate
+                                    : isOccupied
+                                        ? clickedCoordinate
+                                        : new Vector3Int(-1, -1, -1);
+
+                            blockMoveFeedback = string.Empty;
+
+                            if (isOccupied)
+                            {
+                                selectedBlockTableIndex =
+                                    paintTableIndex;
+                            }
+                        }
+
+                        Repaint();
+                        GUIUtility.ExitGUI();
+                    }
+
                     int effectiveSpanZ =
                         levelData.MirrorPaintAcrossLayers
                             ? 1
@@ -1704,7 +1990,8 @@ public sealed class GridLevelDataEditor : Editor
                             levelData.EditorClearSpanGroupAt(
                                 x,
                                 y,
-                                targetLayer
+                                targetLayer,
+                                paintTableIndex
                             );
                         }
                         else if (paintingSpan)
@@ -1720,7 +2007,8 @@ public sealed class GridLevelDataEditor : Editor
                                 paintDefinitionIndex,
                                 paintOrientation,
                                 seamOffset,
-                                paintCustomZRotation
+                                paintCustomZRotation,
+                                paintTableIndex
                             );
                         }
                         else
@@ -1731,13 +2019,14 @@ public sealed class GridLevelDataEditor : Editor
                                 targetLayer,
                                 true,
                                 paintColor,
-                                paintDefinitionIndex
+                                paintDefinitionIndex,
+                                paintTableIndex
                             );
                         }
                     }
 
                     levelData.RecalculateGridMetadata();
-                    EditorUtility.SetDirty(levelData);
+                    NotifyLevelDesignChanged(levelData);
                 }
 
                 GUI.backgroundColor =
@@ -1747,6 +2036,548 @@ public sealed class GridLevelDataEditor : Editor
             EditorGUILayout.EndHorizontal();
         }
     }
+
+
+    private void DrawSelectedBlockEditor(
+        GridLevelData levelData)
+    {
+        if (!editPlacedBlockMode)
+        {
+            return;
+        }
+
+        EditorGUILayout.BeginVertical(
+            EditorStyles.helpBox
+        );
+
+        if (!TryGetSelectedBlock(
+                levelData,
+                out Vector3Int anchorCoordinate,
+                out GridCellData cell))
+        {
+            EditorGUILayout.HelpBox(
+                "Edit karne ke liye grid mein kisi occupied block par click karein.",
+                MessageType.Info
+            );
+
+            EditorGUILayout.EndVertical();
+            return;
+        }
+
+        PhysicsObjectDefinition definition =
+            levelData.GetPaletteEntry(
+                cell.DefinitionIndex
+            );
+
+        EditorGUILayout.LabelField(
+            $"Selected Block ({anchorCoordinate.x}, " +
+            $"{anchorCoordinate.y}, {anchorCoordinate.z})",
+            EditorStyles.boldLabel
+        );
+
+        EditorGUILayout.LabelField(
+            definition != null
+                ? definition.DisplayName
+                : $"Palette Index {cell.DefinitionIndex}",
+            EditorStyles.miniLabel
+        );
+
+        int tableCount =
+            Mathf.Max(1, levelData.TableCount);
+
+        string[] tableLabels =
+            new string[tableCount];
+
+        for (int index = 0;
+             index < tableLabels.Length;
+             index++)
+        {
+            LevelTable table =
+                levelData.GetTablePrefab(index);
+
+            tableLabels[index] =
+                $"Table {index + 1}: " +
+                (table != null ? table.name : "Missing Prefab");
+        }
+
+        int currentTableIndex =
+            Mathf.Clamp(
+                selectedBlockTableIndex,
+                0,
+                tableLabels.Length - 1
+            );
+
+        int requestedTableIndex =
+            EditorGUILayout.Popup(
+                "Block Table",
+                currentTableIndex,
+                tableLabels
+            );
+
+        if (requestedTableIndex != currentTableIndex)
+        {
+            Undo.RecordObject(
+                levelData,
+                "Change Placed Block Table"
+            );
+
+            if (levelData.EditorTryTransferBlockToTable(
+                selectedBlockTableIndex,
+                anchorCoordinate,
+                requestedTableIndex,
+                out string transferFailureReason))
+            {
+                selectedBlockTableIndex = requestedTableIndex;
+                paintTableIndex = requestedTableIndex;
+                blockMoveFeedback = string.Empty;
+                NotifyLevelDesignChanged(levelData);
+                GUIUtility.ExitGUI();
+            }
+
+            blockMoveFeedback = transferFailureReason;
+        }
+
+        EditorGUILayout.HelpBox(
+            "Move without values: grid ke kisi EMPTY cell par click karein, " +
+            "ya neeche one-cell move buttons use karein.",
+            MessageType.None
+        );
+
+        EditorGUILayout.BeginHorizontal();
+        GUILayout.FlexibleSpace();
+
+        if (GUILayout.Button(
+                "UP +Y",
+                GUILayout.Width(90f)) &&
+            TryMoveSelectedBlock(
+                levelData,
+                anchorCoordinate + Vector3Int.up))
+        {
+            GUIUtility.ExitGUI();
+        }
+
+        GUILayout.FlexibleSpace();
+        EditorGUILayout.EndHorizontal();
+
+        EditorGUILayout.BeginHorizontal();
+
+        if (GUILayout.Button("LEFT -X") &&
+            TryMoveSelectedBlock(
+                levelData,
+                anchorCoordinate + Vector3Int.left))
+        {
+            GUIUtility.ExitGUI();
+        }
+
+        if (GUILayout.Button("DOWN -Y") &&
+            TryMoveSelectedBlock(
+                levelData,
+                anchorCoordinate + Vector3Int.down))
+        {
+            GUIUtility.ExitGUI();
+        }
+
+        if (GUILayout.Button("RIGHT +X") &&
+            TryMoveSelectedBlock(
+                levelData,
+                anchorCoordinate + Vector3Int.right))
+        {
+            GUIUtility.ExitGUI();
+        }
+
+        EditorGUILayout.EndHorizontal();
+
+        if (levelData.GridDepth > 1)
+        {
+            EditorGUILayout.BeginHorizontal();
+
+            if (GUILayout.Button("DEPTH -Z") &&
+                TryMoveSelectedBlock(
+                    levelData,
+                    anchorCoordinate +
+                    new Vector3Int(0, 0, -1)))
+            {
+                GUIUtility.ExitGUI();
+            }
+
+            if (GUILayout.Button("DEPTH +Z") &&
+                TryMoveSelectedBlock(
+                    levelData,
+                    anchorCoordinate +
+                    new Vector3Int(0, 0, 1)))
+            {
+                GUIUtility.ExitGUI();
+            }
+
+            EditorGUILayout.EndHorizontal();
+        }
+
+        if (!string.IsNullOrEmpty(blockMoveFeedback))
+        {
+            EditorGUILayout.HelpBox(
+                blockMoveFeedback,
+                MessageType.Warning
+            );
+        }
+
+        EditorGUILayout.Space(4f);
+        EditorGUILayout.LabelField(
+            "Rest Between Cells",
+            EditorStyles.boldLabel
+        );
+
+        EditorGUILayout.BeginHorizontal();
+
+        if (GUILayout.Button("HALF LEFT") &&
+            SetSelectedBlockSeamOffset(
+                levelData,
+                cell,
+                new Vector3(
+                    -0.5f,
+                    cell.LocalOffset.y,
+                    cell.LocalOffset.z
+                )))
+        {
+            GUIUtility.ExitGUI();
+        }
+
+        if (GUILayout.Button("CENTER X") &&
+            SetSelectedBlockSeamOffset(
+                levelData,
+                cell,
+                new Vector3(
+                    0f,
+                    cell.LocalOffset.y,
+                    cell.LocalOffset.z
+                )))
+        {
+            GUIUtility.ExitGUI();
+        }
+
+        if (GUILayout.Button("HALF RIGHT") &&
+            SetSelectedBlockSeamOffset(
+                levelData,
+                cell,
+                new Vector3(
+                    0.5f,
+                    cell.LocalOffset.y,
+                    cell.LocalOffset.z
+                )))
+        {
+            GUIUtility.ExitGUI();
+        }
+
+        EditorGUILayout.EndHorizontal();
+
+        EditorGUILayout.BeginHorizontal();
+
+        if (GUILayout.Button("HALF BACK") &&
+            SetSelectedBlockSeamOffset(
+                levelData,
+                cell,
+                new Vector3(
+                    cell.LocalOffset.x,
+                    cell.LocalOffset.y,
+                    -0.5f
+                )))
+        {
+            GUIUtility.ExitGUI();
+        }
+
+        if (GUILayout.Button("CENTER Z") &&
+            SetSelectedBlockSeamOffset(
+                levelData,
+                cell,
+                new Vector3(
+                    cell.LocalOffset.x,
+                    cell.LocalOffset.y,
+                    0f
+                )))
+        {
+            GUIUtility.ExitGUI();
+        }
+
+        if (GUILayout.Button("HALF FRONT") &&
+            SetSelectedBlockSeamOffset(
+                levelData,
+                cell,
+                new Vector3(
+                    cell.LocalOffset.x,
+                    cell.LocalOffset.y,
+                    0.5f
+                )))
+        {
+            GUIUtility.ExitGUI();
+        }
+
+        EditorGUILayout.EndHorizontal();
+
+        EditorGUILayout.HelpBox(
+            "HALF button block ko do cells ke beech rakhta hai. X aur Z " +
+            "HALF buttons combine karke block ko four-cell corner par bhi rakh sakte hain.",
+            MessageType.None
+        );
+
+        EditorGUILayout.Space(4f);
+        EditorGUILayout.LabelField(
+            "Optional Fine Transform",
+            EditorStyles.boldLabel
+        );
+
+        EditorGUI.BeginChangeCheck();
+
+        Vector3 requestedPosition =
+            EditorGUILayout.Vector3Field(
+                new GUIContent(
+                    "Position Offset (Cells)",
+                    "Decimal values allowed hain. X/Y/Z value grid cell spacing ke mutabiq block ko freely move karti hai."
+                ),
+                cell.LocalOffset
+            );
+
+        PieceOrientation requestedOrientation =
+            (PieceOrientation)EditorGUILayout.EnumPopup(
+                "Base Orientation",
+                cell.Orientation
+            );
+
+        float requestedCustomZ =
+            cell.CustomZRotation;
+
+        if (requestedOrientation == PieceOrientation.CustomZ)
+        {
+            requestedCustomZ =
+                EditorGUILayout.FloatField(
+                    "Base Custom Z Angle",
+                    requestedCustomZ
+                );
+        }
+
+        Vector3 requestedRotation =
+            EditorGUILayout.Vector3Field(
+                new GUIContent(
+                    "Extra XYZ Rotation",
+                    "Base Orientation ke upar degrees mein free XYZ rotation."
+                ),
+                cell.RotationEulerOffset
+            );
+
+        Vector3 requestedScale =
+            EditorGUILayout.Vector3Field(
+                new GUIContent(
+                    "Size Multiplier",
+                    "(1, 1, 1) auto-fit size hai. Har axis separately resize ho sakti hai."
+                ),
+                cell.ScaleMultiplier
+            );
+
+        requestedScale =
+            new Vector3(
+                Mathf.Max(0.01f, requestedScale.x),
+                Mathf.Max(0.01f, requestedScale.y),
+                Mathf.Max(0.01f, requestedScale.z)
+            );
+
+        if (EditorGUI.EndChangeCheck())
+        {
+            Undo.RecordObject(
+                levelData,
+                "Edit Placed Grid Block Transform"
+            );
+
+            cell.SetLocalOffset(requestedPosition);
+            cell.SetOrientation(requestedOrientation);
+            cell.SetCustomZRotation(requestedCustomZ);
+            cell.SetRotationEulerOffset(requestedRotation);
+            cell.SetScaleMultiplier(requestedScale);
+
+            NotifyLevelDesignChanged(levelData);
+        }
+
+        EditorGUILayout.Space(4f);
+        EditorGUILayout.LabelField(
+            "Breakable",
+            EditorStyles.boldLabel
+        );
+
+        EditorGUI.BeginChangeCheck();
+
+        bool requestedBreakable =
+            EditorGUILayout.Toggle(
+                "Break On Cannon Hit",
+                cell.Breakable
+            );
+
+        int requestedHitsToBreak =
+            cell.HitsToBreak;
+
+        if (requestedBreakable)
+        {
+            requestedHitsToBreak =
+                EditorGUILayout.IntSlider(
+                    "Hits To Break",
+                    requestedHitsToBreak,
+                    1,
+                    10
+                );
+        }
+
+        if (EditorGUI.EndChangeCheck())
+        {
+            Undo.RecordObject(
+                levelData,
+                "Change Placed Block Breakable Settings"
+            );
+
+            cell.SetBreakable(
+                requestedBreakable,
+                requestedHitsToBreak
+            );
+
+            NotifyLevelDesignChanged(levelData);
+        }
+
+        EditorGUILayout.BeginHorizontal();
+
+        if (GUILayout.Button("RESET TRANSFORM"))
+        {
+            Undo.RecordObject(
+                levelData,
+                "Reset Placed Grid Block Transform"
+            );
+
+            cell.SetLocalOffset(Vector3.zero);
+            cell.SetOrientation(PieceOrientation.UprightY);
+            cell.SetCustomZRotation(0f);
+            cell.SetRotationEulerOffset(Vector3.zero);
+            cell.SetScaleMultiplier(Vector3.one);
+
+            NotifyLevelDesignChanged(levelData);
+        }
+
+        if (GUILayout.Button("DELETE BLOCK"))
+        {
+            Undo.RecordObject(
+                levelData,
+                "Delete Selected Grid Block"
+            );
+
+            levelData.EditorClearSpanGroupAt(
+                anchorCoordinate.x,
+                anchorCoordinate.y,
+                anchorCoordinate.z,
+                selectedBlockTableIndex
+            );
+
+            levelData.RecalculateGridMetadata();
+            selectedCellCoordinate =
+                new Vector3Int(-1, -1, -1);
+
+            NotifyLevelDesignChanged(levelData);
+            EditorGUILayout.EndHorizontal();
+            EditorGUILayout.EndVertical();
+            GUIUtility.ExitGUI();
+            return;
+        }
+
+        EditorGUILayout.EndHorizontal();
+        EditorGUILayout.EndVertical();
+        EditorGUILayout.Space(6f);
+    }
+
+
+    private bool TryGetSelectedBlock(
+        GridLevelData levelData,
+        out Vector3Int anchorCoordinate,
+        out GridCellData anchorCell)
+    {
+        anchorCoordinate = selectedCellCoordinate;
+        anchorCell = levelData.GetCell(
+            selectedCellCoordinate.x,
+            selectedCellCoordinate.y,
+            selectedCellCoordinate.z,
+            selectedBlockTableIndex
+        );
+
+        if (anchorCell == null ||
+            !anchorCell.Occupied)
+        {
+            anchorCell = null;
+            return false;
+        }
+
+        if (anchorCell.IsCovered)
+        {
+            anchorCoordinate =
+                anchorCell.AnchorCoordinate;
+
+            anchorCell = levelData.GetCell(
+                anchorCoordinate.x,
+                anchorCoordinate.y,
+                anchorCoordinate.z,
+                selectedBlockTableIndex
+            );
+        }
+
+        return anchorCell != null &&
+               anchorCell.Occupied &&
+               !anchorCell.IsCovered;
+    }
+
+
+    private bool TryMoveSelectedBlock(
+        GridLevelData levelData,
+        Vector3Int destinationCoordinate)
+    {
+        Undo.RecordObject(
+            levelData,
+            "Move Placed Grid Block"
+        );
+
+        if (!levelData.EditorTryMoveBlock(
+                selectedCellCoordinate,
+                destinationCoordinate,
+                out string failureReason,
+                selectedBlockTableIndex))
+        {
+            blockMoveFeedback = failureReason;
+            Repaint();
+            return false;
+        }
+
+        selectedCellCoordinate = destinationCoordinate;
+        paintLayerZ = destinationCoordinate.z;
+        blockMoveFeedback = string.Empty;
+
+        NotifyLevelDesignChanged(levelData);
+        Repaint();
+        return true;
+    }
+
+
+    private bool SetSelectedBlockSeamOffset(
+        GridLevelData levelData,
+        GridCellData cell,
+        Vector3 offset)
+    {
+        if (cell == null ||
+            cell.LocalOffset == offset)
+        {
+            return false;
+        }
+
+        Undo.RecordObject(
+            levelData,
+            "Place Grid Block Between Cells"
+        );
+
+        cell.SetLocalOffset(offset);
+        NotifyLevelDesignChanged(levelData);
+        Repaint();
+        return true;
+    }
+
+
 
 
 }

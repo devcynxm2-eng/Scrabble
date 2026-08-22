@@ -3,6 +3,184 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Serialization;
 
+[Serializable]
+public sealed class LevelTablePlacement
+{
+    [SerializeField]
+    private LevelTable prefab;
+
+    [SerializeField]
+    private Vector3 positionOffset = Vector3.zero;
+
+    [SerializeField]
+    private Vector3 rotationEuler = Vector3.zero;
+
+    [Tooltip(
+        "ON: gameplay ke duran table aur us par locked blocks continuously rotate honge."
+    )]
+    [SerializeField]
+    private bool enableRuntimeRotation;
+
+    [Tooltip(
+        "Table ke local-space axis par runtime rotation hogi. Normal turntable ke liye (0, 1, 0)."
+    )]
+    [SerializeField]
+    private Vector3 runtimeRotationAxis = Vector3.up;
+
+    [Tooltip(
+        "Runtime rotation speed degrees per second. Negative value opposite direction mein ghumati hai."
+    )]
+    [SerializeField]
+    private float runtimeRotationSpeed = 20f;
+
+    [Tooltip(
+        "ON: gameplay ke duran table aur us par locked blocks left/right smoothly move honge."
+    )]
+    [SerializeField]
+    private bool enableRuntimeHorizontalMovement;
+
+    [Tooltip(
+        "Level ke local-space mein movement direction. Left/right ke liye (1, 0, 0)."
+    )]
+    [SerializeField]
+    private Vector3 runtimeMovementAxis = Vector3.right;
+
+    [Tooltip(
+        "Center position se ek side tak maximum movement distance."
+    )]
+    [SerializeField, Min(0f)]
+    private float runtimeMovementDistance = 0.75f;
+
+    [Tooltip(
+        "Left/right movement cycles per second. 0.2 ka matlab ek complete cycle 5 seconds mein."
+    )]
+    [SerializeField, Min(0f)]
+    private float runtimeMovementSpeed = 0.2f;
+
+    [Tooltip(
+        "ON: configured left/right cycles complete hone ke baad locked blocks dynamic physics mein release honge."
+    )]
+    [SerializeField]
+    private bool releaseBlocksAfterMovementCycles = true;
+
+    [Tooltip(
+        "Physics release se pehle minimum complete left/right cycles."
+    )]
+    [SerializeField, Min(1)]
+    private int minimumMovementCyclesBeforeRelease = 3;
+
+    [Tooltip(
+        "Physics release se pehle maximum complete left/right cycles. Har level run mein min/max ke beech random value pick hogi."
+    )]
+    [SerializeField, Min(1)]
+    private int maximumMovementCyclesBeforeRelease = 5;
+
+    [Tooltip(
+        "Release par table ki movement velocity ka kitna hissa blocks ko mile."
+    )]
+    [SerializeField, Range(0f, 2f)]
+    private float movementReleaseVelocityMultiplier = 1f;
+
+    [Tooltip(
+        "Prefab ke original scale ka multiplier. (1, 1, 1) original size hai."
+    )]
+    [SerializeField]
+    private Vector3 sizeMultiplier = Vector3.one;
+
+
+    public LevelTable Prefab => prefab;
+
+    public Vector3 PositionOffset => positionOffset;
+
+    public Vector3 RotationEuler => rotationEuler;
+
+    public bool RuntimeRotationEnabled => enableRuntimeRotation;
+
+    public Vector3 RuntimeRotationAxis => runtimeRotationAxis;
+
+    public float RuntimeRotationSpeed => runtimeRotationSpeed;
+
+    public bool RuntimeHorizontalMovementEnabled =>
+        enableRuntimeHorizontalMovement;
+
+    public Vector3 RuntimeMovementAxis => runtimeMovementAxis;
+
+    public float RuntimeMovementDistance => runtimeMovementDistance;
+
+    public float RuntimeMovementSpeed => runtimeMovementSpeed;
+
+    public bool ReleaseBlocksAfterMovementCycles =>
+        releaseBlocksAfterMovementCycles;
+
+    public int MinimumMovementCyclesBeforeRelease =>
+        minimumMovementCyclesBeforeRelease;
+
+    public int MaximumMovementCyclesBeforeRelease =>
+        maximumMovementCyclesBeforeRelease;
+
+    public float MovementReleaseVelocityMultiplier =>
+        movementReleaseVelocityMultiplier;
+
+    public Vector3 SizeMultiplier => sizeMultiplier;
+
+
+    public LevelTablePlacement()
+    {
+    }
+
+
+    public LevelTablePlacement(
+        LevelTable tablePrefab,
+        Vector3 tablePositionOffset,
+        Vector3 tableRotationEuler)
+    {
+        prefab = tablePrefab;
+        positionOffset = tablePositionOffset;
+        rotationEuler = tableRotationEuler;
+        sizeMultiplier = Vector3.one;
+    }
+
+
+    public void EnsureValidSize()
+    {
+        sizeMultiplier.x = Mathf.Max(0.01f, sizeMultiplier.x);
+        sizeMultiplier.y = Mathf.Max(0.01f, sizeMultiplier.y);
+        sizeMultiplier.z = Mathf.Max(0.01f, sizeMultiplier.z);
+
+        if (runtimeRotationAxis.sqrMagnitude < 0.0001f)
+        {
+            runtimeRotationAxis = Vector3.up;
+        }
+
+        if (runtimeMovementAxis.sqrMagnitude < 0.0001f)
+        {
+            runtimeMovementAxis = Vector3.right;
+        }
+
+        runtimeMovementDistance =
+            Mathf.Max(0f, runtimeMovementDistance);
+
+        runtimeMovementSpeed =
+            Mathf.Max(0f, runtimeMovementSpeed);
+
+        minimumMovementCyclesBeforeRelease =
+            Mathf.Max(1, minimumMovementCyclesBeforeRelease);
+
+        maximumMovementCyclesBeforeRelease =
+            Mathf.Max(
+                minimumMovementCyclesBeforeRelease,
+                maximumMovementCyclesBeforeRelease
+            );
+
+        movementReleaseVelocityMultiplier =
+            Mathf.Clamp(
+                movementReleaseVelocityMultiplier,
+                0f,
+                2f
+            );
+    }
+}
+
 public sealed class GridLevelData : ScriptableObject
 {
     [Header("Level")]
@@ -14,18 +192,25 @@ public sealed class GridLevelData : ScriptableObject
     private int availableBalls = 30;
 
 
-    [Header("Table")]
-
-    [SerializeField]
+    [SerializeField, HideInInspector]
     private LevelTable tablePrefab;
 
-    [SerializeField]
+    [SerializeField, HideInInspector]
     private Vector3 tablePositionOffset =
         Vector3.zero;
 
-    [SerializeField]
+    [SerializeField, HideInInspector]
     private Vector3 tableRotationEuler =
         Vector3.zero;
+
+    [Header("Tables")]
+    [Tooltip(
+        "Element 0 PRIMARY table hai aur grid isi ki top surface par spawn hota hai. " +
+        "Additional elements level mein extra tables spawn karte hain."
+    )]
+    [SerializeField]
+    private List<LevelTablePlacement> tablePlacements =
+        new List<LevelTablePlacement>();
 
 
     [Header("Grid Blocks")]
@@ -99,6 +284,10 @@ public sealed class GridLevelData : ScriptableObject
     private List<GridDepthLayerData> layers =
         new List<GridDepthLayerData>();
 
+    [SerializeField, HideInInspector]
+    private List<TableGridData> additionalTableGrids =
+        new List<TableGridData>();
+
 
     [FormerlySerializedAs("bakedOccupiedCellCount")]
     [SerializeField, HideInInspector]
@@ -117,13 +306,215 @@ public sealed class GridLevelData : ScriptableObject
 
     public int AvailableBalls => availableBalls;
 
-    public LevelTable TablePrefab => tablePrefab;
+    public int TableCount =>
+        tablePlacements != null && tablePlacements.Count > 0
+            ? tablePlacements.Count
+            : tablePrefab != null ? 1 : 0;
+
+    public LevelTable TablePrefab =>
+        GetTablePrefab(0);
 
     public Vector3 TablePositionOffset =>
-        tablePositionOffset;
+        GetTablePositionOffset(0);
 
     public Vector3 TableRotationEuler =>
-        tableRotationEuler;
+        GetTableRotationEuler(0);
+
+    public Vector3 TableSizeMultiplier =>
+        GetTableSizeMultiplier(0);
+
+
+    public LevelTable GetTablePrefab(int index)
+    {
+        LevelTablePlacement placement =
+            GetTablePlacement(index);
+
+        return placement != null
+            ? placement.Prefab
+            : index == 0 && UsesLegacyTable()
+                ? tablePrefab
+                : null;
+    }
+
+
+    public Vector3 GetTablePositionOffset(int index)
+    {
+        LevelTablePlacement placement =
+            GetTablePlacement(index);
+
+        return placement != null
+            ? placement.PositionOffset
+            : index == 0 && UsesLegacyTable()
+                ? tablePositionOffset
+                : Vector3.zero;
+    }
+
+
+    public Vector3 GetTableRotationEuler(int index)
+    {
+        LevelTablePlacement placement =
+            GetTablePlacement(index);
+
+        return placement != null
+            ? placement.RotationEuler
+            : index == 0 && UsesLegacyTable()
+                ? tableRotationEuler
+                : Vector3.zero;
+    }
+
+
+    public Vector3 GetTableSizeMultiplier(int index)
+    {
+        LevelTablePlacement placement =
+            GetTablePlacement(index);
+
+        return placement != null
+            ? placement.SizeMultiplier
+            : Vector3.one;
+    }
+
+
+    public bool IsTableRuntimeRotationEnabled(int index)
+    {
+        LevelTablePlacement placement =
+            GetTablePlacement(index);
+
+        return placement != null &&
+               placement.RuntimeRotationEnabled;
+    }
+
+
+    public Vector3 GetTableRuntimeRotationAxis(int index)
+    {
+        LevelTablePlacement placement =
+            GetTablePlacement(index);
+
+        return placement != null
+            ? placement.RuntimeRotationAxis
+            : Vector3.up;
+    }
+
+
+    public float GetTableRuntimeRotationSpeed(int index)
+    {
+        LevelTablePlacement placement =
+            GetTablePlacement(index);
+
+        return placement != null
+            ? placement.RuntimeRotationSpeed
+            : 0f;
+    }
+
+
+    public bool IsTableRuntimeHorizontalMovementEnabled(
+        int index)
+    {
+        LevelTablePlacement placement =
+            GetTablePlacement(index);
+
+        return placement != null &&
+               placement.RuntimeHorizontalMovementEnabled;
+    }
+
+
+    public Vector3 GetTableRuntimeMovementAxis(int index)
+    {
+        LevelTablePlacement placement =
+            GetTablePlacement(index);
+
+        return placement != null
+            ? placement.RuntimeMovementAxis
+            : Vector3.right;
+    }
+
+
+    public float GetTableRuntimeMovementDistance(int index)
+    {
+        LevelTablePlacement placement =
+            GetTablePlacement(index);
+
+        return placement != null
+            ? placement.RuntimeMovementDistance
+            : 0f;
+    }
+
+
+    public float GetTableRuntimeMovementSpeed(int index)
+    {
+        LevelTablePlacement placement =
+            GetTablePlacement(index);
+
+        return placement != null
+            ? placement.RuntimeMovementSpeed
+            : 0f;
+    }
+
+
+    public bool ShouldReleaseTableBlocksAfterMovementCycles(
+        int index)
+    {
+        LevelTablePlacement placement =
+            GetTablePlacement(index);
+
+        return placement != null &&
+               placement.ReleaseBlocksAfterMovementCycles;
+    }
+
+
+    public int GetTableMinimumMovementCyclesBeforeRelease(
+        int index)
+    {
+        LevelTablePlacement placement =
+            GetTablePlacement(index);
+
+        return placement != null
+            ? placement.MinimumMovementCyclesBeforeRelease
+            : 3;
+    }
+
+
+    public int GetTableMaximumMovementCyclesBeforeRelease(
+        int index)
+    {
+        LevelTablePlacement placement =
+            GetTablePlacement(index);
+
+        return placement != null
+            ? placement.MaximumMovementCyclesBeforeRelease
+            : 5;
+    }
+
+
+    public float GetTableMovementReleaseVelocityMultiplier(
+        int index)
+    {
+        LevelTablePlacement placement =
+            GetTablePlacement(index);
+
+        return placement != null
+            ? placement.MovementReleaseVelocityMultiplier
+            : 1f;
+    }
+
+
+    private LevelTablePlacement GetTablePlacement(int index)
+    {
+        if (tablePlacements == null ||
+            index < 0 ||
+            index >= tablePlacements.Count)
+        {
+            return null;
+        }
+
+        return tablePlacements[index];
+    }
+
+
+    private bool UsesLegacyTable()
+    {
+        return tablePlacements == null ||
+               tablePlacements.Count == 0;
+    }
 
     public IReadOnlyList<PhysicsObjectDefinition> BlockPalette =>
         blockPalette;
@@ -206,44 +597,78 @@ public sealed class GridLevelData : ScriptableObject
     {
         get
         {
-            if (layers == null ||
-                layers.Count != gridDepth)
+            return IsGridAllocatedForTable(0);
+        }
+    }
+
+
+    public bool HasAnyValidTableGrid
+    {
+        get
+        {
+            int gridCount = Mathf.Max(1, TableCount);
+
+            for (int tableIndex = 0;
+                 tableIndex < gridCount;
+                 tableIndex++)
+            {
+                if (IsGridAllocatedForTable(tableIndex) &&
+                    TryGetOccupiedBounds(
+                        tableIndex,
+                        out _,
+                        out _))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+    }
+
+
+    public bool IsGridAllocatedForTable(int tableIndex)
+    {
+        List<GridDepthLayerData> tableLayers =
+            GetLayersForTable(tableIndex);
+
+        if (tableLayers == null ||
+            tableLayers.Count != gridDepth)
+        {
+            return false;
+        }
+
+        for (int z = 0;
+             z < tableLayers.Count;
+             z++)
+        {
+            GridDepthLayerData layer =
+                tableLayers[z];
+
+            if (layer == null ||
+                layer.Rows == null ||
+                layer.Rows.Count != gridHeight)
             {
                 return false;
             }
 
-            for (int z = 0;
-                 z < layers.Count;
-                 z++)
+            for (int y = 0;
+                 y < layer.Rows.Count;
+                 y++)
             {
-                GridDepthLayerData layer =
-                    layers[z];
+                GridRowData row =
+                    layer.Rows[y];
 
-                if (layer == null ||
-                    layer.Rows == null ||
-                    layer.Rows.Count != gridHeight)
+                if (row == null ||
+                    row.Cells == null ||
+                    row.Cells.Count != gridWidth)
                 {
                     return false;
                 }
-
-                for (int y = 0;
-                     y < layer.Rows.Count;
-                     y++)
-                {
-                    GridRowData row =
-                        layer.Rows[y];
-
-                    if (row == null ||
-                        row.Cells == null ||
-                        row.Cells.Count != gridWidth)
-                    {
-                        return false;
-                    }
-                }
             }
-
-            return true;
         }
+
+        return true;
     }
 
 
@@ -251,6 +676,16 @@ public sealed class GridLevelData : ScriptableObject
         int x,
         int y,
         int z)
+    {
+        return GetCell(x, y, z, 0);
+    }
+
+
+    public GridCellData GetCell(
+        int x,
+        int y,
+        int z,
+        int tableIndex)
     {
         if (x < 0 ||
             x >= gridWidth ||
@@ -262,14 +697,17 @@ public sealed class GridLevelData : ScriptableObject
             return null;
         }
 
-        if (layers == null ||
-            z >= layers.Count)
+        List<GridDepthLayerData> tableLayers =
+            GetLayersForTable(tableIndex);
+
+        if (tableLayers == null ||
+            z >= tableLayers.Count)
         {
             return null;
         }
 
         GridDepthLayerData layer =
-            layers[z];
+            tableLayers[z];
 
         if (layer == null ||
             layer.Rows == null ||
@@ -307,6 +745,101 @@ public sealed class GridLevelData : ScriptableObject
     }
 
 
+    public bool TryGetOccupiedBounds(
+        int tableIndex,
+        out Vector3Int minimum,
+        out Vector3Int maximum)
+    {
+        minimum =
+            new Vector3Int(
+                int.MaxValue,
+                int.MaxValue,
+                int.MaxValue
+            );
+
+        maximum =
+            new Vector3Int(
+                int.MinValue,
+                int.MinValue,
+                int.MinValue
+            );
+
+        bool foundAny = false;
+        List<GridDepthLayerData> tableLayers =
+            GetLayersForTable(tableIndex);
+
+        if (tableLayers == null)
+        {
+            minimum = Vector3Int.zero;
+            maximum = Vector3Int.zero;
+            return false;
+        }
+
+        for (int z = 0; z < tableLayers.Count; z++)
+        {
+            GridDepthLayerData layer = tableLayers[z];
+
+            if (layer?.Rows == null)
+            {
+                continue;
+            }
+
+            for (int y = 0; y < layer.Rows.Count; y++)
+            {
+                GridRowData row = layer.Rows[y];
+
+                if (row?.Cells == null)
+                {
+                    continue;
+                }
+
+                for (int x = 0; x < row.Cells.Count; x++)
+                {
+                    GridCellData cell = row.Cells[x];
+
+                    if (cell == null || !cell.Occupied)
+                    {
+                        continue;
+                    }
+
+                    foundAny = true;
+                    Vector3Int coordinate = new Vector3Int(x, y, z);
+                    minimum = Vector3Int.Min(minimum, coordinate);
+                    maximum = Vector3Int.Max(maximum, coordinate);
+                }
+            }
+        }
+
+        if (!foundAny)
+        {
+            minimum = Vector3Int.zero;
+            maximum = Vector3Int.zero;
+        }
+
+        return foundAny;
+    }
+
+
+    private List<GridDepthLayerData> GetLayersForTable(int tableIndex)
+    {
+        if (tableIndex <= 0)
+        {
+            return layers;
+        }
+
+        int additionalIndex = tableIndex - 1;
+
+        if (additionalTableGrids == null ||
+            additionalIndex >= additionalTableGrids.Count ||
+            additionalTableGrids[additionalIndex] == null)
+        {
+            return null;
+        }
+
+        return additionalTableGrids[additionalIndex].Layers;
+    }
+
+
 #if UNITY_EDITOR
 
     private void OnValidate()
@@ -314,6 +847,14 @@ public sealed class GridLevelData : ScriptableObject
         gridWidth = Mathf.Max(1, gridWidth);
         gridHeight = Mathf.Max(1, gridHeight);
         gridDepth = Mathf.Max(1, gridDepth);
+
+        if (tablePlacements != null)
+        {
+            foreach (LevelTablePlacement placement in tablePlacements)
+            {
+                placement?.EnsureValidSize();
+            }
+        }
 
         /*
          * When an existing one-layer level is changed to two layers,
@@ -361,7 +902,112 @@ public sealed class GridLevelData : ScriptableObject
         levelNumber = Mathf.Max(1, newLevelNumber);
     }
 
+
+    public bool EditorMigrateLegacyTable()
+    {
+        if (tablePlacements == null)
+        {
+            tablePlacements =
+                new List<LevelTablePlacement>();
+        }
+
+        if (tablePlacements.Count > 0 ||
+            tablePrefab == null)
+        {
+            return false;
+        }
+
+        tablePlacements.Add(
+            new LevelTablePlacement(
+                tablePrefab,
+                tablePositionOffset,
+                tableRotationEuler
+            )
+        );
+
+        return true;
+    }
+
+
+    public bool EditorMigrateSharedGridTableAssignments()
+    {
+        if (layers == null ||
+            TableCount <= 1)
+        {
+            return false;
+        }
+
+        List<(Vector3Int coordinate, int tableIndex)> migrations =
+            new List<(Vector3Int, int)>();
+
+        for (int z = 0; z < gridDepth; z++)
+        {
+            for (int y = 0; y < gridHeight; y++)
+            {
+                for (int x = 0; x < gridWidth; x++)
+                {
+                    GridCellData cell = GetCell(x, y, z, 0);
+
+                    if (cell == null ||
+                        !cell.Occupied ||
+                        cell.IsCovered ||
+                        cell.TableIndex <= 0)
+                    {
+                        continue;
+                    }
+
+                    migrations.Add(
+                        (
+                            new Vector3Int(x, y, z),
+                            Mathf.Clamp(
+                                cell.TableIndex,
+                                0,
+                                TableCount - 1
+                            )
+                        )
+                    );
+                }
+            }
+        }
+
+        bool changed = false;
+
+        foreach ((Vector3Int coordinate, int tableIndex) migration
+                 in migrations)
+        {
+            if (EditorTryTransferBlockToTable(
+                    0,
+                    migration.coordinate,
+                    migration.tableIndex,
+                    out _))
+            {
+                changed = true;
+                continue;
+            }
+
+            EditorSetSpanGroupTable(
+                migration.coordinate,
+                0
+            );
+
+            changed = true;
+        }
+
+        return changed;
+    }
+
     public void EditorEnsureGridAllocated(
+        bool duplicateLastDepthLayer = false)
+    {
+        EditorEnsureGridAllocated(
+            0,
+            duplicateLastDepthLayer
+        );
+    }
+
+
+    public void EditorEnsureGridAllocated(
+        int tableIndex,
         bool duplicateLastDepthLayer = false)
     {
         gridWidth =
@@ -374,9 +1020,9 @@ public sealed class GridLevelData : ScriptableObject
             Mathf.Max(1, gridDepth);
 
         List<GridDepthLayerData> oldLayers =
-            layers;
+            GetLayersForTable(tableIndex);
 
-        layers =
+        List<GridDepthLayerData> resizedLayers =
             new List<GridDepthLayerData>(gridDepth);
 
         for (int z = 0; z < gridDepth; z++)
@@ -442,6 +1088,23 @@ public sealed class GridLevelData : ScriptableObject
                             oldCell.LocalOffset
                         );
 
+                        newCell.SetRotationEulerOffset(
+                            oldCell.RotationEulerOffset
+                        );
+
+                        newCell.SetScaleMultiplier(
+                            oldCell.ScaleMultiplier
+                        );
+
+                        newCell.SetBreakable(
+                            oldCell.Breakable,
+                            oldCell.HitsToBreak
+                        );
+
+                        newCell.SetTableIndex(
+                            oldCell.TableIndex
+                        );
+
                         if (oldCell.IsCovered)
                         {
                             Vector3Int anchorCoordinate =
@@ -467,10 +1130,39 @@ public sealed class GridLevelData : ScriptableObject
                 layer.Rows.Add(row);
             }
 
-            layers.Add(layer);
+            resizedLayers.Add(layer);
         }
 
-        RecalculateGridMetadata();
+        if (tableIndex <= 0)
+        {
+            layers = resizedLayers;
+            RecalculateGridMetadata();
+            return;
+        }
+
+        if (additionalTableGrids == null)
+        {
+            additionalTableGrids =
+                new List<TableGridData>();
+        }
+
+        int additionalIndex = tableIndex - 1;
+
+        while (additionalTableGrids.Count <= additionalIndex)
+        {
+            additionalTableGrids.Add(
+                new TableGridData()
+            );
+        }
+
+        if (additionalTableGrids[additionalIndex] == null)
+        {
+            additionalTableGrids[additionalIndex] =
+                new TableGridData();
+        }
+
+        additionalTableGrids[additionalIndex].Layers =
+            resizedLayers;
     }
 
 
@@ -480,7 +1172,27 @@ public sealed class GridLevelData : ScriptableObject
         gridDepth =
             Mathf.Clamp(newLayerCount, 1, 16);
 
-        EditorEnsureGridAllocated(true);
+        int gridCount =
+            Mathf.Max(
+                TableCount,
+                additionalTableGrids != null
+                    ? additionalTableGrids.Count + 1
+                    : 1
+            );
+
+        for (int tableIndex = 0;
+             tableIndex < gridCount;
+             tableIndex++)
+        {
+            if (tableIndex == 0 ||
+                GetLayersForTable(tableIndex) != null)
+            {
+                EditorEnsureGridAllocated(
+                    tableIndex,
+                    true
+                );
+            }
+        }
     }
 
 
@@ -499,9 +1211,10 @@ public sealed class GridLevelData : ScriptableObject
 
 
     public void EditorCopyDepthLayerToAll(
-        int sourceLayerIndex)
+        int sourceLayerIndex,
+        int tableIndex = 0)
     {
-        if (!IsGridAllocated ||
+        if (!IsGridAllocatedForTable(tableIndex) ||
             gridDepth <= 1)
         {
             return;
@@ -514,8 +1227,11 @@ public sealed class GridLevelData : ScriptableObject
                 gridDepth - 1
             );
 
+        List<GridDepthLayerData> tableLayers =
+            GetLayersForTable(tableIndex);
+
         GridDepthLayerData sourceLayer =
-            layers[sourceLayerIndex];
+            tableLayers[sourceLayerIndex];
 
         for (int z = 0; z < gridDepth; z++)
         {
@@ -524,7 +1240,7 @@ public sealed class GridLevelData : ScriptableObject
                 continue;
             }
 
-            layers[z] = CloneDepthLayer(
+            tableLayers[z] = CloneDepthLayer(
                 sourceLayer,
                 sourceLayerIndex,
                 z
@@ -586,6 +1302,23 @@ public sealed class GridLevelData : ScriptableObject
 
                         cloneCell.SetLocalOffset(
                             sourceCell.LocalOffset
+                        );
+
+                        cloneCell.SetRotationEulerOffset(
+                            sourceCell.RotationEulerOffset
+                        );
+
+                        cloneCell.SetScaleMultiplier(
+                            sourceCell.ScaleMultiplier
+                        );
+
+                        cloneCell.SetBreakable(
+                            sourceCell.Breakable,
+                            sourceCell.HitsToBreak
+                        );
+
+                        cloneCell.SetTableIndex(
+                            sourceCell.TableIndex
                         );
 
                         if (sourceCell.IsCovered)
@@ -659,12 +1392,13 @@ public sealed class GridLevelData : ScriptableObject
         int z,
         bool occupied,
         Color color,
-        int definitionIndex = 0)
+        int definitionIndex = 0,
+        int tableIndex = 0)
     {
-        EditorClearSpanGroupAt(x, y, z);
+        EditorClearSpanGroupAt(x, y, z, tableIndex);
 
         GridCellData cell =
-            GetCell(x, y, z);
+            GetCell(x, y, z, tableIndex);
 
         if (cell == null)
         {
@@ -674,7 +1408,9 @@ public sealed class GridLevelData : ScriptableObject
         cell.SetOccupied(occupied);
         cell.SetColor(color);
         cell.SetDefinitionIndex(Mathf.Max(0, definitionIndex));
+        cell.SetTableIndex(tableIndex);
         cell.ClearSpanState();
+        cell.SetTableIndex(tableIndex);
     }
 
 
@@ -697,7 +1433,8 @@ public sealed class GridLevelData : ScriptableObject
         int definitionIndex = 0,
         PieceOrientation orientation = PieceOrientation.UprightY,
         Vector3 localOffset = default,
-        float customZRotation = 0f)
+        float customZRotation = 0f,
+        int tableIndex = 0)
     {
         spanX = Mathf.Max(1, spanX);
         spanY = Mathf.Max(1, spanY);
@@ -712,7 +1449,8 @@ public sealed class GridLevelData : ScriptableObject
                     EditorClearSpanGroupAt(
                         x + dx,
                         y + dy,
-                        z + dz
+                        z + dz,
+                        tableIndex
                     );
                 }
             }
@@ -728,7 +1466,12 @@ public sealed class GridLevelData : ScriptableObject
                 for (int dx = 0; dx < spanX; dx++)
                 {
                     GridCellData cell =
-                        GetCell(x + dx, y + dy, z + dz);
+                        GetCell(
+                            x + dx,
+                            y + dy,
+                            z + dz,
+                            tableIndex
+                        );
 
                     if (cell == null)
                     {
@@ -762,6 +1505,8 @@ public sealed class GridLevelData : ScriptableObject
 
                         cell.SetCoveredBy(anchorCoordinate);
                     }
+
+                    cell.SetTableIndex(tableIndex);
                 }
             }
         }
@@ -778,10 +1523,11 @@ public sealed class GridLevelData : ScriptableObject
     public void EditorClearSpanGroupAt(
         int x,
         int y,
-        int z)
+        int z,
+        int tableIndex = 0)
     {
         GridCellData cell =
-            GetCell(x, y, z);
+            GetCell(x, y, z, tableIndex);
 
         if (cell == null)
         {
@@ -797,7 +1543,8 @@ public sealed class GridLevelData : ScriptableObject
             GetCell(
                 anchorCoordinate.x,
                 anchorCoordinate.y,
-                anchorCoordinate.z
+                anchorCoordinate.z,
+                tableIndex
             );
 
         if (anchorCell == null)
@@ -837,7 +1584,8 @@ public sealed class GridLevelData : ScriptableObject
                         GetCell(
                             anchorCoordinate.x + dx,
                             anchorCoordinate.y + dy,
-                            anchorCoordinate.z + dz
+                            anchorCoordinate.z + dz,
+                            tableIndex
                         );
 
                     if (groupCell == null)
@@ -855,14 +1603,375 @@ public sealed class GridLevelData : ScriptableObject
     }
 
 
-    public void EditorClearAllCells()
+    public bool EditorTryMoveBlock(
+        Vector3Int sourceCoordinate,
+        Vector3Int destinationCoordinate,
+        out string failureReason,
+        int tableIndex = 0)
     {
-        if (layers == null)
+        failureReason = string.Empty;
+
+        GridCellData sourceCell =
+            GetCell(
+                sourceCoordinate.x,
+                sourceCoordinate.y,
+                sourceCoordinate.z,
+                tableIndex
+            );
+
+        if (sourceCell == null ||
+            !sourceCell.Occupied)
+        {
+            failureReason = "Selected block ab grid mein maujood nahi hai.";
+            return false;
+        }
+
+        Vector3Int sourceAnchor =
+            sourceCell.IsCovered
+                ? sourceCell.AnchorCoordinate
+                : sourceCoordinate;
+
+        GridCellData anchorCell =
+            GetCell(
+                sourceAnchor.x,
+                sourceAnchor.y,
+                sourceAnchor.z,
+                tableIndex
+            );
+
+        if (anchorCell == null ||
+            !anchorCell.Occupied ||
+            anchorCell.IsCovered)
+        {
+            failureReason = "Selected block ka anchor invalid hai.";
+            return false;
+        }
+
+        int moveSpanX = Mathf.Max(1, anchorCell.SpanX);
+        int moveSpanY = Mathf.Max(1, anchorCell.SpanY);
+        int moveSpanZ = Mathf.Max(1, anchorCell.SpanZ);
+
+        if (destinationCoordinate.x < 0 ||
+            destinationCoordinate.y < 0 ||
+            destinationCoordinate.z < 0 ||
+            destinationCoordinate.x + moveSpanX > gridWidth ||
+            destinationCoordinate.y + moveSpanY > gridHeight ||
+            destinationCoordinate.z + moveSpanZ > gridDepth)
+        {
+            failureReason = "Block ka footprint grid boundary se bahar ja raha hai.";
+            return false;
+        }
+
+        for (int dz = 0; dz < moveSpanZ; dz++)
+        {
+            for (int dy = 0; dy < moveSpanY; dy++)
+            {
+                for (int dx = 0; dx < moveSpanX; dx++)
+                {
+                    Vector3Int targetCoordinate =
+                        destinationCoordinate +
+                        new Vector3Int(dx, dy, dz);
+
+                    GridCellData targetCell =
+                        GetCell(
+                            targetCoordinate.x,
+                            targetCoordinate.y,
+                            targetCoordinate.z,
+                            tableIndex
+                        );
+
+                    if (targetCell == null ||
+                        !targetCell.Occupied)
+                    {
+                        continue;
+                    }
+
+                    Vector3Int targetAnchor =
+                        targetCell.IsCovered
+                            ? targetCell.AnchorCoordinate
+                            : targetCoordinate;
+
+                    if (targetAnchor != sourceAnchor)
+                    {
+                        failureReason =
+                            "Destination par doosra block maujood hai.";
+
+                        return false;
+                    }
+                }
+            }
+        }
+
+        if (destinationCoordinate == sourceAnchor)
+        {
+            return true;
+        }
+
+        Color moveColor = anchorCell.Color;
+        int moveDefinitionIndex = anchorCell.DefinitionIndex;
+        PieceOrientation moveOrientation = anchorCell.Orientation;
+        float moveCustomZ = anchorCell.CustomZRotation;
+        Vector3 moveLocalOffset = anchorCell.LocalOffset;
+        Vector3 moveRotationOffset = anchorCell.RotationEulerOffset;
+        Vector3 moveScale = anchorCell.ScaleMultiplier;
+        bool moveBreakable = anchorCell.Breakable;
+        int moveHitsToBreak = anchorCell.HitsToBreak;
+        EditorClearSpanGroupAt(
+            sourceAnchor.x,
+            sourceAnchor.y,
+            sourceAnchor.z,
+            tableIndex
+        );
+
+        EditorPaintSpan(
+            destinationCoordinate.x,
+            destinationCoordinate.y,
+            destinationCoordinate.z,
+            moveSpanX,
+            moveSpanY,
+            moveSpanZ,
+            moveColor,
+            moveDefinitionIndex,
+            moveOrientation,
+            moveLocalOffset,
+            moveCustomZ,
+            tableIndex
+        );
+
+        GridCellData movedAnchor =
+            GetCell(
+                destinationCoordinate.x,
+                destinationCoordinate.y,
+                destinationCoordinate.z,
+                tableIndex
+            );
+
+        if (movedAnchor != null)
+        {
+            movedAnchor.SetRotationEulerOffset(
+                moveRotationOffset
+            );
+
+            movedAnchor.SetScaleMultiplier(
+                moveScale
+            );
+
+            movedAnchor.SetBreakable(
+                moveBreakable,
+                moveHitsToBreak
+            );
+        }
+
+        return true;
+    }
+
+
+    public void EditorSetSpanGroupTable(
+        Vector3Int coordinate,
+        int tableIndex)
+    {
+        GridCellData cell =
+            GetCell(
+                coordinate.x,
+                coordinate.y,
+                coordinate.z
+            );
+
+        if (cell == null ||
+            !cell.Occupied)
         {
             return;
         }
 
-        foreach (GridDepthLayerData layer in layers)
+        Vector3Int anchorCoordinate =
+            cell.IsCovered
+                ? cell.AnchorCoordinate
+                : coordinate;
+
+        GridCellData anchorCell =
+            GetCell(
+                anchorCoordinate.x,
+                anchorCoordinate.y,
+                anchorCoordinate.z,
+                tableIndex
+            );
+
+        if (anchorCell == null)
+        {
+            return;
+        }
+
+        int safeTableIndex = Mathf.Max(0, tableIndex);
+        int groupSpanX = Mathf.Max(1, anchorCell.SpanX);
+        int groupSpanY = Mathf.Max(1, anchorCell.SpanY);
+        int groupSpanZ = Mathf.Max(1, anchorCell.SpanZ);
+
+        for (int dz = 0; dz < groupSpanZ; dz++)
+        {
+            for (int dy = 0; dy < groupSpanY; dy++)
+            {
+                for (int dx = 0; dx < groupSpanX; dx++)
+                {
+                    GridCellData groupCell =
+                        GetCell(
+                            anchorCoordinate.x + dx,
+                            anchorCoordinate.y + dy,
+                            anchorCoordinate.z + dz,
+                            tableIndex
+                        );
+
+                    groupCell?.SetTableIndex(safeTableIndex);
+                }
+            }
+        }
+    }
+
+
+    public bool EditorTryTransferBlockToTable(
+        int sourceTableIndex,
+        Vector3Int sourceCoordinate,
+        int destinationTableIndex,
+        out string failureReason)
+    {
+        failureReason = string.Empty;
+
+        if (sourceTableIndex == destinationTableIndex)
+        {
+            return true;
+        }
+
+        GridCellData sourceCell =
+            GetCell(
+                sourceCoordinate.x,
+                sourceCoordinate.y,
+                sourceCoordinate.z,
+                sourceTableIndex
+            );
+
+        if (sourceCell == null || !sourceCell.Occupied)
+        {
+            failureReason = "Selected block source table par nahi mila.";
+            return false;
+        }
+
+        Vector3Int anchorCoordinate =
+            sourceCell.IsCovered
+                ? sourceCell.AnchorCoordinate
+                : sourceCoordinate;
+
+        GridCellData anchorCell =
+            GetCell(
+                anchorCoordinate.x,
+                anchorCoordinate.y,
+                anchorCoordinate.z,
+                sourceTableIndex
+            );
+
+        if (anchorCell == null || anchorCell.IsCovered)
+        {
+            failureReason = "Selected block ka anchor invalid hai.";
+            return false;
+        }
+
+        EditorEnsureGridAllocated(
+            destinationTableIndex,
+            false
+        );
+
+        int spanX = Mathf.Max(1, anchorCell.SpanX);
+        int spanY = Mathf.Max(1, anchorCell.SpanY);
+        int spanZ = Mathf.Max(1, anchorCell.SpanZ);
+
+        for (int dz = 0; dz < spanZ; dz++)
+        {
+            for (int dy = 0; dy < spanY; dy++)
+            {
+                for (int dx = 0; dx < spanX; dx++)
+                {
+                    GridCellData targetCell =
+                        GetCell(
+                            anchorCoordinate.x + dx,
+                            anchorCoordinate.y + dy,
+                            anchorCoordinate.z + dz,
+                            destinationTableIndex
+                        );
+
+                    if (targetCell != null && targetCell.Occupied)
+                    {
+                        failureReason =
+                            "Target table ke same grid cells par doosra block maujood hai.";
+
+                        return false;
+                    }
+                }
+            }
+        }
+
+        Color color = anchorCell.Color;
+        int definitionIndex = anchorCell.DefinitionIndex;
+        PieceOrientation orientation = anchorCell.Orientation;
+        Vector3 localOffset = anchorCell.LocalOffset;
+        float customZ = anchorCell.CustomZRotation;
+        Vector3 rotationOffset = anchorCell.RotationEulerOffset;
+        Vector3 scale = anchorCell.ScaleMultiplier;
+        bool breakable = anchorCell.Breakable;
+        int hitsToBreak = anchorCell.HitsToBreak;
+
+        EditorClearSpanGroupAt(
+            anchorCoordinate.x,
+            anchorCoordinate.y,
+            anchorCoordinate.z,
+            sourceTableIndex
+        );
+
+        EditorPaintSpan(
+            anchorCoordinate.x,
+            anchorCoordinate.y,
+            anchorCoordinate.z,
+            spanX,
+            spanY,
+            spanZ,
+            color,
+            definitionIndex,
+            orientation,
+            localOffset,
+            customZ,
+            destinationTableIndex
+        );
+
+        GridCellData transferredCell =
+            GetCell(
+                anchorCoordinate.x,
+                anchorCoordinate.y,
+                anchorCoordinate.z,
+                destinationTableIndex
+            );
+
+        if (transferredCell != null)
+        {
+            transferredCell.SetRotationEulerOffset(rotationOffset);
+            transferredCell.SetScaleMultiplier(scale);
+            transferredCell.SetBreakable(
+                breakable,
+                hitsToBreak
+            );
+        }
+
+        return true;
+    }
+
+
+    public void EditorClearAllCells(int tableIndex = 0)
+    {
+        List<GridDepthLayerData> tableLayers =
+            GetLayersForTable(tableIndex);
+
+        if (tableLayers == null)
+        {
+            return;
+        }
+
+        foreach (GridDepthLayerData layer in tableLayers)
         {
             if (layer?.Rows == null)
             {
@@ -901,7 +2010,8 @@ public sealed class GridLevelData : ScriptableObject
         int maxY,
         Color color,
         int definitionIndex = 0,
-        bool occupied = true)
+        bool occupied = true,
+        int tableIndex = 0)
     {
         for (int y = Mathf.Max(0, minY);
              y <= Mathf.Min(gridHeight - 1, maxY);
@@ -911,7 +2021,15 @@ public sealed class GridLevelData : ScriptableObject
                  x <= Mathf.Min(gridWidth - 1, maxX);
                  x++)
             {
-                EditorSetCell(x, y, z, occupied, color, definitionIndex);
+                EditorSetCell(
+                    x,
+                    y,
+                    z,
+                    occupied,
+                    color,
+                    definitionIndex,
+                    tableIndex
+                );
             }
         }
 
@@ -928,7 +2046,8 @@ public sealed class GridLevelData : ScriptableObject
         int bottomRowCount,
         int rowCount,
         IReadOnlyList<Color> palette,
-        int definitionIndex = 0)
+        int definitionIndex = 0,
+        int tableIndex = 0)
     {
         bottomRowCount =
             Mathf.Clamp(bottomRowCount, 1, gridWidth);
@@ -956,7 +2075,15 @@ public sealed class GridLevelData : ScriptableObject
                  x < startX + countInRow && x < gridWidth;
                  x++)
             {
-                EditorSetCell(x, y, z, true, rowColor, definitionIndex);
+                EditorSetCell(
+                    x,
+                    y,
+                    z,
+                    true,
+                    rowColor,
+                    definitionIndex,
+                    tableIndex
+                );
             }
         }
 
@@ -974,7 +2101,8 @@ public sealed class GridLevelData : ScriptableObject
         Color color,
         int definitionIndex = 0,
         bool hollow = false,
-        float ringThickness = 1f)
+        float ringThickness = 1f,
+        int tableIndex = 0)
     {
         if (y < 0 || y >= gridHeight)
         {
@@ -1009,7 +2137,15 @@ public sealed class GridLevelData : ScriptableObject
 
                 if (inside)
                 {
-                    EditorSetCell(x, y, z, true, color, definitionIndex);
+                    EditorSetCell(
+                        x,
+                        y,
+                        z,
+                        true,
+                        color,
+                        definitionIndex,
+                        tableIndex
+                    );
                 }
             }
         }
@@ -1084,6 +2220,21 @@ public sealed class GridLevelData : ScriptableObject
 
 
 [Serializable]
+public sealed class TableGridData
+{
+    [SerializeField]
+    private List<GridDepthLayerData> layers =
+        new List<GridDepthLayerData>();
+
+    public List<GridDepthLayerData> Layers
+    {
+        get => layers;
+        set => layers = value ?? new List<GridDepthLayerData>();
+    }
+}
+
+
+[Serializable]
 public sealed class GridDepthLayerData
 {
     [SerializeField]
@@ -1125,6 +2276,12 @@ public sealed class GridCellData
     )]
     [SerializeField]
     private int definitionIndex;
+
+    [Tooltip(
+        "GridLevelData.TablePlacements ka zero-based index. Block isi table ki surface par spawn hoga."
+    )]
+    [SerializeField, Min(0)]
+    private int tableIndex;
 
     [Tooltip(
         "Sirf anchor cell par meaningful hai (1 se bara). Ye cell " +
@@ -1182,6 +2339,32 @@ public sealed class GridCellData
     private Vector3 localOffset =
         Vector3.zero;
 
+    [Tooltip(
+        "Orientation preset ke upar apply hone wali free XYZ rotation (degrees)."
+    )]
+    [SerializeField]
+    private Vector3 rotationEulerOffset =
+        Vector3.zero;
+
+    [Tooltip(
+        "Auto-fit size ka per-block multiplier. (1, 1, 1) normal size hai."
+    )]
+    [SerializeField]
+    private Vector3 scaleMultiplier =
+        Vector3.one;
+
+    [Tooltip(
+        "ON: cannon hit par ye placed block toot sakta hai."
+    )]
+    [SerializeField]
+    private bool breakable;
+
+    [Tooltip(
+        "Block tootne se pehle kitne direct cannon hits chahiye."
+    )]
+    [SerializeField, Min(1)]
+    private int hitsToBreak = 1;
+
 
     public bool Occupied =>
         occupied;
@@ -1191,6 +2374,9 @@ public sealed class GridCellData
 
     public int DefinitionIndex =>
         definitionIndex;
+
+    public int TableIndex =>
+        Mathf.Max(0, tableIndex);
 
     public int SpanX =>
         spanX;
@@ -1215,6 +2401,24 @@ public sealed class GridCellData
 
     public Vector3 LocalOffset =>
         localOffset;
+
+    public Vector3 RotationEulerOffset =>
+        rotationEulerOffset;
+
+    public Vector3 ScaleMultiplier =>
+        scaleMultiplier.sqrMagnitude <= 0.000001f
+            ? Vector3.one
+            : new Vector3(
+                Mathf.Max(0.01f, scaleMultiplier.x),
+                Mathf.Max(0.01f, scaleMultiplier.y),
+                Mathf.Max(0.01f, scaleMultiplier.z)
+            );
+
+    public bool Breakable =>
+        breakable;
+
+    public int HitsToBreak =>
+        Mathf.Max(1, hitsToBreak);
 
 
     public GridCellData()
@@ -1253,6 +2457,12 @@ public sealed class GridCellData
     public void SetDefinitionIndex(int value)
     {
         definitionIndex = value;
+    }
+
+
+    public void SetTableIndex(int value)
+    {
+        tableIndex = Mathf.Max(0, value);
     }
 
 
@@ -1299,6 +2509,34 @@ public sealed class GridCellData
     }
 
 
+    public void SetRotationEulerOffset(
+        Vector3 value)
+    {
+        rotationEulerOffset = value;
+    }
+
+
+    public void SetScaleMultiplier(
+        Vector3 value)
+    {
+        scaleMultiplier =
+            new Vector3(
+                Mathf.Max(0.01f, value.x),
+                Mathf.Max(0.01f, value.y),
+                Mathf.Max(0.01f, value.z)
+            );
+    }
+
+
+    public void SetBreakable(
+        bool value,
+        int requiredHits = 1)
+    {
+        breakable = value;
+        hitsToBreak = Mathf.Max(1, requiredHits);
+    }
+
+
     /// <summary>
     /// Resets a cell back to a plain, independent (non-spanning,
     /// non-covered) state — used whenever the painter overwrites/erases
@@ -1306,6 +2544,8 @@ public sealed class GridCellData
     /// </summary>
     public void ClearSpanState()
     {
+        tableIndex = 0;
+
         spanX = 1;
         spanY = 1;
         spanZ = 1;
@@ -1321,5 +2561,12 @@ public sealed class GridCellData
         customZRotation = 0f;
 
         localOffset = Vector3.zero;
+
+        rotationEulerOffset = Vector3.zero;
+
+        scaleMultiplier = Vector3.one;
+
+        breakable = false;
+        hitsToBreak = 1;
     }
 }

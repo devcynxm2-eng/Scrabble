@@ -63,6 +63,241 @@ public sealed class GridLevelDatabase : ScriptableObject
             ? addressableLevels.Count
             : 0;
 
+    public int MaximumPlayableLevelNumber
+    {
+        get
+        {
+            int maximumLevelNumber = 0;
+
+            if (addressableLevels == null)
+            {
+                return maximumLevelNumber;
+            }
+
+            foreach (GridLevelAddressEntry entry in addressableLevels)
+            {
+                if (entry != null)
+                {
+                    maximumLevelNumber = Mathf.Max(
+                        maximumLevelNumber,
+                        entry.LevelNumber
+                    );
+                }
+            }
+
+            return maximumLevelNumber;
+        }
+    }
+
+
+#if UNITY_EDITOR
+
+    /// <summary>
+    /// Ek level ko poori tarah delete karta hai: Addressables group se
+    /// uski entry, disk se .asset file, aur is database se catalog
+    /// reference — teeno ek sath, taake koi dangling/orphaned reference
+    /// na bache.
+    /// </summary>
+    public bool EditorDeleteLevel(int levelNumber)
+    {
+        int index =
+            FindIndexByLevelNumber(levelNumber);
+
+        if (index < 0)
+        {
+            Debug.LogWarning(
+                $"EditorDeleteLevel: Level {levelNumber} database mein " +
+                "nahi mila.",
+                this
+            );
+
+            return false;
+        }
+
+        GridLevelAddressEntry entry =
+            addressableLevels[index];
+
+        string address =
+            entry.Address;
+
+        if (!string.IsNullOrWhiteSpace(address))
+        {
+            RemoveAddressableEntryAndAsset(address);
+        }
+
+        addressableLevels.RemoveAt(index);
+
+        UnityEditor.EditorUtility.SetDirty(this);
+
+        UnityEditor.AssetDatabase.SaveAssets();
+
+        Debug.Log(
+            $"Level {levelNumber} delete ho gaya (database + " +
+            "Addressables + asset file).",
+            this
+        );
+
+        return true;
+    }
+
+
+    private static void RemoveAddressableEntryAndAsset(
+        string address)
+    {
+        UnityEditor.AddressableAssets.Settings.AddressableAssetSettings
+            settings =
+                UnityEditor.AddressableAssets.
+                    AddressableAssetSettingsDefaultObject.Settings;
+
+        if (settings == null)
+        {
+            Debug.LogWarning(
+                "Addressable Asset Settings nahi mile — sirf database " +
+                "entry remove ho rahi hai, .asset file manually delete " +
+                "karni hogi."
+            );
+
+            return;
+        }
+
+        UnityEditor.AddressableAssets.Settings.AddressableAssetEntry
+            targetEntry =
+                null;
+
+        foreach (UnityEditor.AddressableAssets.Settings.
+                     AddressableAssetGroup group in settings.groups)
+        {
+            if (group == null)
+            {
+                continue;
+            }
+
+            foreach (UnityEditor.AddressableAssets.Settings.
+                         AddressableAssetEntry candidate in
+                     group.entries)
+            {
+                if (candidate != null &&
+                    candidate.address == address)
+                {
+                    targetEntry = candidate;
+                    break;
+                }
+            }
+
+            if (targetEntry != null)
+            {
+                break;
+            }
+        }
+
+        if (targetEntry == null)
+        {
+            Debug.LogWarning(
+                $"Addressables mein address '{address}' wali entry " +
+                "nahi mili — sirf database entry remove ho rahi hai."
+            );
+
+            return;
+        }
+
+        string assetPath =
+            targetEntry.AssetPath;
+
+        settings.RemoveAssetEntry(
+            targetEntry.guid
+        );
+
+        if (!string.IsNullOrWhiteSpace(assetPath))
+        {
+            UnityEditor.AssetDatabase.DeleteAsset(assetPath);
+        }
+    }
+
+    /// <summary>
+    /// Deletes every level currently in the database catalog (each
+    /// one's Addressables entry + .asset file + database entry). Same
+    /// per-level cleanup as EditorDeleteLevel(), just looped over
+    /// everything.
+    /// </summary>
+    public int EditorDeleteAllLevels()
+    {
+        if (addressableLevels == null ||
+            addressableLevels.Count == 0)
+        {
+            return 0;
+        }
+
+        /*
+         * Snapshot level numbers first — deleting mutates
+         * addressableLevels while we iterate.
+         */
+        List<int> levelNumbers =
+            new List<int>(addressableLevels.Count);
+
+        foreach (GridLevelAddressEntry entry in addressableLevels)
+        {
+            if (entry != null)
+            {
+                levelNumbers.Add(entry.LevelNumber);
+            }
+        }
+
+        int deletedCount = 0;
+
+        foreach (int levelNumber in levelNumbers)
+        {
+            if (EditorDeleteLevel(levelNumber))
+            {
+                deletedCount++;
+            }
+        }
+
+        return deletedCount;
+    }
+
+
+    /// <summary>
+    /// Deletes every level whose number falls within
+    /// [rangeStart, rangeEnd] inclusive.
+    /// </summary>
+    public int EditorDeleteLevelRange(
+        int rangeStart,
+        int rangeEnd)
+    {
+        if (addressableLevels == null ||
+            addressableLevels.Count == 0)
+        {
+            return 0;
+        }
+
+        List<int> levelNumbers =
+            new List<int>();
+
+        foreach (GridLevelAddressEntry entry in addressableLevels)
+        {
+            if (entry != null &&
+                entry.LevelNumber >= rangeStart &&
+                entry.LevelNumber <= rangeEnd)
+            {
+                levelNumbers.Add(entry.LevelNumber);
+            }
+        }
+
+        int deletedCount = 0;
+
+        foreach (int levelNumber in levelNumbers)
+        {
+            if (EditorDeleteLevel(levelNumber))
+            {
+                deletedCount++;
+            }
+        }
+
+        return deletedCount;
+    }
+
+#endif
+
 
     public GridLevelAddressEntry GetEntry(int index)
     {

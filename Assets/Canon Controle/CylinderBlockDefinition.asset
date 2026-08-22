@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   prefab: {fileID: 100000007, guid: 8ee73eb8eb9feb86406c1856af5cb587, type: 3}
   displayName: CylinderBlock
+  tintWithPaintColor: 1
   minimumPrewarmCount: 16
   autoFitToCell: 1
   manualScaleMultiplier: {x: 1, y: 1, z: 1}

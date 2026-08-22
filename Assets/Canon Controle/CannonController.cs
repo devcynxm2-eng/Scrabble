@@ -1206,6 +1206,28 @@ public sealed class CannonController : MonoBehaviour
     public int TotalBalls => totalBalls;
 
 
+    public void SetGameplayActive(bool active)
+    {
+        if (!active)
+        {
+            isPointerHeld = false;
+            hasAimPoint = false;
+        }
+
+        if (cannonRoot != null)
+        {
+            cannonRoot.gameObject.SetActive(active);
+        }
+
+        if (ballsRemainingText != null)
+        {
+            ballsRemainingText.gameObject.SetActive(active);
+        }
+
+        enabled = active;
+    }
+
+
     private void Awake()
     {
         if (aimCamera == null)

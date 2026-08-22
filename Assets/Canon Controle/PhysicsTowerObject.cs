@@ -108,6 +108,7 @@
 
 using System;
 using UnityEngine;
+using Random = UnityEngine.Random;
 
 [RequireComponent(typeof(Rigidbody))]
 public sealed class PhysicsTowerObject : MonoBehaviour
@@ -150,6 +151,45 @@ public sealed class PhysicsTowerObject : MonoBehaviour
     [SerializeField, Min(0f)]
     private float maximumImpactImpulse = 14f;
 
+    [Tooltip(
+        "Dynamic tower block ki meaningful collision locked block ko " +
+        "naturally unlock kar sakti hai. Chhoti settling contacts ignore hongi."
+    )]
+    [SerializeField, Min(0f)]
+    private float minimumBlockImpactSpeed = 0.45f;
+
+    [Tooltip(
+        "Moving front-layer block ka physical collision impulse back/adjacent " +
+        "locked block ko kitna transfer hoga."
+    )]
+    [SerializeField, Range(0f, 1f)]
+    private float blockImpactTransferMultiplier = 0.3f;
+
+    [Tooltip(
+        "Off-centre block collision se naturally milne wali rotation strength."
+    )]
+    [SerializeField, Range(0f, 1f)]
+    private float blockImpactTorqueMultiplier = 0.35f;
+
+
+    [Header("Break Effect")]
+
+    [Tooltip(
+        "Optional authored broken/fractured prefab. Empty ho to runtime " +
+        "small material-matched shards generate karega."
+    )]
+    [SerializeField]
+    private GameObject brokenVisualPrefab;
+
+    [SerializeField, Range(3, 16)]
+    private int fallbackShardCount = 7;
+
+    [SerializeField, Min(0f)]
+    private float breakShardImpulse = 1.4f;
+
+    [SerializeField, Min(0.1f)]
+    private float breakShardLifetime = 2.5f;
+
 
     [Header("Physics")]
 
@@ -182,6 +222,10 @@ public sealed class PhysicsTowerObject : MonoBehaviour
         lowerGroundDisappearEffect;
 
     private bool isCleared;
+
+    private bool breakableForSpawn;
+
+    private int remainingBreakHits = 1;
 
 
     private static readonly int
@@ -297,6 +341,15 @@ public sealed class PhysicsTowerObject : MonoBehaviour
             Mathf.Max(1, span.z)
         );
         GridLocalOffset = localOffset;
+    }
+
+
+    public void ConfigureBreakable(
+        bool isBreakable,
+        int hitsToBreak)
+    {
+        breakableForSpawn = isBreakable;
+        remainingBreakHits = Mathf.Max(1, hitsToBreak);
     }
 
 
@@ -461,6 +514,9 @@ public sealed class PhysicsTowerObject : MonoBehaviour
         isCleared =
             false;
 
+        breakableForSpawn = false;
+        remainingBreakHits = 1;
+
         if (body == null)
         {
             ResolveReferences();
@@ -583,6 +639,34 @@ public sealed class PhysicsTowerObject : MonoBehaviour
     }
 
 
+    public void MoveLockedWithTable(
+        Vector3 worldPosition,
+        Quaternion worldRotation)
+    {
+        if (!IsLocked || isCleared)
+        {
+            return;
+        }
+
+        if (body == null)
+        {
+            ResolveReferences();
+        }
+
+        if (body != null && body.isKinematic)
+        {
+            body.MovePosition(worldPosition);
+            body.MoveRotation(worldRotation);
+            return;
+        }
+
+        transform.SetPositionAndRotation(
+            worldPosition,
+            worldRotation
+        );
+    }
+
+
     public void PrepareForPool()
     {
         if (lowerGroundDisappearEffect != null)
@@ -664,39 +748,302 @@ public sealed class PhysicsTowerObject : MonoBehaviour
             return;
         }
 
-        /*
-         * Sirf CannonBallMarker wale colliders is block ko activate
-         * karte hain — random physics touches (dusre locked blocks
-         * ke beech chhoti overlaps wagera) ko ignore kiya jata hai.
-         */
+        /* Cannonball direct hit gets the authored primary transfer. */
         CannonBallMarker cannonBall =
             collision.collider.GetComponentInParent<
                 CannonBallMarker>();
 
-        if (cannonBall == null)
+        if (cannonBall != null)
+        {
+            Vector3 incomingVelocity =
+                collision.relativeVelocity;
+
+            float incomingMass =
+                collision.rigidbody != null
+                    ? Mathf.Max(0.01f, collision.rigidbody.mass)
+                    : 1f;
+
+            Vector3 impulse =
+                Vector3.ClampMagnitude(
+                    incomingVelocity *
+                    incomingMass *
+                    impactTransferMultiplier,
+                    maximumImpactImpulse
+                );
+
+            if (TryHandleBreakableHit(
+                    impulse,
+                    collision.contactCount > 0
+                        ? collision.GetContact(0).point
+                        : transform.position))
+            {
+                return;
+            }
+
+            ActivatePhysics(impulse);
+            return;
+        }
+
+        PhysicsTowerObject movingBlock =
+            collision.collider.GetComponentInParent<
+                PhysicsTowerObject>();
+
+        Vector3 relativeVelocity =
+            collision.relativeVelocity;
+
+        if (movingBlock == null ||
+            movingBlock == this ||
+            movingBlock.IsLocked ||
+            relativeVelocity.magnitude < minimumBlockImpactSpeed)
         {
             return;
         }
 
-        Vector3 incomingVelocity =
-            collision.relativeVelocity;
+        Vector3 collisionImpulse =
+            collision.impulse.sqrMagnitude > 0.0001f
+                ? collision.impulse
+                : relativeVelocity *
+                  Mathf.Max(
+                      0.01f,
+                      collision.rigidbody != null
+                          ? collision.rigidbody.mass
+                          : 1f
+                  );
 
-        float incomingMass =
-            collision.rigidbody != null
-                ? Mathf.Max(0.01f, collision.rigidbody.mass)
-                : 1f;
-
-        Vector3 impulse =
+        Vector3 transferredImpulse =
             Vector3.ClampMagnitude(
-                incomingVelocity *
-                incomingMass *
-                impactTransferMultiplier,
+                collisionImpulse *
+                blockImpactTransferMultiplier,
                 maximumImpactImpulse
             );
 
+        Vector3 torqueImpulse = Vector3.zero;
+
+        if (collision.contactCount > 0 &&
+            body != null)
+        {
+            Vector3 contactOffset =
+                collision.GetContact(0).point -
+                body.worldCenterOfMass;
+
+            torqueImpulse =
+                Vector3.Cross(
+                    contactOffset,
+                    transferredImpulse
+                ) *
+                blockImpactTorqueMultiplier;
+        }
+
         ActivatePhysics(
-            impulse
+            transferredImpulse,
+            torqueImpulse
         );
+    }
+
+
+    private bool TryHandleBreakableHit(
+        Vector3 impulse,
+        Vector3 hitPoint)
+    {
+        if (!breakableForSpawn ||
+            isCleared)
+        {
+            return false;
+        }
+
+        remainingBreakHits =
+            Mathf.Max(0, remainingBreakHits - 1);
+
+        if (remainingBreakHits > 0)
+        {
+            return true;
+        }
+
+        SpawnBreakEffect(impulse, hitPoint);
+
+        isCleared = true;
+
+        Action<PhysicsTowerObject> clearedHandler =
+            Cleared;
+
+        if (clearedHandler != null)
+        {
+            clearedHandler(this);
+        }
+        else
+        {
+            gameObject.SetActive(false);
+        }
+
+        return true;
+    }
+
+
+    private void SpawnBreakEffect(
+        Vector3 impulse,
+        Vector3 hitPoint)
+    {
+        if (brokenVisualPrefab != null)
+        {
+            GameObject brokenVisual =
+                Instantiate(
+                    brokenVisualPrefab,
+                    transform.position,
+                    transform.rotation,
+                    transform.parent
+                );
+
+            brokenVisual.transform.localScale =
+                transform.localScale;
+
+            Rigidbody[] fragmentBodies =
+                brokenVisual.GetComponentsInChildren<Rigidbody>(true);
+
+            foreach (Rigidbody fragmentBody in fragmentBodies)
+            {
+                if (fragmentBody == null)
+                {
+                    continue;
+                }
+
+                fragmentBody.isKinematic = false;
+                fragmentBody.useGravity = true;
+                fragmentBody.AddForce(
+                    impulse /
+                    Mathf.Max(1, fragmentBodies.Length),
+                    ForceMode.Impulse
+                );
+                fragmentBody.AddExplosionForce(
+                    breakShardImpulse,
+                    hitPoint,
+                    1.5f,
+                    0.05f,
+                    ForceMode.Impulse
+                );
+            }
+
+            Destroy(
+                brokenVisual,
+                breakShardLifetime
+            );
+            return;
+        }
+
+        SpawnFallbackShards(impulse, hitPoint);
+    }
+
+
+    private void SpawnFallbackShards(
+        Vector3 impulse,
+        Vector3 hitPoint)
+    {
+        if (!TryGetPhysicsBounds(out Bounds bounds))
+        {
+            return;
+        }
+
+        Material shardMaterial = null;
+
+        if (colorRenderers == null ||
+            colorRenderers.Length == 0)
+        {
+            ResolveReferences();
+        }
+
+        if (colorRenderers != null)
+        {
+            foreach (Renderer sourceRenderer in colorRenderers)
+            {
+                if (sourceRenderer != null &&
+                    sourceRenderer.sharedMaterial != null)
+                {
+                    shardMaterial = sourceRenderer.sharedMaterial;
+                    break;
+                }
+            }
+        }
+
+        int shardCount =
+            Mathf.Clamp(fallbackShardCount, 3, 16);
+
+        float shardDivisor =
+            Mathf.Max(1.6f, Mathf.Pow(shardCount, 1f / 3f));
+
+        Vector3 baseShardSize =
+            new Vector3(
+                Mathf.Max(0.025f, bounds.size.x / shardDivisor),
+                Mathf.Max(0.025f, bounds.size.y / shardDivisor),
+                Mathf.Max(0.025f, bounds.size.z / shardDivisor)
+            );
+
+        for (int index = 0;
+             index < shardCount;
+             index++)
+        {
+            GameObject shard =
+                GameObject.CreatePrimitive(
+                    PrimitiveType.Cube
+                );
+
+            shard.name = "Break Shard";
+            shard.layer = gameObject.layer;
+            shard.transform.position =
+                new Vector3(
+                    Random.Range(bounds.min.x, bounds.max.x),
+                    Random.Range(bounds.min.y, bounds.max.y),
+                    Random.Range(bounds.min.z, bounds.max.z)
+                );
+            shard.transform.rotation =
+                Random.rotation;
+            shard.transform.localScale =
+                Vector3.Scale(
+                    baseShardSize,
+                    new Vector3(
+                        Random.Range(0.55f, 1.05f),
+                        Random.Range(0.55f, 1.05f),
+                        Random.Range(0.55f, 1.05f)
+                    )
+                );
+
+            Renderer shardRenderer =
+                shard.GetComponent<Renderer>();
+
+            if (shardRenderer != null &&
+                shardMaterial != null)
+            {
+                shardRenderer.sharedMaterial = shardMaterial;
+            }
+
+            Rigidbody shardBody =
+                shard.AddComponent<Rigidbody>();
+
+            shardBody.mass =
+                body != null
+                    ? Mathf.Max(0.01f, body.mass / shardCount)
+                    : 0.08f;
+            shardBody.collisionDetectionMode =
+                CollisionDetectionMode.ContinuousSpeculative;
+            shardBody.AddForce(
+                impulse / shardCount,
+                ForceMode.Impulse
+            );
+            shardBody.AddExplosionForce(
+                breakShardImpulse *
+                Random.Range(0.75f, 1.2f),
+                hitPoint,
+                Mathf.Max(0.5f, bounds.extents.magnitude * 2f),
+                0.04f,
+                ForceMode.Impulse
+            );
+            shardBody.AddTorque(
+                Random.onUnitSphere *
+                breakShardImpulse *
+                0.2f,
+                ForceMode.Impulse
+            );
+
+            Destroy(shard, breakShardLifetime);
+        }
     }
 
 

@@ -719,7 +719,6 @@
 
 
 
-
 using System.Collections;
 using System.Collections.Generic;
 using TMPro;
@@ -731,7 +730,27 @@ using UnityEngine.UI;
 
 public sealed class LevelRuntimeController : MonoBehaviour
 {
+    private const string SavedLevelNumberKey =
+        "RoyalSmash.CurrentLevelNumber";
+
     public event System.Action<GridLevelData> LevelGenerated;
+
+
+
+
+
+
+// [Header("Level Progress")]
+// [SerializeField]
+// private LevelMilestoneProgressBar milestoneProgressBar;
+
+
+
+
+
+
+
+
 
     [Header("Level")]
 
@@ -763,6 +782,37 @@ public sealed class LevelRuntimeController : MonoBehaviour
     )]
     [SerializeField]
     private bool autoCreateNextLevelUI = true;
+
+    [Tooltip(
+        "Level complete hote hi database ka agla saved level " +
+        "automatically load kare."
+    )]
+    [SerializeField]
+    private bool autoLoadNextLevel = true;
+
+    [Tooltip(
+        "Completion message dikhane ke baad next level load hone ka delay."
+    )]
+    [SerializeField, Min(0f)]
+    private float autoLoadNextLevelDelay = 1.25f;
+
+
+    [Header("Main Menu")]
+
+    [SerializeField]
+    private bool showMainMenuOnStartup = true;
+
+    [SerializeField]
+    private GameObject mainMenuPanel;
+
+    [SerializeField]
+    private Button playButton;
+
+    [SerializeField]
+    private Button resetProgressButton;
+
+    [SerializeField]
+    private TMP_Text currentLevelText;
 
 
     [Header("References")]
@@ -803,8 +853,9 @@ public sealed class LevelRuntimeController : MonoBehaviour
     [Header("Mirrored Depth Physics")]
 
     [Tooltip(
-        "Mirror Paint ON ho to front layer ka hit same X/Y par maujood " +
-        "baqi depth-layer blocks ko bhi unlock aur push karega."
+        "Kisi bhi 2+ depth-layer level mein hit block ka impact same X/Y " +
+        "par maujood baqi depth-layer blocks ko bhi unlock aur push karega. " +
+        "Ye gameplay link Mirror Paint authoring option se independent hai."
     )]
     [SerializeField]
     private bool linkMirroredDepthLayerPhysics = true;
@@ -813,7 +864,7 @@ public sealed class LevelRuntimeController : MonoBehaviour
         "Front block ke impulse ka kitna hissa mirrored layers ko mile."
     )]
     [SerializeField, Range(0f, 1.5f)]
-    private float mirroredLayerImpulseMultiplier = 1f;
+    private float mirroredLayerImpulseMultiplier = 0.45f;
 
     [Tooltip(
         "Mirrored depth layers exact same frame par na giren. Har linked " +
@@ -821,26 +872,26 @@ public sealed class LevelRuntimeController : MonoBehaviour
     )]
     [SerializeField]
     private Vector2 mirroredActivationDelayRange =
-        new Vector2(0.025f, 0.11f);
+        new Vector2(0.09f, 0.22f);
 
     [Tooltip(
         "Mirrored impulse ki strength mein per-block random variation."
     )]
     [SerializeField]
     private Vector2 mirroredImpulseVariation =
-        new Vector2(0.78f, 1.16f);
+        new Vector2(0.78f, 0.96f);
 
     [Tooltip(
         "Mirrored force direction mein maximum random angle variation."
     )]
     [SerializeField, Range(0f, 25f)]
-    private float mirroredDirectionVariationDegrees = 8f;
+    private float mirroredDirectionVariationDegrees = 4f;
 
     [Tooltip(
         "Linked blocks ko alag natural spin dene ke liye random torque."
     )]
     [SerializeField, Range(0f, 1f)]
-    private float mirroredRandomTorqueMultiplier = 0.09f;
+    private float mirroredRandomTorqueMultiplier = 0.035f;
 
 
     [Header("Events")]
@@ -863,6 +914,8 @@ public sealed class LevelRuntimeController : MonoBehaviour
     {
         public Vector3 InitialPosition;
         public int UnsupportedFrames;
+        public int TableIndex;
+        public Quaternion SurfaceRotation;
     }
 
 
@@ -883,18 +936,26 @@ public sealed class LevelRuntimeController : MonoBehaviour
     /// What currently occupies each grid cell — used by the support
     /// chain to answer "is the cell below me still standing?".
     /// </summary>
-    private readonly Dictionary<Vector3Int, PhysicsTowerObject>
+    private readonly Dictionary<(int tableIndex, Vector3Int coordinate), PhysicsTowerObject>
         occupancyByCoordinate =
-            new Dictionary<Vector3Int, PhysicsTowerObject>();
+            new Dictionary<(int, Vector3Int), PhysicsTowerObject>();
 
     private readonly Dictionary<PhysicsTowerObject, GridTrackingEntry>
         trackingByInstance =
             new Dictionary<PhysicsTowerObject, GridTrackingEntry>();
 
 
-    private LevelTable cachedTable;
+    private readonly List<LevelTable> cachedTables =
+        new List<LevelTable>();
 
-    private LevelTable cachedTablePrefab;
+    private readonly List<LevelTable> cachedTablePrefabs =
+        new List<LevelTable>();
+
+    private readonly List<int> tablePhysicsReleaseCycleTargets =
+        new List<int>();
+
+    private readonly HashSet<int> releasedTablePhysicsIndices =
+        new HashSet<int>();
 
     private LevelTable currentTable;
 
@@ -906,6 +967,8 @@ public sealed class LevelRuntimeController : MonoBehaviour
     private bool isPropagatingMirroredActivation;
 
     private int levelGenerationRevision;
+
+    private float runtimeTableAnimationTime;
 
     private int currentLevelIndex;
 
@@ -923,14 +986,17 @@ public sealed class LevelRuntimeController : MonoBehaviour
 
     private GameObject autoCreatedCompletePanel;
 
+    private CannonController cannonController;
+
+    private GameObject gameplayRestartButton;
+
     /// <summary>
     /// Lowest occupied grid row for the current level — the "floor"
     /// row that always counts as supported by the table, even if the
     /// designer didn't start painting at y=0.
     /// </summary>
-    private int gridBaseRow;
-
-    private Quaternion gridSurfaceRotation = Quaternion.identity;
+    private readonly Dictionary<int, int> gridBaseRowByTable =
+        new Dictionary<int, int>();
 
 
     public GridLevelData CurrentLevelData =>
@@ -938,6 +1004,9 @@ public sealed class LevelRuntimeController : MonoBehaviour
 
     public LevelTable CurrentTable =>
         currentTable;
+
+    public IReadOnlyList<LevelTable> CurrentTables =>
+        cachedTables;
 
     public int RemainingTargets =>
         remainingTargets;
@@ -954,11 +1023,10 @@ public sealed class LevelRuntimeController : MonoBehaviour
 
     private void Start()
     {
-        EnsureNextLevelUI();
-        SetLevelCompleteUIVisible(false);
-
-        if (IsLiveWorkingLevelPreviewEnabled())
+        if (ShouldStartLiveWorkingLevelPreview())
         {
+            EnsureNextLevelUI();
+            SetLevelCompleteUIVisible(false);
             currentLevelIndex = 0;
             GenerateLevel();
             return;
@@ -977,9 +1045,79 @@ public sealed class LevelRuntimeController : MonoBehaviour
             return;
         }
 
+        if (showMainMenuOnStartup)
+        {
+            ShowMainMenu();
+            return;
+        }
+
         StartCoroutine(
             LoadAddressableLevelRoutine(currentLevelIndex)
         );
+    }
+
+
+    public void ShowMainMenu()
+    {
+        EnsureMainMenuUI();
+        SetGameplayWorldVisible(false);
+        UpdateCurrentLevelText();
+
+        if (mainMenuPanel != null)
+        {
+            mainMenuPanel.SetActive(true);
+        }
+    }
+
+
+    public void PlayFromMainMenu()
+    {
+        if (isLoadingLevel)
+        {
+            return;
+        }
+
+        int playableIndex =
+            FindNextLevelIndex(currentLevelIndex);
+
+        if (playableIndex < 0)
+        {
+            Debug.LogError(
+                "Play: koi saved Addressable level configured nahi hai.",
+                this
+            );
+            return;
+        }
+
+        currentLevelIndex = playableIndex;
+
+        if (mainMenuPanel != null)
+        {
+            mainMenuPanel.SetActive(false);
+        }
+
+        SetGameplayWorldVisible(true);
+
+        StartCoroutine(
+            LoadAddressableLevelRoutine(currentLevelIndex)
+        );
+    }
+
+
+    public void ResetProgressFromMainMenu()
+    {
+        PlayerPrefs.DeleteKey(SavedLevelNumberKey);
+        PlayerPrefs.Save();
+
+        int firstLevelIndex =
+            FindNextLevelIndex(0);
+
+        currentLevelIndex =
+            firstLevelIndex >= 0
+                ? firstLevelIndex
+                : 0;
+
+        UpdateCurrentLevelText();
     }
 
 
@@ -1017,6 +1155,10 @@ public sealed class LevelRuntimeController : MonoBehaviour
             currentLevelIndex = sequenceIndex;
         }
 
+        SaveCurrentLevelProgress(
+            newLevelData.LevelNumber
+        );
+
 
         GenerateLevel();
     }
@@ -1037,6 +1179,8 @@ public sealed class LevelRuntimeController : MonoBehaviour
 
         ClearCurrentLevel();
 
+        runtimeTableAnimationTime = 0f;
+
 
         objectPool.PrepareForLevel(
             levelData
@@ -1048,28 +1192,14 @@ public sealed class LevelRuntimeController : MonoBehaviour
             return;
         }
 
-
-        if (!currentTable.TryGetTowerSurface(
-                out Vector3 surfacePosition,
-                out Quaternion surfaceRotation))
-        {
-            Debug.LogError(
-                "Table ki tower surface calculate nahi ho saki.",
-                currentTable
-            );
-
-            return;
-        }
+        PrepareTablePhysicsReleaseTargets();
 
 
         remainingTargets =
             0;
 
 
-        SpawnGrid(
-            surfacePosition,
-            surfaceRotation
-        );
+        SpawnGrid();
 
 
         Physics.SyncTransforms();
@@ -1292,27 +1422,113 @@ public sealed class LevelRuntimeController : MonoBehaviour
     }
 
 
-    private void SpawnGrid(
-        Vector3 surfacePosition,
-        Quaternion surfaceRotation)
+    private void SpawnGrid()
     {
-        gridSurfaceRotation = surfaceRotation;
+        Vector3Int occupiedMin =
+            new Vector3Int(
+                int.MaxValue,
+                int.MaxValue,
+                int.MaxValue
+            );
 
-        if (!levelData.TryGetOccupiedBounds(
-                out Vector3Int occupiedMin,
-                out Vector3Int occupiedMax))
+        Vector3Int occupiedMax =
+            new Vector3Int(
+                int.MinValue,
+                int.MinValue,
+                int.MinValue
+            );
+
+        if (currentTable == null ||
+            !currentTable.TryGetTowerSurface(
+                out Vector3 primarySurfacePosition,
+                out Quaternion primarySurfaceRotation))
         {
             Debug.LogError(
-                "Manual grid mein occupied cells nahi hain.",
+                "PRIMARY table ki tower surface calculate nahi ho saki.",
+                currentTable
+            );
+
+            return;
+        }
+
+        int tableCount =
+            Mathf.Max(1, cachedTables.Count);
+
+        Vector3[] surfacePositions =
+            new Vector3[tableCount];
+
+        Quaternion[] surfaceRotations =
+            new Quaternion[tableCount];
+
+        for (int tableIndex = 0;
+             tableIndex < tableCount;
+             tableIndex++)
+        {
+            LevelTable table =
+                tableIndex < cachedTables.Count
+                    ? cachedTables[tableIndex]
+                    : null;
+
+            if (table != null &&
+                table.TryGetTowerSurface(
+                    out Vector3 tableSurfacePosition,
+                    out Quaternion tableSurfaceRotation))
+            {
+                surfacePositions[tableIndex] = tableSurfacePosition;
+                surfaceRotations[tableIndex] = tableSurfaceRotation;
+            }
+            else
+            {
+                surfacePositions[tableIndex] = primarySurfacePosition;
+                surfaceRotations[tableIndex] = primarySurfaceRotation;
+            }
+        }
+
+        Dictionary<int, Vector3Int> occupiedMinByTable =
+            new Dictionary<int, Vector3Int>();
+
+        Dictionary<int, Vector3Int> occupiedMaxByTable =
+            new Dictionary<int, Vector3Int>();
+
+        bool foundAnyOccupiedCell = false;
+
+        for (int tableIndex = 0;
+             tableIndex < tableCount;
+             tableIndex++)
+        {
+            if (!levelData.TryGetOccupiedBounds(
+                    tableIndex,
+                    out Vector3Int tableMinimum,
+                    out Vector3Int tableMaximum))
+            {
+                continue;
+            }
+
+            foundAnyOccupiedCell = true;
+            occupiedMinByTable[tableIndex] = tableMinimum;
+            occupiedMaxByTable[tableIndex] = tableMaximum;
+            occupiedMin = Vector3Int.Min(occupiedMin, tableMinimum);
+            occupiedMax = Vector3Int.Max(occupiedMax, tableMaximum);
+        }
+
+        if (!foundAnyOccupiedCell)
+        {
+            Debug.LogError(
+                "Kisi bhi table ke manual grid mein occupied cells nahi hain.",
                 levelData
             );
 
             return;
         }
 
+        gridBaseRowByTable.Clear();
 
-        gridBaseRow =
-            occupiedMin.y;
+        foreach (KeyValuePair<int, Vector3Int> entry
+                 in occupiedMinByTable)
+        {
+            gridBaseRowByTable[entry.Key] =
+                entry.Value.y;
+        }
 
 
         Vector3 cellSize =
@@ -1335,25 +1551,6 @@ public sealed class LevelRuntimeController : MonoBehaviour
 
 
         /*
-         * Occupied shape ka actual center calculate hota hai.
-         */
-        float occupiedCenterX =
-            (
-                occupiedMin.x +
-                occupiedMax.x
-            ) *
-            0.5f;
-
-
-        float occupiedCenterZ =
-            (
-                occupiedMin.z +
-                occupiedMax.z
-            ) *
-            0.5f;
-
-
-        /*
          * Important:
          *
          * Y outer loop hai.
@@ -1371,12 +1568,23 @@ public sealed class LevelRuntimeController : MonoBehaviour
                      x <= occupiedMax.x;
                      x++)
                 {
-                    GridCellData cell =
-                        levelData.GetCell(
-                            x,
-                            y,
-                            z
-                        );
+                    for (int authoredTableIndex = 0;
+                         authoredTableIndex < tableCount;
+                         authoredTableIndex++)
+                    {
+                        if (!occupiedMinByTable.ContainsKey(
+                                authoredTableIndex))
+                        {
+                            continue;
+                        }
+
+                        GridCellData cell =
+                            levelData.GetCell(
+                                x,
+                                y,
+                                z,
+                                authoredTableIndex
+                            );
 
 
                     if (cell == null ||
@@ -1395,6 +1603,36 @@ public sealed class LevelRuntimeController : MonoBehaviour
                     {
                         continue;
                     }
+
+
+                    int blockTableIndex =
+                        authoredTableIndex;
+
+                    Vector3Int tableOccupiedMin =
+                        occupiedMinByTable[blockTableIndex];
+
+                    Vector3Int tableOccupiedMax =
+                        occupiedMaxByTable[blockTableIndex];
+
+                    float occupiedCenterX =
+                        (
+                            tableOccupiedMin.x +
+                            tableOccupiedMax.x
+                        ) *
+                        0.5f;
+
+                    float occupiedCenterZ =
+                        (
+                            tableOccupiedMin.z +
+                            tableOccupiedMax.z
+                        ) *
+                        0.5f;
+
+                    Vector3 surfacePosition =
+                        surfacePositions[blockTableIndex];
+
+                    Quaternion surfaceRotation =
+                        surfaceRotations[blockTableIndex];
 
 
                     int spanX =
@@ -1440,7 +1678,7 @@ public sealed class LevelRuntimeController : MonoBehaviour
                         0.5f +
                         (
                             y -
-                            occupiedMin.y
+                            tableOccupiedMin.y
                         ) *
                         stepY +
                         (spanY - 1) *
@@ -1519,6 +1757,16 @@ public sealed class LevelRuntimeController : MonoBehaviour
                         PieceOrientationUtility.GetRotation(
                             orientation,
                             cell.CustomZRotation
+                        ) *
+                        Quaternion.Euler(
+                            cell.RotationEulerOffset
+                        );
+
+
+                    Vector3 pieceScale =
+                        Vector3.Scale(
+                            fitData.Scale,
+                            cell.ScaleMultiplier
                         );
 
 
@@ -1534,7 +1782,10 @@ public sealed class LevelRuntimeController : MonoBehaviour
                      */
                     Vector3 rotatedBoundsOffset =
                         pieceRotation *
-                        fitData.BoundsCenterOffset;
+                        Vector3.Scale(
+                            fitData.BoundsCenterOffset,
+                            cell.ScaleMultiplier
+                        );
 
 
                     Vector3 spawnPosition =
@@ -1564,7 +1815,7 @@ public sealed class LevelRuntimeController : MonoBehaviour
                      * mein clean fit hon.
                      */
                     instance.transform.localScale =
-                        fitData.Scale;
+                        pieceScale;
 
 
                     /*
@@ -1595,6 +1846,11 @@ public sealed class LevelRuntimeController : MonoBehaviour
                         cell.LocalOffset
                     );
 
+                    instance.ConfigureBreakable(
+                        cell.Breakable,
+                        cell.HitsToBreak
+                    );
+
                     /*
                      * Bare footprint ke SAARE cells is instance ko
                      * point karte hain — is se agar upar kuch spawn ho
@@ -1608,10 +1864,13 @@ public sealed class LevelRuntimeController : MonoBehaviour
                             for (int fx = 0; fx < spanX; fx++)
                             {
                                 occupancyByCoordinate[
-                                    new Vector3Int(
-                                        x + fx,
-                                        y + fy,
-                                        z + fz
+                                    (
+                                        blockTableIndex,
+                                        new Vector3Int(
+                                            x + fx,
+                                            y + fy,
+                                            z + fz
+                                        )
                                     )
                                 ] = instance;
                             }
@@ -1622,7 +1881,9 @@ public sealed class LevelRuntimeController : MonoBehaviour
                         new GridTrackingEntry
                         {
                             InitialPosition = spawnPosition,
-                            UnsupportedFrames = 0
+                            UnsupportedFrames = 0,
+                            TableIndex = blockTableIndex,
+                            SurfaceRotation = surfaceRotation
                         };
 
 
@@ -1642,16 +1903,36 @@ public sealed class LevelRuntimeController : MonoBehaviour
                     {
                         remainingTargets++;
                     }
+                    }
                 }
             }
         }
     }
 
 
+    private int ResolveBlockTableIndex(int requestedIndex)
+    {
+        if (requestedIndex >= 0 &&
+            requestedIndex < cachedTables.Count &&
+            cachedTables[requestedIndex] != null)
+        {
+            return requestedIndex;
+        }
+
+        return 0;
+    }
+
+
     private void FixedUpdate()
     {
-        if (!levelGenerated ||
-            activeObjects.Count == 0)
+        if (!levelGenerated)
+        {
+            return;
+        }
+
+        AnimateEnabledTables();
+
+        if (activeObjects.Count == 0)
         {
             return;
         }
@@ -1681,6 +1962,7 @@ public sealed class LevelRuntimeController : MonoBehaviour
 
             if (IsSupported(
                     instance,
+                    entry,
                     out Vector3 unsupportedLocalDirection))
             {
                 entry.UnsupportedFrames = 0;
@@ -1693,11 +1975,11 @@ public sealed class LevelRuntimeController : MonoBehaviour
                 unsupportedFramesRequired)
             {
                 Vector3 worldFallDirection =
-                    gridSurfaceRotation *
+                    entry.SurfaceRotation *
                     unsupportedLocalDirection.normalized;
 
                 Vector3 worldUp =
-                    gridSurfaceRotation * Vector3.up;
+                    entry.SurfaceRotation * Vector3.up;
 
                 Vector3 tippingTorque =
                     Vector3.Cross(
@@ -1723,9 +2005,17 @@ public sealed class LevelRuntimeController : MonoBehaviour
     /// footprint mein kam az kam ek LOCKED support hona chahiye. Hit hua
     /// dynamic block foran support count hona band ho jata hai, chahe woh
     /// abhi apni spawn position se zyada move na bhi hua ho.
+    ///
+    /// Multi-cell footprint (span > 1) wale pieces ke liye sirf
+    /// "kahin bhi neeche support hai" (OR) kaafi nahi — agar ek extreme
+    /// edge (min ya max column) ka support hat jaye to piece ko us taraf
+    /// tip hona chahiye, chahe doosra extreme abhi bhi supported ho.
+    /// Ye seam-offset pieces (0.5 Center-on-Seam) aur plain grid-aligned
+    /// multi-span pieces, dono par apply hota hai.
     /// </summary>
     private bool IsSupported(
         PhysicsTowerObject instance,
+        GridTrackingEntry trackingEntry,
         out Vector3 unsupportedLocalDirection)
     {
         unsupportedLocalDirection = Vector3.zero;
@@ -1739,7 +2029,14 @@ public sealed class LevelRuntimeController : MonoBehaviour
         Vector3Int coordinate =
             instance.GridCoordinate;
 
-        if (coordinate.y <= gridBaseRow)
+        int baseRow =
+            gridBaseRowByTable.TryGetValue(
+                trackingEntry.TableIndex,
+                out int tableBaseRow)
+                ? tableBaseRow
+                : coordinate.y;
+
+        if (coordinate.y <= baseRow)
         {
             return true;
         }
@@ -1780,6 +2077,20 @@ public sealed class LevelRuntimeController : MonoBehaviour
                 Mathf.Round(localOffset.z)
             );
 
+        /*
+         * Seam offset ke bina bhi agar piece ek se zyada grid column
+         * span kar raha hai (e.g. horizontal 2-cell beam), to sirf
+         * "kahin bhi support hai" kaafi nahi — dono extremes (min aur
+         * max column) ka support alag alag check hona chahiye, warna
+         * ek pillar hat jane par doosre pillar ka sahara poore beam
+         * ko galat tarah "supported" dikha deta hai.
+         */
+        bool spansMultipleColumnsX =
+            maximumX > minimumX;
+
+        bool spansMultipleColumnsZ =
+            maximumZ > minimumZ;
+
         bool hasAnySupport = false;
         bool minimumXSupported = false;
         bool maximumXSupported = false;
@@ -1798,7 +2109,7 @@ public sealed class LevelRuntimeController : MonoBehaviour
                     );
 
                 if (occupancyByCoordinate.TryGetValue(
-                        below,
+                        (trackingEntry.TableIndex, below),
                         out PhysicsTowerObject supportInstance) &&
                     supportInstance != null &&
                     supportInstance != instance &&
@@ -1824,7 +2135,7 @@ public sealed class LevelRuntimeController : MonoBehaviour
             return false;
         }
 
-        if (seamOnX &&
+        if ((seamOnX || spansMultipleColumnsX) &&
             (!minimumXSupported || !maximumXSupported))
         {
             if (!minimumXSupported)
@@ -1848,7 +2159,7 @@ public sealed class LevelRuntimeController : MonoBehaviour
             return false;
         }
 
-        if (seamOnZ &&
+        if ((seamOnZ || spansMultipleColumnsZ) &&
             (!minimumZSupported || !maximumZSupported))
         {
             if (!minimumZSupported)
@@ -1909,105 +2220,436 @@ public sealed class LevelRuntimeController : MonoBehaviour
 
     private bool PrepareTable()
     {
-        LevelTable requiredPrefab =
-            levelData.TablePrefab;
+        int requiredTableCount =
+            levelData.TableCount;
 
-
-        if (requiredPrefab == null)
+        if (requiredTableCount < 1 ||
+            levelData.GetTablePrefab(0) == null)
         {
             Debug.LogError(
-                "GridLevelData mein Table Prefab missing hai.",
+                "GridLevelData mein PRIMARY Table Prefab missing hai.",
                 levelData
             );
 
             return false;
         }
 
-
-        if (cachedTable == null ||
-            cachedTablePrefab != requiredPrefab)
+        while (cachedTables.Count > requiredTableCount)
         {
-            if (cachedTable != null)
-            {
-                Destroy(
-                    cachedTable.gameObject
-                );
-            }
+            DestroyCachedTableAt(
+                cachedTables.Count - 1
+            );
 
+            cachedTables.RemoveAt(
+                cachedTables.Count - 1
+            );
 
-            cachedTable =
-                Instantiate(
-                    requiredPrefab,
-                    GetLevelOrigin()
-                );
-
-
-            cachedTable.name =
-                requiredPrefab.name +
-                "_Runtime";
-
-
-            cachedTablePrefab =
-                requiredPrefab;
+            cachedTablePrefabs.RemoveAt(
+                cachedTablePrefabs.Count - 1
+            );
         }
-
-
-        currentTable =
-            cachedTable;
-
-
-        Transform tableTransform =
-            currentTable.transform;
-
 
         Transform levelRoot =
             GetLevelOrigin();
 
-
-        if (tableTransform.parent !=
-            levelRoot)
+        while (cachedTables.Count < requiredTableCount)
         {
-            tableTransform.SetParent(
-                levelRoot,
-                false
-            );
+            cachedTables.Add(null);
+            cachedTablePrefabs.Add(null);
         }
 
-
-        tableTransform.localPosition =
-            levelData.TablePositionOffset;
-
-
-        tableTransform.localRotation =
-            Quaternion.Euler(
-                levelData.TableRotationEuler
-            );
-
-
-        tableTransform.localScale =
-            requiredPrefab
-                .transform
-                .localScale;
-
-
-        currentTable.gameObject.SetActive(
-            true
-        );
-
-
-        if (currentTable.TowerSurfaceCollider ==
-            null)
+        for (int index = 0;
+             index < requiredTableCount;
+             index++)
         {
-            Debug.LogError(
-                "Table prefab par Tower Surface Collider missing hai.",
-                currentTable
-            );
+            LevelTable requiredPrefab =
+                levelData.GetTablePrefab(index);
 
-            return false;
+            if (requiredPrefab == null)
+            {
+                DestroyCachedTableAt(index);
+
+                Debug.LogWarning(
+                    $"Table Placements element {index} ka Prefab missing hai; " +
+                    "is extra table ko skip kiya gaya.",
+                    levelData
+                );
+
+                continue;
+            }
+
+            if (cachedTables[index] == null ||
+                cachedTablePrefabs[index] != requiredPrefab)
+            {
+                DestroyCachedTableAt(index);
+
+                LevelTable instance =
+                    Instantiate(
+                        requiredPrefab,
+                        levelRoot
+                    );
+
+                instance.name =
+                    requiredPrefab.name +
+                    $"_Runtime_{index + 1}";
+
+                cachedTables[index] = instance;
+                cachedTablePrefabs[index] = requiredPrefab;
+            }
+
+            LevelTable table =
+                cachedTables[index];
+
+            Transform tableTransform =
+                table.transform;
+
+            if (tableTransform.parent != levelRoot)
+            {
+                tableTransform.SetParent(
+                    levelRoot,
+                    false
+                );
+            }
+
+            tableTransform.localPosition =
+                levelData.GetTablePositionOffset(index);
+
+            tableTransform.localRotation =
+                Quaternion.Euler(
+                    levelData.GetTableRotationEuler(index)
+                );
+
+            tableTransform.localScale =
+                Vector3.Scale(
+                    requiredPrefab.transform.localScale,
+                    levelData.GetTableSizeMultiplier(index)
+                );
+
+            table.gameObject.SetActive(true);
+
+            if (table.TowerSurfaceCollider == null)
+            {
+                Debug.LogError(
+                    $"Table Placements element {index} ke prefab par " +
+                    "Tower Surface Collider missing hai.",
+                    table
+                );
+
+                return false;
+            }
         }
 
+        currentTable = cachedTables[0];
 
         return true;
+    }
+
+
+    private void DestroyCachedTableAt(int index)
+    {
+        if (index < 0 ||
+            index >= cachedTables.Count)
+        {
+            return;
+        }
+
+        LevelTable table =
+            cachedTables[index];
+
+        if (table != null)
+        {
+            if (Application.isPlaying)
+            {
+                Destroy(table.gameObject);
+            }
+            else
+            {
+                DestroyImmediate(table.gameObject);
+            }
+        }
+
+        cachedTables[index] = null;
+
+        if (index < cachedTablePrefabs.Count)
+        {
+            cachedTablePrefabs[index] = null;
+        }
+    }
+
+
+    private void AnimateEnabledTables()
+    {
+        if (levelData == null ||
+            cachedTables.Count == 0)
+        {
+            return;
+        }
+
+        runtimeTableAnimationTime +=
+            Time.fixedDeltaTime;
+
+        for (int tableIndex = 0;
+             tableIndex < cachedTables.Count;
+             tableIndex++)
+        {
+            LevelTable table = cachedTables[tableIndex];
+            bool rotationEnabled =
+                levelData.IsTableRuntimeRotationEnabled(
+                    tableIndex
+                );
+            bool movementEnabled =
+                levelData.IsTableRuntimeHorizontalMovementEnabled(
+                    tableIndex
+                );
+
+            if (table == null ||
+                (!rotationEnabled && !movementEnabled))
+            {
+                continue;
+            }
+
+            Vector3 rotationAxis =
+                levelData.GetTableRuntimeRotationAxis(tableIndex);
+            float rotationSpeed =
+                levelData.GetTableRuntimeRotationSpeed(tableIndex);
+            Vector3 movementAxis =
+                levelData.GetTableRuntimeMovementAxis(tableIndex);
+            float movementDistance =
+                levelData.GetTableRuntimeMovementDistance(tableIndex);
+            float movementSpeed =
+                levelData.GetTableRuntimeMovementSpeed(tableIndex);
+
+            bool canRotate =
+                rotationEnabled &&
+                rotationAxis.sqrMagnitude >= 0.0001f &&
+                !Mathf.Approximately(rotationSpeed, 0f);
+
+            bool canMove =
+                movementEnabled &&
+                movementAxis.sqrMagnitude >= 0.0001f &&
+                movementDistance > 0f &&
+                movementSpeed > 0f;
+
+            if (!canRotate && !canMove)
+            {
+                continue;
+            }
+
+            Transform tableTransform = table.transform;
+            Vector3 oldWorldPosition = tableTransform.position;
+            Quaternion oldWorldRotation = tableTransform.rotation;
+
+            if (canMove)
+            {
+                float movementPhase =
+                    runtimeTableAnimationTime *
+                    movementSpeed *
+                    Mathf.PI * 2f;
+
+                tableTransform.localPosition =
+                    levelData.GetTablePositionOffset(tableIndex) +
+                    movementAxis.normalized *
+                    Mathf.Sin(movementPhase) *
+                    movementDistance;
+            }
+
+            if (canRotate)
+            {
+                tableTransform.localRotation =
+                    tableTransform.localRotation *
+                    Quaternion.AngleAxis(
+                        rotationSpeed * Time.fixedDeltaTime,
+                        rotationAxis.normalized
+                    );
+            }
+
+            Vector3 newWorldPosition = tableTransform.position;
+            Vector3 tableVelocity =
+                (newWorldPosition - oldWorldPosition) /
+                Mathf.Max(0.0001f, Time.fixedDeltaTime);
+            Quaternion worldRotationDelta =
+                tableTransform.rotation *
+                Quaternion.Inverse(oldWorldRotation);
+
+            for (int objectIndex = 0;
+                 objectIndex < activeObjects.Count;
+                 objectIndex++)
+            {
+                PhysicsTowerObject instance =
+                    activeObjects[objectIndex];
+
+                if (instance == null ||
+                    !instance.IsLocked ||
+                    !trackingByInstance.TryGetValue(
+                        instance,
+                        out GridTrackingEntry entry) ||
+                    entry.TableIndex != tableIndex)
+                {
+                    continue;
+                }
+
+                Rigidbody objectBody = instance.Body;
+                Vector3 objectPosition =
+                    objectBody != null
+                        ? objectBody.position
+                        : instance.transform.position;
+                Quaternion objectRotation =
+                    objectBody != null
+                        ? objectBody.rotation
+                        : instance.transform.rotation;
+                Vector3 animatedPosition =
+                    newWorldPosition +
+                    worldRotationDelta *
+                    (objectPosition - oldWorldPosition);
+
+                instance.MoveLockedWithTable(
+                    animatedPosition,
+                    worldRotationDelta * objectRotation
+                );
+
+                entry.InitialPosition =
+                    newWorldPosition +
+                    worldRotationDelta *
+                    (entry.InitialPosition - oldWorldPosition);
+
+                entry.SurfaceRotation =
+                    worldRotationDelta * entry.SurfaceRotation;
+            }
+
+            TryReleaseTableBlocksAfterMovementCycles(
+                tableIndex,
+                canMove ? movementSpeed : 0f,
+                tableVelocity
+            );
+        }
+    }
+
+
+    private void PrepareTablePhysicsReleaseTargets()
+    {
+        tablePhysicsReleaseCycleTargets.Clear();
+        releasedTablePhysicsIndices.Clear();
+
+        for (int tableIndex = 0;
+             tableIndex < cachedTables.Count;
+             tableIndex++)
+        {
+            if (!levelData.ShouldReleaseTableBlocksAfterMovementCycles(
+                    tableIndex))
+            {
+                tablePhysicsReleaseCycleTargets.Add(int.MaxValue);
+                continue;
+            }
+
+            int minimumCycles =
+                Mathf.Max(
+                    1,
+                    levelData.GetTableMinimumMovementCyclesBeforeRelease(
+                        tableIndex
+                    )
+                );
+            int maximumCycles =
+                Mathf.Max(
+                    minimumCycles,
+                    levelData.GetTableMaximumMovementCyclesBeforeRelease(
+                        tableIndex
+                    )
+                );
+
+            tablePhysicsReleaseCycleTargets.Add(
+                Random.Range(
+                    minimumCycles,
+                    maximumCycles + 1
+                )
+            );
+        }
+    }
+
+
+    private void TryReleaseTableBlocksAfterMovementCycles(
+        int tableIndex,
+        float movementSpeed,
+        Vector3 tableVelocity)
+    {
+        if (tableIndex < 0 ||
+            tableIndex >= tablePhysicsReleaseCycleTargets.Count ||
+            releasedTablePhysicsIndices.Contains(tableIndex) ||
+            !levelData.ShouldReleaseTableBlocksAfterMovementCycles(
+                tableIndex) ||
+            movementSpeed <= 0f)
+        {
+            return;
+        }
+
+        float completedCycles =
+            runtimeTableAnimationTime * movementSpeed;
+
+        if (completedCycles <
+            tablePhysicsReleaseCycleTargets[tableIndex])
+        {
+            return;
+        }
+
+        releasedTablePhysicsIndices.Add(tableIndex);
+
+        float velocityMultiplier =
+            levelData.GetTableMovementReleaseVelocityMultiplier(
+                tableIndex
+            );
+
+        bool wasPropagatingMirroredActivation =
+            isPropagatingMirroredActivation;
+
+        isPropagatingMirroredActivation = true;
+
+        for (int objectIndex = activeObjects.Count - 1;
+             objectIndex >= 0;
+             objectIndex--)
+        {
+            PhysicsTowerObject instance =
+                activeObjects[objectIndex];
+
+            if (instance == null ||
+                !instance.IsLocked ||
+                !trackingByInstance.TryGetValue(
+                    instance,
+                    out GridTrackingEntry entry) ||
+                entry.TableIndex != tableIndex)
+            {
+                continue;
+            }
+
+            Rigidbody body = instance.Body;
+            float bodyMass =
+                body != null
+                    ? Mathf.Max(0.01f, body.mass)
+                    : 1f;
+
+            Vector3 naturalVariation =
+                new Vector3(
+                    Random.Range(-0.08f, 0.08f),
+                    Random.Range(0.015f, 0.07f),
+                    Random.Range(-0.08f, 0.08f)
+                );
+
+            Vector3 inheritedImpulse =
+                (tableVelocity * velocityMultiplier +
+                 naturalVariation) *
+                bodyMass;
+
+            Vector3 naturalTorque =
+                Random.onUnitSphere *
+                Random.Range(0.035f, 0.12f) *
+                bodyMass;
+
+            instance.ActivatePhysics(
+                inheritedImpulse,
+                naturalTorque
+            );
+        }
+
+        isPropagatingMirroredActivation =
+            wasPropagatingMirroredActivation;
     }
 
 
@@ -2018,7 +2660,6 @@ public sealed class LevelRuntimeController : MonoBehaviour
         if (source == null ||
             levelData == null ||
             !linkMirroredDepthLayerPhysics ||
-            !levelData.MirrorPaintAcrossLayers ||
             levelData.GridDepth <= 1 ||
             isPropagatingMirroredActivation)
         {
@@ -2028,6 +2669,16 @@ public sealed class LevelRuntimeController : MonoBehaviour
         Vector3Int sourceCoordinate =
             source.GridCoordinate;
 
+        if (!trackingByInstance.TryGetValue(
+                source,
+                out GridTrackingEntry sourceTracking))
+        {
+            return;
+        }
+
+        int sourceTableIndex =
+            sourceTracking.TableIndex;
+
         int activationRevision =
             levelGenerationRevision;
 
@@ -2035,19 +2686,14 @@ public sealed class LevelRuntimeController : MonoBehaviour
              z < levelData.GridDepth;
              z++)
         {
-            Vector3Int mirroredCoordinate =
-                new Vector3Int(
-                    sourceCoordinate.x,
-                    sourceCoordinate.y,
-                    z
-                );
-
-            if (!occupancyByCoordinate.TryGetValue(
-                    mirroredCoordinate,
-                    out PhysicsTowerObject mirroredObject) ||
-                mirroredObject == null ||
-                mirroredObject == source ||
-                !mirroredObject.IsLocked)
+            if (z == sourceCoordinate.z ||
+                !TryFindDepthLinkedObject(
+                    source,
+                    sourceCoordinate,
+                    sourceTableIndex,
+                    z,
+                    out PhysicsTowerObject mirroredObject,
+                    out Vector3Int mirroredCoordinate))
             {
                 continue;
             }
@@ -2056,6 +2702,7 @@ public sealed class LevelRuntimeController : MonoBehaviour
                 ActivateMirroredObjectNaturally(
                     mirroredObject,
                     mirroredCoordinate,
+                    sourceTableIndex,
                     sourceImpulse,
                     activationRevision
                 )
@@ -2064,9 +2711,107 @@ public sealed class LevelRuntimeController : MonoBehaviour
     }
 
 
+    private bool TryFindDepthLinkedObject(
+        PhysicsTowerObject source,
+        Vector3Int sourceCoordinate,
+        int tableIndex,
+        int targetDepth,
+        out PhysicsTowerObject linkedObject,
+        out Vector3Int linkedCoordinate)
+    {
+        linkedObject = null;
+        linkedCoordinate = new Vector3Int(
+            sourceCoordinate.x,
+            sourceCoordinate.y,
+            targetDepth
+        );
+
+        if (TryGetLockedDepthObject(
+                linkedCoordinate,
+                tableIndex,
+                source,
+                out linkedObject))
+        {
+            return true;
+        }
+
+        /*
+         * Manually-authored layers can have different silhouettes. In that
+         * case there may be no block at the exact X/Y coordinate behind the
+         * hit. Find the nearest locked block in a small projected area so the
+         * back structure still receives a believable local impact rather
+         * than remaining completely static.
+         */
+        const int searchRadius = 2;
+        float bestScore = float.PositiveInfinity;
+
+        for (int yOffset = -searchRadius;
+             yOffset <= searchRadius;
+             yOffset++)
+        {
+            for (int xOffset = -searchRadius;
+                 xOffset <= searchRadius;
+                 xOffset++)
+            {
+                if (xOffset == 0 && yOffset == 0)
+                {
+                    continue;
+                }
+
+                Vector3Int candidateCoordinate =
+                    new Vector3Int(
+                        sourceCoordinate.x + xOffset,
+                        sourceCoordinate.y + yOffset,
+                        targetDepth
+                    );
+
+                if (!TryGetLockedDepthObject(
+                        candidateCoordinate,
+                        tableIndex,
+                        source,
+                        out PhysicsTowerObject candidate))
+                {
+                    continue;
+                }
+
+                float score =
+                    xOffset * xOffset +
+                    yOffset * yOffset * 1.5f;
+
+                if (score >= bestScore)
+                {
+                    continue;
+                }
+
+                bestScore = score;
+                linkedObject = candidate;
+                linkedCoordinate = candidateCoordinate;
+            }
+        }
+
+        return linkedObject != null;
+    }
+
+
+    private bool TryGetLockedDepthObject(
+        Vector3Int coordinate,
+        int tableIndex,
+        PhysicsTowerObject source,
+        out PhysicsTowerObject candidate)
+    {
+        return occupancyByCoordinate.TryGetValue(
+                   (tableIndex, coordinate),
+                   out candidate) &&
+               candidate != null &&
+               candidate != source &&
+               candidate.IsLocked;
+    }
+
+
     private IEnumerator ActivateMirroredObjectNaturally(
         PhysicsTowerObject mirroredObject,
         Vector3Int mirroredCoordinate,
+        int tableIndex,
         Vector3 sourceImpulse,
         int activationRevision)
     {
@@ -2088,7 +2833,7 @@ public sealed class LevelRuntimeController : MonoBehaviour
             mirroredObject == null ||
             !mirroredObject.IsLocked ||
             !occupancyByCoordinate.TryGetValue(
-                mirroredCoordinate,
+                (tableIndex, mirroredCoordinate),
                 out PhysicsTowerObject currentObject) ||
             currentObject != mirroredObject)
         {
@@ -2181,9 +2926,9 @@ public sealed class LevelRuntimeController : MonoBehaviour
          * warna stale entries agle level mein reused instance ko
          * galat tarah "still standing" dikha sakti hain.
          */
-        List<Vector3Int> coordinatesToRemove = null;
+        List<(int tableIndex, Vector3Int coordinate)> coordinatesToRemove = null;
 
-        foreach (KeyValuePair<Vector3Int, PhysicsTowerObject> entry
+        foreach (KeyValuePair<(int tableIndex, Vector3Int coordinate), PhysicsTowerObject> entry
                  in occupancyByCoordinate)
         {
             if (entry.Value != target)
@@ -2194,7 +2939,7 @@ public sealed class LevelRuntimeController : MonoBehaviour
             if (coordinatesToRemove == null)
             {
                 coordinatesToRemove =
-                    new List<Vector3Int>();
+                    new List<(int, Vector3Int)>();
             }
 
             coordinatesToRemove.Add(entry.Key);
@@ -2202,9 +2947,10 @@ public sealed class LevelRuntimeController : MonoBehaviour
 
         if (coordinatesToRemove != null)
         {
-            foreach (Vector3Int coordinate in coordinatesToRemove)
+            foreach ((int tableIndex, Vector3Int coordinate) key
+                     in coordinatesToRemove)
             {
-                occupancyByCoordinate.Remove(coordinate);
+                occupancyByCoordinate.Remove(key);
             }
         }
 
@@ -2249,10 +2995,53 @@ public sealed class LevelRuntimeController : MonoBehaviour
             this
         );
 
+//  if (milestoneProgressBar != null)
+//     {
+//         milestoneProgressBar.OnLevelCompleted(
+//             levelData.LevelNumber
+//         );
+//     }
+
 
         onLevelComplete?.Invoke();
 
         ShowLevelCompleteUI();
+
+        if (autoLoadNextLevel &&
+            HasNextLevel &&
+            !IsLiveWorkingLevelPreviewEnabled())
+        {
+            StartCoroutine(
+                LoadNextLevelAfterCompletion(
+                    currentLevelIndex
+                )
+            );
+        }
+    }
+
+
+    private IEnumerator LoadNextLevelAfterCompletion(
+        int completedLevelIndex)
+    {
+        if (autoLoadNextLevelDelay > 0f)
+        {
+            yield return new WaitForSecondsRealtime(
+                autoLoadNextLevelDelay
+            );
+        }
+
+        /*
+         * Player ne delay ke duran restart/next button use kar liya ho to
+         * purani completion routine naye level ko dobara skip na kare.
+         */
+        if (currentLevelIndex != completedLevelIndex ||
+            levelGenerated ||
+            isLoadingLevel)
+        {
+            yield break;
+        }
+
+        LoadNextLevel();
     }
 
 
@@ -2283,7 +3072,6 @@ public sealed class LevelRuntimeController : MonoBehaviour
             LoadAddressableLevelRoutine(nextIndex)
         );
     }
-
 
     public void RestartCurrentLevel()
     {
@@ -2365,6 +3153,10 @@ public sealed class LevelRuntimeController : MonoBehaviour
         levelData = newHandle.Result;
         isLoadingLevel = false;
 
+        SaveCurrentLevelProgress(
+            levelData.LevelNumber
+        );
+
         GenerateLevel();
     }
 
@@ -2375,6 +3167,18 @@ public sealed class LevelRuntimeController : MonoBehaviour
         {
             Debug.LogError(
                 "LoadLevelByNumber: GridLevelDatabase missing hai.",
+                this
+            );
+            return;
+        }
+
+        if (levelNumber >
+            levelDatabase.MaximumPlayableLevelNumber)
+        {
+            Debug.LogWarning(
+                $"Level {levelNumber} playable range se bahar hai. " +
+                $"Last playable level " +
+                $"{levelDatabase.MaximumPlayableLevelNumber} hai.",
                 this
             );
             return;
@@ -2405,6 +3209,28 @@ public sealed class LevelRuntimeController : MonoBehaviour
         {
             currentLevelIndex = 0;
             return;
+        }
+
+        if (PlayerPrefs.HasKey(SavedLevelNumberKey))
+        {
+            int savedLevelNumber =
+                PlayerPrefs.GetInt(
+                    SavedLevelNumberKey,
+                    1
+                );
+
+            int savedLevelIndex =
+                levelDatabase.FindIndexByLevelNumber(
+                    savedLevelNumber
+                );
+
+            if (savedLevelIndex >= 0 &&
+                FindNextLevelIndex(savedLevelIndex) ==
+                savedLevelIndex)
+            {
+                currentLevelIndex = savedLevelIndex;
+                return;
+            }
         }
 
         if (startFromLevelOne)
@@ -2448,6 +3274,51 @@ public sealed class LevelRuntimeController : MonoBehaviour
     }
 
 
+    private static bool ShouldStartLiveWorkingLevelPreview()
+    {
+#if UNITY_EDITOR
+        const string previewSessionKey =
+            "RoyalSmash.LiveWorkingLevelPreview";
+
+        const string previewLaunchSessionKey =
+            "RoyalSmash.LiveWorkingLevelPreviewLaunch";
+
+        bool previewEnabled =
+            UnityEditor.SessionState.GetBool(
+                previewSessionKey,
+                false
+            );
+
+        bool launchRequested =
+            UnityEditor.SessionState.GetBool(
+                previewLaunchSessionKey,
+                false
+            );
+
+        UnityEditor.SessionState.SetBool(
+            previewLaunchSessionKey,
+            false
+        );
+
+        if (!launchRequested)
+        {
+            /*
+             * Toolbar se Play karne par pichli editor preview session
+             * normal game startup ko bypass nahi kar sakti.
+             */
+            UnityEditor.SessionState.SetBool(
+                previewSessionKey,
+                false
+            );
+        }
+
+        return previewEnabled && launchRequested;
+#else
+        return false;
+#endif
+    }
+
+
     private int FindNextLevelIndex(
         int startingIndex)
     {
@@ -2460,7 +3331,17 @@ public sealed class LevelRuntimeController : MonoBehaviour
              i < levelDatabase.Count;
              i++)
         {
-            if (!string.IsNullOrWhiteSpace(
+            int levelNumber =
+                levelDatabase.GetLevelNumber(i);
+
+            if (levelNumber >
+                levelDatabase.MaximumPlayableLevelNumber)
+            {
+                break;
+            }
+
+            if (levelNumber > 0 &&
+                !string.IsNullOrWhiteSpace(
                     levelDatabase.GetAddress(i)))
             {
                 return i;
@@ -2468,6 +3349,209 @@ public sealed class LevelRuntimeController : MonoBehaviour
         }
 
         return -1;
+    }
+
+
+    private void EnsureMainMenuUI()
+    {
+        if (mainMenuPanel == null)
+        {
+            RectTransform[] sceneRects =
+                FindObjectsByType<RectTransform>(
+                    FindObjectsInactive.Include,
+                    FindObjectsSortMode.None
+                );
+
+            foreach (RectTransform sceneRect in sceneRects)
+            {
+                if (sceneRect != null &&
+                    sceneRect.name.Equals(
+                        "Main menu Panel",
+                        System.StringComparison.OrdinalIgnoreCase
+                    ))
+                {
+                    mainMenuPanel = sceneRect.gameObject;
+                    break;
+                }
+            }
+        }
+
+        if (mainMenuPanel == null)
+        {
+            Debug.LogWarning(
+                "Main menu Panel scene mein nahi mila.",
+                this
+            );
+            return;
+        }
+
+        Button[] menuButtons =
+            mainMenuPanel.GetComponentsInChildren<Button>(true);
+
+        foreach (Button menuButton in menuButtons)
+        {
+            if (menuButton == null)
+            {
+                continue;
+            }
+
+            string buttonName =
+                menuButton.name.ToLowerInvariant();
+
+            if (playButton == null &&
+                buttonName.Contains("play"))
+            {
+                playButton = menuButton;
+            }
+            else if (resetProgressButton == null &&
+                     buttonName.Contains("reset"))
+            {
+                resetProgressButton = menuButton;
+            }
+        }
+
+        if (currentLevelText == null)
+        {
+            TMP_Text[] menuTexts =
+                mainMenuPanel.GetComponentsInChildren<TMP_Text>(true);
+
+            foreach (TMP_Text menuText in menuTexts)
+            {
+                if (menuText != null &&
+                    menuText.text.IndexOf(
+                        "level number",
+                        System.StringComparison.OrdinalIgnoreCase
+                    ) >= 0)
+                {
+                    currentLevelText = menuText;
+                    break;
+                }
+            }
+        }
+
+        if (playButton != null)
+        {
+            playButton.onClick.RemoveListener(
+                PlayFromMainMenu
+            );
+            playButton.onClick.AddListener(
+                PlayFromMainMenu
+            );
+        }
+
+        if (resetProgressButton != null)
+        {
+            resetProgressButton.onClick.RemoveListener(
+                ResetProgressFromMainMenu
+            );
+            resetProgressButton.onClick.AddListener(
+                ResetProgressFromMainMenu
+            );
+        }
+    }
+
+
+    private void SetGameplayWorldVisible(bool visible)
+    {
+        if (levelOrigin != null &&
+            levelOrigin != transform)
+        {
+            levelOrigin.gameObject.SetActive(visible);
+        }
+
+        if (runtimeObjectsRoot != null)
+        {
+            runtimeObjectsRoot.gameObject.SetActive(visible);
+        }
+
+        if (cannonController == null)
+        {
+            cannonController =
+                FindFirstObjectByType<CannonController>(
+                    FindObjectsInactive.Include
+                );
+        }
+
+        if (cannonController != null)
+        {
+            cannonController.SetGameplayActive(visible);
+        }
+
+        if (gameplayRestartButton == null)
+        {
+            GameRestartController restartController =
+                FindFirstObjectByType<GameRestartController>(
+                    FindObjectsInactive.Include
+                );
+
+            if (restartController != null)
+            {
+                gameplayRestartButton =
+                    restartController.gameObject;
+            }
+        }
+
+        if (gameplayRestartButton != null)
+        {
+            gameplayRestartButton.SetActive(visible);
+        }
+
+        if (!visible)
+        {
+            foreach (LevelTable table in cachedTables)
+            {
+                if (table != null)
+                {
+                    table.gameObject.SetActive(false);
+                }
+            }
+
+            if (nextLevelButton != null)
+            {
+                nextLevelButton.gameObject.SetActive(false);
+            }
+        }
+    }
+
+
+    private void SaveCurrentLevelProgress(int levelNumber)
+    {
+        if (levelNumber <= 0 ||
+            IsLiveWorkingLevelPreviewEnabled())
+        {
+            return;
+        }
+
+        PlayerPrefs.SetInt(
+            SavedLevelNumberKey,
+            levelNumber
+        );
+        PlayerPrefs.Save();
+        UpdateCurrentLevelText();
+    }
+
+
+    private void UpdateCurrentLevelText()
+    {
+        if (currentLevelText == null ||
+            levelDatabase == null ||
+            levelDatabase.Count == 0)
+        {
+            return;
+        }
+
+        int safeIndex =
+            Mathf.Clamp(
+                currentLevelIndex,
+                0,
+                levelDatabase.Count - 1
+            );
+
+        int levelNumber =
+            levelDatabase.GetLevelNumber(safeIndex);
+
+        currentLevelText.text =
+            $"LEVEL {Mathf.Max(1, levelNumber)}";
     }
 
 
@@ -2756,20 +3840,15 @@ public sealed class LevelRuntimeController : MonoBehaviour
             objectPool.ClearAll();
         }
 
-        if (cachedTable != null)
+        for (int index = cachedTables.Count - 1;
+             index >= 0;
+             index--)
         {
-            if (Application.isPlaying)
-            {
-                Destroy(cachedTable.gameObject);
-            }
-            else
-            {
-                DestroyImmediate(cachedTable.gameObject);
-            }
+            DestroyCachedTableAt(index);
         }
 
-        cachedTable = null;
-        cachedTablePrefab = null;
+        cachedTables.Clear();
+        cachedTablePrefabs.Clear();
         currentTable = null;
     }
 
@@ -2862,6 +3941,8 @@ public sealed class LevelRuntimeController : MonoBehaviour
 
         trackingByInstance.Clear();
 
+        gridBaseRowByTable.Clear();
+
         /*
          * Fit cache CellSize-specific hai — agar LoadLevel() se
          * different GridLevelData aa jaye (alag CellSize) to purani
@@ -2874,11 +3955,12 @@ public sealed class LevelRuntimeController : MonoBehaviour
             0;
 
 
-        if (currentTable != null)
+        foreach (LevelTable table in cachedTables)
         {
-            currentTable.gameObject.SetActive(
-                false
-            );
+            if (table != null)
+            {
+                table.gameObject.SetActive(false);
+            }
         }
 
 
@@ -2909,7 +3991,7 @@ public sealed class LevelRuntimeController : MonoBehaviour
         }
 
 
-        if (!levelData.HasValidGrid)
+        if (!levelData.HasAnyValidTableGrid)
         {
             Debug.LogError(
                 "Manual GridLevelData mein koi painted cell nahi hai. " +
@@ -2960,10 +4042,11 @@ public sealed class LevelRuntimeController : MonoBehaviour
         }
 
 
-        if (levelData.TablePrefab == null)
+        if (levelData.TableCount < 1 ||
+            levelData.GetTablePrefab(0) == null)
         {
             Debug.LogError(
-                "Grid Level Data mein Table Prefab missing hai.",
+                "Grid Level Data mein PRIMARY Table Prefab missing hai.",
                 levelData
             );
 
@@ -3043,9 +4126,6 @@ public sealed class LevelRuntimeController : MonoBehaviour
         hasPendingLevelHandle = false;
     }
 }
-
-
-
 
 
 
