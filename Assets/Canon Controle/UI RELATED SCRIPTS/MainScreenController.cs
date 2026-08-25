@@ -1,29 +1,168 @@
+// using UnityEngine;
+// using UnityEngine.UI;
+
+// public class MainScreenController : MonoBehaviour
+// {
+//     [Header("Home Screen Buttons")]
+//     [SerializeField] private Button rewardButton;
+//     [SerializeField] private Button settingButton;
+//     [SerializeField] private Button playButton;
+
+
+//     private void Start()
+//     {
+//         // Start game on Home Screen
+//         UIEventBroker.RequestScreen(UIScreenType.MainMenu);
+
+
+//         if (rewardButton != null)
+//         {
+//             rewardButton.onClick.AddListener(OpenReward);
+//         }
+
+
+//         if (settingButton != null)
+//         {
+//             settingButton.onClick.AddListener(OpenSettings);
+//         }
+
+
+//         if (playButton != null)
+//         {
+//             playButton.onClick.AddListener(OpenGameplay);
+//         }
+//     }
+
+
+//     private void OnDestroy()
+//     {
+//         if (rewardButton != null)
+//         {
+//             rewardButton.onClick.RemoveListener(OpenReward);
+//         }
+
+
+//         if (settingButton != null)
+//         {
+//             settingButton.onClick.RemoveListener(OpenSettings);
+//         }
+
+
+//         if (playButton != null)
+//         {
+//             playButton.onClick.RemoveListener(OpenGameplay);
+//         }
+//     }
+
+
+//     private void OpenReward()
+//     {
+//         UIEventBroker.RequestScreen(UIScreenType.RewardScreen);
+//     }
+
+
+//     private void OpenSettings()
+//     {
+//         UIEventBroker.RequestScreen(UIScreenType.SettingScreen);
+//     }
+
+
+//     private void OpenGameplay()
+//     {
+//         UIEventBroker.RequestScreen(UIScreenType.GamePlayScreen);
+//     }
+// }
+
+
+
+
+
+
+
+
+
+
+
 using UnityEngine;
 using UnityEngine.UI;
 
-
-public class MainScreenController : MonoBehaviour
+public sealed class MainScreenController : MonoBehaviour
 {
-    
-
-
-
-    [SerializeField] private Button homeButton;
-    [SerializeField] private Button shopButton;
+    [Header("Home Screen Buttons")]
+    [SerializeField] private Button rewardButton;
     [SerializeField] private Button settingButton;
-    [SerializeField] private Button playButton;
-
 
 
     private void Start()
     {
-        settingButton.onClick.AddListener(() => UIEventBroker.RequestScreen(UIScreenType.SettingScreen));
-        playButton.onClick.AddListener(() => UIEventBroker.RequestScreen(UIScreenType.GamePlayScreen));
+        UIEventBroker.RequestScreen(
+            UIScreenType.MainMenu
+        );
+
+
+        if (rewardButton != null)
+        {
+            rewardButton.onClick.RemoveListener(
+                OpenReward
+            );
+
+            rewardButton.onClick.AddListener(
+                OpenReward
+            );
+        }
+
+
+        if (settingButton != null)
+        {
+            settingButton.onClick.RemoveListener(
+                OpenSettings
+            );
+
+            settingButton.onClick.AddListener(
+                OpenSettings
+            );
+        }
     }
 
 
+    private void OnDestroy()
+    {
+        if (rewardButton != null)
+        {
+            rewardButton.onClick.RemoveListener(
+                OpenReward
+            );
+        }
 
 
+        if (settingButton != null)
+        {
+            settingButton.onClick.RemoveListener(
+                OpenSettings
+            );
+        }
+    }
 
 
+    private void OpenReward()
+    {
+        UIEventBroker.RequestScreen(
+            UIScreenType.RewardScreen
+        );
+    }
+
+
+    private void OpenSettings()
+    {
+        UIEventBroker.RequestScreen(
+            UIScreenType.SettingScreen
+        );
+    }
 }
+
+
+
+
+
+
+
