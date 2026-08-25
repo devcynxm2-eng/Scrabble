@@ -21,6 +21,17 @@ MonoBehaviour:
   - prefab: {fileID: 3767945316376700881, guid: b7b94326cb608794c97210e1c40ec165, type: 3}
     positionOffset: {x: 0, y: 0, z: 0}
     rotationEuler: {x: 0, y: 0, z: 0}
+    enableRuntimeRotation: 0
+    runtimeRotationAxis: {x: 0, y: 1, z: 0}
+    runtimeRotationSpeed: 20
+    enableRuntimeHorizontalMovement: 0
+    runtimeMovementAxis: {x: 1, y: 0, z: 0}
+    runtimeMovementDistance: 0.75
+    runtimeMovementSpeed: 0.2
+    releaseBlocksAfterMovementCycles: 1
+    minimumMovementCyclesBeforeRelease: 3
+    maximumMovementCyclesBeforeRelease: 5
+    movementReleaseVelocityMultiplier: 1
     sizeMultiplier: {x: 1, y: 1, z: 1}
   blockPalette:
   - {fileID: 11400000, guid: e964b77c447699345a0d239cec0defb1, type: 2}
@@ -712,7 +723,7 @@ MonoBehaviour:
         localOffset: {x: 0, y: 0, z: 0}
         rotationEulerOffset: {x: 0, y: 0, z: 0}
         scaleMultiplier: {x: 1, y: 1, z: 1}
-        breakable: 1
+        breakable: 0
         hitsToBreak: 1
       - occupied: 0
         color: {r: 1, g: 1, b: 1, a: 1}

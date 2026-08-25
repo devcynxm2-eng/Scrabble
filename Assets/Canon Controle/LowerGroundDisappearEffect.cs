@@ -167,6 +167,12 @@ public sealed class LowerGroundDisappearEffect : MonoBehaviour
             return false;
         }
 
+
+        if (VibrationManager.Instance != null)
+{
+    VibrationManager.Instance.PlayFallVibration();
+}
+
         if (body == null)
         {
             body = GetComponent<Rigidbody>();
