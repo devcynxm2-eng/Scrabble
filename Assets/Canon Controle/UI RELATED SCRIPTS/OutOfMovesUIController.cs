@@ -1742,7 +1742,7 @@ public sealed class OutOfMovesUIController : MonoBehaviour
     {
         if (outOfMovesPanel != null)
         {
-            outOfMovesPanel.SetActive(false);
+            UITransition.HideImmediate(outOfMovesPanel);
         }
     }
 
@@ -1971,7 +1971,7 @@ public sealed class OutOfMovesUIController : MonoBehaviour
 
         if (outOfMovesPanel != null)
         {
-            outOfMovesPanel.SetActive(true);
+            UITransition.Show(outOfMovesPanel);
         }
 
         /*
@@ -2238,7 +2238,7 @@ public sealed class OutOfMovesUIController : MonoBehaviour
 
         if (outOfMovesPanel != null)
         {
-            outOfMovesPanel.SetActive(false);
+            UITransition.Hide(outOfMovesPanel);
         }
 
         popupGameplayVisibility?.ShowGameplay();
@@ -2260,7 +2260,7 @@ public sealed class OutOfMovesUIController : MonoBehaviour
 
         if (outOfMovesPanel != null)
         {
-            outOfMovesPanel.SetActive(false);
+            UITransition.Hide(outOfMovesPanel);
         }
 
         popupGameplayVisibility?.ShowGameplay();
@@ -2287,7 +2287,7 @@ public sealed class OutOfMovesUIController : MonoBehaviour
 
         if (outOfMovesPanel != null)
         {
-            outOfMovesPanel.SetActive(false);
+            UITransition.Hide(outOfMovesPanel);
         }
 
         popupGameplayVisibility?.ShowGameplay();

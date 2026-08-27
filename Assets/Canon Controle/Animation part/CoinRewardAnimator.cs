@@ -1550,19 +1550,31 @@ public sealed class CoinRewardAnimator : MonoBehaviour
     [Header("Behaviour")]
     [SerializeField] private bool destroyAfterCollect = true;
 
+    [Tooltip("Multiple reward bundle mein ek animation ke baad agle reward ka gap.")]
+    [SerializeField, Min(0f)] private float sequenceGap = 0.12f;
+
     public event Action<RewardVisualType> RewardCollected;
 
+    private sealed class RewardRunState
+    {
+        public readonly Queue<GameObject> pendingRewards =
+            new Queue<GameObject>();
+
+        public bool spawningDone;
+        public int collectedCount;
+        public int totalToCollect;
+    }
+
+    private sealed class RewardGroupState
+    {
+        public int remaining;
+    }
+
     private readonly List<GameObject> activeRewards = new List<GameObject>();
-    private readonly Queue<GameObject> pendingCollectQueue = new Queue<GameObject>();
     private readonly Dictionary<GameObject, Coroutine> burstCoroutines = new Dictionary<GameObject, Coroutine>();
+    private readonly List<Coroutine> workerRoutines = new List<Coroutine>();
 
     private Coroutine currentRoutine;
-    private Coroutine collectorRoutine;
-
-    private bool spawningDone;
-    private int spawnedCount;
-    private int collectedCount;
-    private int totalToCollect;
 
     // ==========================
     // BUTTON FUNCTIONS
@@ -1576,17 +1588,121 @@ public sealed class CoinRewardAnimator : MonoBehaviour
 
     public void PlayReward(RewardVisualType type)
     {
+        PlayRewardSequence(type);
+    }
+
+
+    public void PlayRewardSequence(params RewardVisualType[] types)
+    {
         StopCurrentAnimation();
 
-        RewardVisualDefinition definition = GetDefinition(type);
-
-        if (definition == null)
+        if (types == null || types.Length == 0)
         {
-            Debug.LogWarning("Reward setup missing: " + type);
             return;
         }
 
-        currentRoutine = StartCoroutine(RewardRoutine(definition));
+        currentRoutine = StartCoroutine(
+            RewardSequenceRoutine(types)
+        );
+    }
+
+
+    public void PlayRewardGroup(params RewardVisualType[] types)
+    {
+        StopCurrentAnimation();
+
+        if (types == null || types.Length == 0)
+        {
+            return;
+        }
+
+        currentRoutine = StartCoroutine(
+            RewardGroupRoutine(types)
+        );
+    }
+
+
+    private IEnumerator RewardSequenceRoutine(
+        RewardVisualType[] types)
+    {
+        for (int i = 0; i < types.Length; i++)
+        {
+            RewardVisualDefinition definition =
+                GetDefinition(types[i]);
+
+            if (definition == null)
+            {
+                Debug.LogWarning(
+                    "Reward setup missing: " + types[i],
+                    this
+                );
+
+                continue;
+            }
+
+            yield return RewardRoutine(definition);
+
+            if (i < types.Length - 1 &&
+                sequenceGap > 0f)
+            {
+                yield return new WaitForSecondsRealtime(
+                    sequenceGap
+                );
+            }
+        }
+
+        currentRoutine = null;
+    }
+
+
+    private IEnumerator RewardGroupRoutine(
+        RewardVisualType[] types)
+    {
+        RewardGroupState groupState = new RewardGroupState();
+
+        for (int i = 0; i < types.Length; i++)
+        {
+            RewardVisualDefinition definition =
+                GetDefinition(types[i]);
+
+            if (definition == null)
+            {
+                Debug.LogWarning(
+                    "Reward setup missing: " + types[i],
+                    this
+                );
+
+                continue;
+            }
+
+            groupState.remaining++;
+
+            Coroutine worker = StartCoroutine(
+                RewardGroupItemRoutine(
+                    definition,
+                    groupState
+                )
+            );
+
+            workerRoutines.Add(worker);
+        }
+
+        while (groupState.remaining > 0)
+        {
+            yield return null;
+        }
+
+        workerRoutines.Clear();
+        currentRoutine = null;
+    }
+
+
+    private IEnumerator RewardGroupItemRoutine(
+        RewardVisualDefinition definition,
+        RewardGroupState groupState)
+    {
+        yield return RewardRoutine(definition);
+        groupState.remaining--;
     }
 
     // ==========================
@@ -1595,45 +1711,98 @@ public sealed class CoinRewardAnimator : MonoBehaviour
 
     private IEnumerator RewardRoutine(RewardVisualDefinition definition)
     {
-        // Text-only rewards (Canon Ball / Rocket) untouched
         if (definition.textOnlyReward)
         {
-            yield return StartCoroutine(SpawnTextOnly(definition));
+            yield return SpawnTextOnly(definition);
             RewardCollected?.Invoke(definition.rewardType);
             yield break;
         }
 
-        spawningDone = false;
-        spawnedCount = 0;
-        collectedCount = 0;
-        totalToCollect = definition.visualCount;
-        pendingCollectQueue.Clear();
+        RewardRunState runState = new RewardRunState
+        {
+            totalToCollect = Mathf.Max(0, definition.visualCount)
+        };
 
         // Collector runs alongside spawner from the start.
         // It just waits internally until threshold is met.
-        collectorRoutine = StartCoroutine(CollectorLoop(definition));
+        Coroutine collector = StartCoroutine(
+            CollectorLoop(definition, runState)
+        );
 
-        yield return StartCoroutine(SpawnRewards(definition));
+        workerRoutines.Add(collector);
 
-        spawningDone = true;
+        yield return SpawnRewards(definition, runState);
+
+        runState.spawningDone = true;
 
         // Wait for collector to finish draining the queue
-        yield return collectorRoutine;
+        yield return collector;
+        workerRoutines.Remove(collector);
 
         RewardCollected?.Invoke(definition.rewardType);
     }
 
     private IEnumerator SpawnTextOnly(RewardVisualDefinition definition)
     {
-        if (definition.showAmountText && definition.amountTextPrefab != null)
+        if (!definition.showAmountText ||
+            definition.amountTextPrefab == null)
         {
-            GameObject text = Instantiate(definition.amountTextPrefab, spawnParent);
-            StartCoroutine(FadeAmountText(text));
+            yield break;
         }
-        yield break;
+
+        int textCount = Mathf.Max(1, definition.visualCount);
+
+        for (int i = 0; i < textCount; i++)
+        {
+            GameObject text = Instantiate(
+                definition.amountTextPrefab,
+                spawnParent
+            );
+
+            text.transform.SetAsLastSibling();
+
+            RectTransform rect =
+                text.GetComponent<RectTransform>();
+
+            if (rect != null)
+            {
+                Vector2 direction =
+                    UnityEngine.Random.insideUnitCircle;
+
+                if (direction.sqrMagnitude < 0.001f)
+                {
+                    direction = Vector2.up;
+                }
+
+                float radius = UnityEngine.Random.Range(
+                    burstDistance * 0.15f,
+                    burstDistance * 0.65f
+                );
+
+                rect.anchorMin = new Vector2(0.5f, 0.5f);
+                rect.anchorMax = new Vector2(0.5f, 0.5f);
+                rect.pivot = new Vector2(0.5f, 0.5f);
+                rect.anchoredPosition =
+                    direction.normalized * radius;
+                rect.localScale = Vector3.one *
+                    UnityEngine.Random.Range(0.85f, 1.1f);
+            }
+
+            activeRewards.Add(text);
+            StartCoroutine(FadeAmountText(text));
+
+            if (i < textCount - 1 && spawnDelay > 0f)
+            {
+                yield return new WaitForSecondsRealtime(
+                    spawnDelay
+                );
+            }
+        }
     }
 
-    private IEnumerator SpawnRewards(RewardVisualDefinition definition)
+    private IEnumerator SpawnRewards(
+        RewardVisualDefinition definition,
+        RewardRunState runState)
     {
         if (spawnParent == null) yield break;
 
@@ -1660,6 +1829,7 @@ public sealed class CoinRewardAnimator : MonoBehaviour
             {
                 GameObject text = Instantiate(definition.amountTextPrefab, spawnParent);
                 text.transform.position = reward.transform.position;
+                activeRewards.Add(text);
                 StartCoroutine(FadeAmountText(text));
             }
 
@@ -1668,25 +1838,27 @@ public sealed class CoinRewardAnimator : MonoBehaviour
             burstCoroutines[reward] = burst;
 
             // reward is now available for the collector
-            pendingCollectQueue.Enqueue(reward);
-            spawnedCount++;
+            runState.pendingRewards.Enqueue(reward);
 
-            yield return new WaitForSeconds(spawnDelay);
+            yield return new WaitForSecondsRealtime(spawnDelay);
         }
     }
 
     // Watches the queue; once threshold reached (or spawning finished),
     // starts sending items to the destination while spawning may still continue.
-    private IEnumerator CollectorLoop(RewardVisualDefinition definition)
+    private IEnumerator CollectorLoop(
+        RewardVisualDefinition definition,
+        RewardRunState runState)
     {
         bool started = false;
 
-        while (collectedCount < totalToCollect)
+        while (runState.collectedCount < runState.totalToCollect)
         {
             if (!started)
             {
                 // wait until we hit the threshold, or spawning already finished (fewer items than threshold)
-                if (pendingCollectQueue.Count >= collectStartThreshold || spawningDone)
+                if (runState.pendingRewards.Count >= collectStartThreshold ||
+                    runState.spawningDone)
                 {
                     started = true;
                 }
@@ -1697,9 +1869,9 @@ public sealed class CoinRewardAnimator : MonoBehaviour
                 }
             }
 
-            if (pendingCollectQueue.Count > 0)
+            if (runState.pendingRewards.Count > 0)
             {
-                GameObject reward = pendingCollectQueue.Dequeue();
+                GameObject reward = runState.pendingRewards.Dequeue();
 
                 if (reward != null)
                 {
@@ -1713,13 +1885,13 @@ public sealed class CoinRewardAnimator : MonoBehaviour
                     StartCoroutine(MoveReward(reward, definition.target));
                 }
 
-                collectedCount++;
-                yield return new WaitForSeconds(collectStagger);
+                runState.collectedCount++;
+                yield return new WaitForSecondsRealtime(collectStagger);
             }
             else
             {
                 // queue temporarily empty but more items still being spawned - wait
-                if (spawningDone) yield break; // safety, shouldn't hit if counts are right
+                if (runState.spawningDone) yield break; // safety, shouldn't hit if counts are right
                 yield return null;
             }
         }
@@ -1804,7 +1976,7 @@ public sealed class CoinRewardAnimator : MonoBehaviour
         {
             if (textObject == null) yield break;
 
-            timer += Time.deltaTime;
+            timer += Time.unscaledDeltaTime;
             float progress = timer / textFadeDuration;
 
             textObject.transform.position = Vector3.Lerp(start, end, progress);
@@ -1813,6 +1985,7 @@ public sealed class CoinRewardAnimator : MonoBehaviour
             yield return null;
         }
 
+        activeRewards.Remove(textObject);
         Destroy(textObject);
     }
 
@@ -1833,13 +2006,26 @@ public sealed class CoinRewardAnimator : MonoBehaviour
             currentRoutine = null;
         }
 
-        if (collectorRoutine != null)
+        for (int i = 0; i < workerRoutines.Count; i++)
         {
-            StopCoroutine(collectorRoutine);
-            collectorRoutine = null;
+            Coroutine worker = workerRoutines[i];
+
+            if (worker != null)
+            {
+                StopCoroutine(worker);
+            }
         }
 
-        pendingCollectQueue.Clear();
+        workerRoutines.Clear();
+
+        foreach (Coroutine burst in burstCoroutines.Values)
+        {
+            if (burst != null)
+            {
+                StopCoroutine(burst);
+            }
+        }
+
         burstCoroutines.Clear();
 
         ClearRewards();

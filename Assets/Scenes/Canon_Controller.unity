@@ -161,8 +161,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c54dc6cc66c87d942a3d83ebac96ad2d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   infiniteBallsUnlockLevel: 5
   powerCannonUnlockLevel: 8
   infiniteBallsStarterAmount: 2
@@ -608,6 +608,7 @@ GameObject:
   - component: {fileID: 102033663}
   - component: {fileID: 102033662}
   - component: {fileID: 102033664}
+  - component: {fileID: 102033665}
   m_Layer: 5
   m_Name: Rewarded Panel
   m_TagString: Untagged
@@ -742,6 +743,61 @@ MonoBehaviour:
     tickIcon: {fileID: 0}
     availableHighlight: {fileID: 0}
   dailyRewardManager: {fileID: 404774051}
+  rewardAnimator: {fileID: 102033665}
+--- !u!114 &102033665
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 102033660}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dec92978f5d50534d9b339cf974ff4af, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  rewards:
+  - rewardType: 0
+    rewardPrefab: {fileID: 6029411614998061465, guid: 6d759bfbfa36d754a8dc5cdaf5ef418a, type: 3}
+    target: {fileID: 742612741}
+    visualCount: 20
+    showAmountText: 1
+    amountTextPrefab: {fileID: 0}
+    textOnlyReward: 0
+  - rewardType: 1
+    rewardPrefab: {fileID: 6029411614998061465, guid: 251b30e6cabc56443be7b9569be3da7d, type: 3}
+    target: {fileID: 1061805460}
+    visualCount: 20
+    showAmountText: 1
+    amountTextPrefab: {fileID: 0}
+    textOnlyReward: 0
+  - rewardType: 2
+    rewardPrefab: {fileID: 0}
+    target: {fileID: 0}
+    visualCount: 6
+    showAmountText: 1
+    amountTextPrefab: {fileID: 3498617283664101982, guid: 4687af74b61f0084fbe1b376a13652c3, type: 3}
+    textOnlyReward: 1
+  - rewardType: 3
+    rewardPrefab: {fileID: 0}
+    target: {fileID: 0}
+    visualCount: 6
+    showAmountText: 1
+    amountTextPrefab: {fileID: 3498617283664101982, guid: 4687af74b61f0084fbe1b376a13652c3, type: 3}
+    textOnlyReward: 1
+  spawnParent: {fileID: 563472946}
+  spawnDelay: 0.05
+  burstDistance: 180
+  burstDuration: 0.35
+  collectStartThreshold: 4
+  collectStagger: 0.05
+  collectDuration: 0.8
+  rotationSpeed: 720
+  bounceHeight: 35
+  textMoveHeight: 80
+  textFadeDuration: 0.8
+  destroyAfterCollect: 1
+  sequenceGap: 0.12
 --- !u!1 &105620064
 GameObject:
   m_ObjectHideFlags: 0
@@ -2039,6 +2095,11 @@ MonoBehaviour:
   pitchPivot: {fileID: 1561144372}
   muzzle: {fileID: 322524236}
   cannonRoot: {fileID: 1319823891}
+  animateCannonEntrance: 1
+  cannonEntranceInitialDelay: 0.03
+  cannonEntranceDuration: 0.32
+  cannonEntranceBottomOffset: 2.4
+  cannonEntranceStartScale: 0.82
   aimCamera: {fileID: 2101113409}
   towerTargetMask:
     serializedVersion: 2
@@ -8061,6 +8122,12 @@ MonoBehaviour:
   resetProgressButton: {fileID: 0}
   currentLevelText: {fileID: 762373908}
   mainMenuLevelText: {fileID: 1345126737}
+  animateLevelEntrance: 1
+  levelEntranceInitialDelay: 0.02
+  blockEntranceDuration: 0.14
+  blockEntranceStagger: 0.007
+  blockEntranceRiseDistance: 0.45
+  blockEntranceStartScale: 0.05
   objectPool: {fileID: 733110023}
   levelOrigin: {fileID: 906670222}
   runtimeObjectsRoot: {fileID: 1061262791}
@@ -10604,7 +10671,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &912520711
 RectTransform:
   m_ObjectHideFlags: 0
@@ -10660,14 +10727,14 @@ MonoBehaviour:
   - rewardType: 2
     rewardPrefab: {fileID: 0}
     target: {fileID: 0}
-    visualCount: 20
+    visualCount: 6
     showAmountText: 1
     amountTextPrefab: {fileID: 3498617283664101982, guid: 4687af74b61f0084fbe1b376a13652c3, type: 3}
     textOnlyReward: 1
   - rewardType: 3
     rewardPrefab: {fileID: 0}
     target: {fileID: 0}
-    visualCount: 20
+    visualCount: 6
     showAmountText: 1
     amountTextPrefab: {fileID: 3498617283664101982, guid: 4687af74b61f0084fbe1b376a13652c3, type: 3}
     textOnlyReward: 1
@@ -10683,6 +10750,7 @@ MonoBehaviour:
   textMoveHeight: 80
   textFadeDuration: 0.8
   destroyAfterCollect: 1
+  sequenceGap: 0.12
 --- !u!114 &912520713
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -13746,9 +13814,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   startingLives: 5
-  maxLives: 20
-  recoveryAmount: 5
-  recoveryIntervalSeconds: 300
+  recoveryAmount: 1
+  recoveryIntervalSeconds: 900
   dontDestroyOnLoad: 1
   timerEventRefreshInterval: 0.25
 --- !u!114 &1128351862
@@ -15354,7 +15421,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: -0.18106, y: -0.51, z: -4.454642}
-  m_LocalScale: {x: 34.048702, y: 0.27712, z: 22.620773}
+  m_LocalScale: {x: 114.18794, y: 0.27712, z: 111.804924}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -15476,7 +15543,13 @@ MonoBehaviour:
   star2: {fileID: 248611843}
   star3: {fileID: 1062737591}
   earnedStarColor: {r: 1, g: 1, b: 1, a: 1}
-  unearnedStarColor: {r: 1, g: 1, b: 1, a: 0.25}
+  unearnedStarColor: {r: 0.32, g: 0.32, b: 0.32, a: 0.7}
+  animateStarReveal: 1
+  starRevealInitialDelay: 0.12
+  starPopDuration: 0.24
+  starRevealStagger: 0.08
+  starStartScale: 0.2
+  starPopScale: 1.22
   levelRuntimeController: {fileID: 733110022}
   scoreManager: {fileID: 414401597}
   starRatingManager: {fileID: 1490380049}
@@ -18468,7 +18541,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   livesText: {fileID: 717955325}
-  showMaxLives: 1
+  showMaxLives: 0
   recoveryTimerText: {fileID: 0}
   recoveryTimerRoot: {fileID: 0}
   fullLivesText: FULL

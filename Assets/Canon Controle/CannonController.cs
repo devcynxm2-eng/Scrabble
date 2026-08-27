@@ -8150,6 +8150,28 @@ public sealed class CannonController : MonoBehaviour
     [SerializeField] private Transform cannonRoot;
 
 
+    [Header("Level Entrance Animation")]
+
+    [Tooltip(
+        "Blocks load hone ke baad cannon bottom se apni rest position par " +
+        "animate hogi."
+    )]
+    [SerializeField]
+    private bool animateCannonEntrance = true;
+
+    [SerializeField, Min(0f)]
+    private float cannonEntranceInitialDelay = 0.03f;
+
+    [SerializeField, Min(0.01f)]
+    private float cannonEntranceDuration = 0.32f;
+
+    [SerializeField, Min(0f)]
+    private float cannonEntranceBottomOffset = 2.4f;
+
+    [SerializeField, Range(0.1f, 1f)]
+    private float cannonEntranceStartScale = 0.82f;
+
+
     [Header("Camera And Exact Targeting")]
     [SerializeField] private Camera aimCamera;
 
@@ -8332,6 +8354,12 @@ public sealed class CannonController : MonoBehaviour
 
     private Coroutine outOfMovesRoutine;
 
+    private Coroutine cannonEntranceRoutine;
+    private Vector3 cannonRestLocalPosition;
+    private Vector3 cannonRestLocalScale;
+    private bool cannonRestPoseCaptured;
+    private bool isCannonEntranceAnimating;
+
     public int RemainingBalls => remainingBalls;
     public int TotalBalls => totalBalls;
 
@@ -8382,6 +8410,7 @@ public sealed class CannonController : MonoBehaviour
             cannonRoot = transform;
         }
 
+        CaptureCannonRestPose();
         CacheCannonColliders();
     }
 
@@ -8414,6 +8443,8 @@ public sealed class CannonController : MonoBehaviour
             StopCoroutine(outOfMovesRoutine);
             outOfMovesRoutine = null;
         }
+
+        StopCannonEntranceAnimation(true);
     }
 
 
@@ -8438,6 +8469,9 @@ public sealed class CannonController : MonoBehaviour
 
         if (subscribedLevelController != null)
         {
+            subscribedLevelController.LevelLoadingStarted +=
+                HandleLevelLoadingStarted;
+
             subscribedLevelController.LevelGenerated +=
                 HandleLevelGenerated;
         }
@@ -8448,6 +8482,9 @@ public sealed class CannonController : MonoBehaviour
     {
         if (subscribedLevelController != null)
         {
+            subscribedLevelController.LevelLoadingStarted -=
+                HandleLevelLoadingStarted;
+
             subscribedLevelController.LevelGenerated -=
                 HandleLevelGenerated;
         }
@@ -8456,10 +8493,164 @@ public sealed class CannonController : MonoBehaviour
     }
 
 
+    private void HandleLevelLoadingStarted()
+    {
+        PrepareCannonEntrance();
+    }
+
+
     private void HandleLevelGenerated(
         GridLevelData generatedLevel)
     {
         ResetBallLimit(generatedLevel);
+
+        if (!animateCannonEntrance || cannonRoot == null)
+        {
+            StopCannonEntranceAnimation(true);
+            return;
+        }
+
+        if (!isCannonEntranceAnimating)
+        {
+            PrepareCannonEntrance();
+        }
+
+        cannonEntranceRoutine = StartCoroutine(
+            AnimateCannonEntranceRoutine()
+        );
+    }
+
+
+    private void CaptureCannonRestPose()
+    {
+        if (cannonRestPoseCaptured || cannonRoot == null)
+        {
+            return;
+        }
+
+        cannonRestLocalPosition = cannonRoot.localPosition;
+        cannonRestLocalScale = cannonRoot.localScale;
+        cannonRestPoseCaptured = true;
+    }
+
+
+    private void PrepareCannonEntrance()
+    {
+        if (!animateCannonEntrance || cannonRoot == null)
+        {
+            isCannonEntranceAnimating = false;
+            return;
+        }
+
+        CaptureCannonRestPose();
+        StopCannonEntranceAnimation(false);
+
+        cannonRoot.localPosition =
+            cannonRestLocalPosition -
+            Vector3.up * cannonEntranceBottomOffset;
+
+        cannonRoot.localScale =
+            cannonRestLocalScale * cannonEntranceStartScale;
+
+        isPointerHeld = false;
+        hasAimPoint = false;
+        isCannonEntranceAnimating = true;
+    }
+
+
+    private IEnumerator AnimateCannonEntranceRoutine()
+    {
+        if (cannonEntranceInitialDelay > 0f)
+        {
+            float delayElapsed = 0f;
+
+            while (delayElapsed < cannonEntranceInitialDelay)
+            {
+                delayElapsed += Time.unscaledDeltaTime;
+                yield return null;
+            }
+        }
+
+        Vector3 startPosition = cannonRoot.localPosition;
+        Vector3 startScale = cannonRoot.localScale;
+        float duration = Mathf.Max(0.01f, cannonEntranceDuration);
+        float elapsed = 0f;
+
+        while (elapsed < duration)
+        {
+            if (cannonRoot == null)
+            {
+                cannonEntranceRoutine = null;
+                isCannonEntranceAnimating = false;
+                yield break;
+            }
+
+            float normalizedTime =
+                Mathf.Clamp01(elapsed / duration);
+
+            float smoothProgress =
+                normalizedTime *
+                normalizedTime *
+                (3f - 2f * normalizedTime);
+
+            float popProgress =
+                EaseOutBack(normalizedTime);
+
+            cannonRoot.localPosition =
+                Vector3.LerpUnclamped(
+                    startPosition,
+                    cannonRestLocalPosition,
+                    smoothProgress
+                );
+
+            cannonRoot.localScale =
+                Vector3.LerpUnclamped(
+                    startScale,
+                    cannonRestLocalScale,
+                    popProgress
+                );
+
+            elapsed += Time.unscaledDeltaTime;
+            yield return null;
+        }
+
+        cannonRoot.localPosition = cannonRestLocalPosition;
+        cannonRoot.localScale = cannonRestLocalScale;
+        cannonEntranceRoutine = null;
+        isCannonEntranceAnimating = false;
+    }
+
+
+    private void StopCannonEntranceAnimation(bool restoreRestPose)
+    {
+        if (cannonEntranceRoutine != null)
+        {
+            StopCoroutine(cannonEntranceRoutine);
+            cannonEntranceRoutine = null;
+        }
+
+        if (restoreRestPose &&
+            cannonRestPoseCaptured &&
+            cannonRoot != null)
+        {
+            cannonRoot.localPosition = cannonRestLocalPosition;
+            cannonRoot.localScale = cannonRestLocalScale;
+        }
+
+        isCannonEntranceAnimating = false;
+    }
+
+
+    private static float EaseOutBack(float value)
+    {
+        const float overshoot = 1.70158f;
+        float shiftedValue = value - 1f;
+
+        return
+            1f +
+            (overshoot + 1f) *
+            shiftedValue * shiftedValue * shiftedValue +
+            overshoot * shiftedValue * shiftedValue;
     }
 
 
@@ -8758,6 +8949,13 @@ public sealed class CannonController : MonoBehaviour
 
     private void Update()
     {
+        if (isCannonEntranceAnimating)
+        {
+            isPointerHeld = false;
+            hasAimPoint = false;
+            return;
+        }
+
         Pointer activePointer =
             Pointer.current;
 
@@ -9367,6 +9565,7 @@ public sealed class CannonController : MonoBehaviour
         EnsureBallLimitInitialized();
 
         if (
+            isCannonEntranceAnimating ||
             (!infiniteBallsEnabled &&
              remainingBalls <= 0) ||
             (levelRuntimeController != null &&

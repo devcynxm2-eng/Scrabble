@@ -939,6 +939,7 @@
 
 
 
+using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -973,7 +974,27 @@ public sealed class LevelCompleteUIController : MonoBehaviour
 
     [Tooltip("Unearned star ka Image color / alpha.")]
     [SerializeField] private Color unearnedStarColor =
-        new Color(1f, 1f, 1f, 0.25f);
+        new Color(0.32f, 0.32f, 0.32f, 0.7f);
+
+    [Header("Star Reveal Animation")]
+
+    [SerializeField]
+    private bool animateStarReveal = true;
+
+    [SerializeField, Min(0f)]
+    private float starRevealInitialDelay = 0.12f;
+
+    [SerializeField, Min(0.01f)]
+    private float starPopDuration = 0.24f;
+
+    [SerializeField, Min(0f)]
+    private float starRevealStagger = 0.08f;
+
+    [SerializeField, Range(0.05f, 1f)]
+    private float starStartScale = 0.2f;
+
+    [SerializeField, Range(1f, 1.6f)]
+    private float starPopScale = 1.22f;
 
 
     [Header("Gameplay References")]
@@ -992,12 +1013,21 @@ public sealed class LevelCompleteUIController : MonoBehaviour
     private bool isOpen;
     private bool isContinuing;
 
+    private Coroutine starRevealRoutine;
+    private Vector3 star1BaseScale;
+    private Vector3 star2BaseScale;
+    private Vector3 star3BaseScale;
+    private bool starBaseScalesCaptured;
+    private int starRevealTarget = -1;
+
 
     private void Awake()
     {
+        CaptureStarBaseScales();
+
         if (levelCompletePanel != null)
         {
-            levelCompletePanel.SetActive(false);
+            UITransition.HideImmediate(levelCompletePanel);
         }
     }
 
@@ -1023,6 +1053,7 @@ public sealed class LevelCompleteUIController : MonoBehaviour
     private void OnDisable()
     {
         Unsubscribe();
+        StopStarRevealAnimation(true);
 
         if (continueButton != null)
         {
@@ -1206,11 +1237,11 @@ public sealed class LevelCompleteUIController : MonoBehaviour
          */
         int currentStars =
             starRatingManager != null
-                ? starRatingManager.LastAwardedStars
+                ? starRatingManager.CalculateStars()
                 : 0;
 
         SetStarVisuals(
-            currentStars
+            0
         );
 
         if (continueButton != null)
@@ -1227,13 +1258,15 @@ public sealed class LevelCompleteUIController : MonoBehaviour
 
         if (levelCompletePanel != null)
         {
-            levelCompletePanel.SetActive(true);
+            UITransition.Show(levelCompletePanel);
         }
 
         if (pauseGameWhenOpened)
         {
             Time.timeScale = 0f;
         }
+
+        PlayStarRevealAnimation(currentStars);
     }
 
 
@@ -1273,9 +1306,209 @@ public sealed class LevelCompleteUIController : MonoBehaviour
             return;
         }
 
-        SetStarVisuals(
-            stars
+        PlayStarRevealAnimation(stars);
+    }
+
+
+    private void CaptureStarBaseScales()
+    {
+        if (starBaseScalesCaptured)
+        {
+            return;
+        }
+
+        star1BaseScale =
+            star1 != null
+                ? star1.transform.localScale
+                : Vector3.one;
+
+        star2BaseScale =
+            star2 != null
+                ? star2.transform.localScale
+                : Vector3.one;
+
+        star3BaseScale =
+            star3 != null
+                ? star3.transform.localScale
+                : Vector3.one;
+
+        starBaseScalesCaptured = true;
+    }
+
+
+    private void PlayStarRevealAnimation(int stars)
+    {
+        int safeStars = Mathf.Clamp(stars, 0, 3);
+
+        if (starRevealRoutine != null &&
+            starRevealTarget == safeStars)
+        {
+            return;
+        }
+
+        StopStarRevealAnimation(true);
+        SetStarVisuals(0);
+        starRevealTarget = safeStars;
+
+        if (!animateStarReveal ||
+            !Application.isPlaying ||
+            safeStars <= 0)
+        {
+            SetStarVisuals(safeStars);
+            return;
+        }
+
+        starRevealRoutine = StartCoroutine(
+            AnimateStarsRoutine(safeStars)
         );
+    }
+
+
+    private IEnumerator AnimateStarsRoutine(int earnedStars)
+    {
+        if (starRevealInitialDelay > 0f)
+        {
+            yield return WaitForUnscaledSeconds(
+                starRevealInitialDelay
+            );
+        }
+
+        Image[] stars =
+            { star1, star2, star3 };
+
+        Vector3[] baseScales =
+            { star1BaseScale, star2BaseScale, star3BaseScale };
+
+        for (int i = 0; i < earnedStars; i++)
+        {
+            Image starImage = stars[i];
+
+            if (starImage != null)
+            {
+                starImage.color = earnedStarColor;
+
+                yield return AnimateSingleStarRoutine(
+                    starImage.transform,
+                    baseScales[i]
+                );
+            }
+
+            if (i < earnedStars - 1 &&
+                starRevealStagger > 0f)
+            {
+                yield return WaitForUnscaledSeconds(
+                    starRevealStagger
+                );
+            }
+        }
+
+        starRevealRoutine = null;
+    }
+
+
+    private IEnumerator AnimateSingleStarRoutine(
+        Transform starTransform,
+        Vector3 baseScale)
+    {
+        float duration = Mathf.Max(0.01f, starPopDuration);
+        Vector3 smallScale = baseScale * starStartScale;
+        Vector3 largeScale = baseScale * starPopScale;
+        float elapsed = 0f;
+
+        starTransform.localScale = smallScale;
+
+        while (elapsed < duration)
+        {
+            float normalizedTime =
+                Mathf.Clamp01(elapsed / duration);
+
+            if (normalizedTime < 0.65f)
+            {
+                float growProgress =
+                    SmoothStep(normalizedTime / 0.65f);
+
+                starTransform.localScale =
+                    Vector3.LerpUnclamped(
+                        smallScale,
+                        largeScale,
+                        growProgress
+                    );
+            }
+            else
+            {
+                float settleProgress =
+                    SmoothStep(
+                        (normalizedTime - 0.65f) / 0.35f
+                    );
+
+                starTransform.localScale =
+                    Vector3.LerpUnclamped(
+                        largeScale,
+                        baseScale,
+                        settleProgress
+                    );
+            }
+
+            elapsed += Time.unscaledDeltaTime;
+            yield return null;
+        }
+
+        starTransform.localScale = baseScale;
+    }
+
+
+    private static IEnumerator WaitForUnscaledSeconds(float duration)
+    {
+        float elapsed = 0f;
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            yield return null;
+        }
+    }
+
+
+    private static float SmoothStep(float value)
+    {
+        float clampedValue = Mathf.Clamp01(value);
+
+        return
+            clampedValue *
+            clampedValue *
+            (3f - 2f * clampedValue);
+    }
+
+
+    private void StopStarRevealAnimation(bool restoreBaseScales)
+    {
+        if (starRevealRoutine != null)
+        {
+            StopCoroutine(starRevealRoutine);
+            starRevealRoutine = null;
+        }
+
+        if (restoreBaseScales)
+        {
+            CaptureStarBaseScales();
+
+            if (star1 != null)
+            {
+                star1.transform.localScale = star1BaseScale;
+            }
+
+            if (star2 != null)
+            {
+                star2.transform.localScale = star2BaseScale;
+            }
+
+            if (star3 != null)
+            {
+                star3.transform.localScale = star3BaseScale;
+            }
+        }
+
+        starRevealTarget = -1;
     }
 
 
@@ -1328,11 +1561,13 @@ public sealed class LevelCompleteUIController : MonoBehaviour
         isOpen = false;
         isContinuing = false;
 
+        StopStarRevealAnimation(true);
+
         SetStarVisuals(0);
 
         if (levelCompletePanel != null)
         {
-            levelCompletePanel.SetActive(false);
+            UITransition.Hide(levelCompletePanel);
         }
 
         popupGameplayVisibility?.ShowGameplay();
@@ -1350,6 +1585,8 @@ public sealed class LevelCompleteUIController : MonoBehaviour
 
         isContinuing = true;
 
+        StopStarRevealAnimation(true);
+
         if (continueButton != null)
         {
             continueButton.interactable = false;
@@ -1357,7 +1594,7 @@ public sealed class LevelCompleteUIController : MonoBehaviour
 
         if (levelCompletePanel != null)
         {
-            levelCompletePanel.SetActive(false);
+            UITransition.Hide(levelCompletePanel);
         }
 
         isOpen = false;
@@ -1375,9 +1612,11 @@ public sealed class LevelCompleteUIController : MonoBehaviour
         isOpen = false;
         isContinuing = false;
 
+        StopStarRevealAnimation(true);
+
         if (levelCompletePanel != null)
         {
-            levelCompletePanel.SetActive(false);
+            UITransition.Hide(levelCompletePanel);
         }
 
         popupGameplayVisibility?.ShowGameplay();

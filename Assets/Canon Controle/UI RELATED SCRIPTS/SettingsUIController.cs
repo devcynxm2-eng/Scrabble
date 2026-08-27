@@ -330,7 +330,7 @@ public sealed class SettingsUIController : MonoBehaviour
     {
         if (settingsPanel != null)
         {
-            settingsPanel.SetActive(false);
+            UITransition.HideImmediate(settingsPanel);
         }
     }
 
@@ -487,7 +487,7 @@ public sealed class SettingsUIController : MonoBehaviour
 
         if (settingsPanel != null)
         {
-            settingsPanel.SetActive(true);
+            UITransition.Show(settingsPanel);
         }
     }
 
@@ -506,7 +506,7 @@ public sealed class SettingsUIController : MonoBehaviour
     {
         if (settingsPanel != null)
         {
-            settingsPanel.SetActive(false);
+            UITransition.Hide(settingsPanel);
         }
     }
 

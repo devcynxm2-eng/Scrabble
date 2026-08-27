@@ -17121,6 +17121,7 @@ public sealed class LevelRuntimeController : MonoBehaviour
 
     public event System.Action<GridLevelData> LevelGenerated;
     public event System.Action<GridLevelData> LevelCompleted;
+    public event System.Action LevelLoadingStarted;
 
 
 
@@ -17178,6 +17179,32 @@ public sealed class LevelRuntimeController : MonoBehaviour
 
     [SerializeField]
     private TMP_Text mainMenuLevelText;
+
+
+    [Header("Level Entrance Animation")]
+
+    [Tooltip(
+        "Enabled ho to blocks instant appear hone ke bajaye bottom se " +
+        "staggered rise-and-pop animation ke sath reveal honge."
+    )]
+    [SerializeField]
+    private bool animateLevelEntrance = true;
+
+    [SerializeField, Min(0f)]
+    private float levelEntranceInitialDelay = 0.02f;
+
+    [SerializeField, Min(0.01f)]
+    private float blockEntranceDuration = 0.14f;
+
+    [SerializeField, Min(0f)]
+    private float blockEntranceStagger = 0.007f;
+
+    [Tooltip("Block apni final jagah se kitna neeche se rise karega.")]
+    [SerializeField, Min(0f)]
+    private float blockEntranceRiseDistance = 0.45f;
+
+    [SerializeField, Range(0f, 1f)]
+    private float blockEntranceStartScale = 0.05f;
 
 
     [Header("References")]
@@ -17275,6 +17302,16 @@ public sealed class LevelRuntimeController : MonoBehaviour
     }
 
 
+    private sealed class LevelEntranceAnimationEntry
+    {
+        public Transform Target;
+        public Vector3 StartPosition;
+        public Vector3 FinalPosition;
+        public Vector3 StartScale;
+        public Vector3 FinalScale;
+    }
+
+
     private sealed class GridTrackingEntry
     {
         public Vector3 InitialPosition;
@@ -17287,6 +17324,10 @@ public sealed class LevelRuntimeController : MonoBehaviour
     private readonly List<PhysicsTowerObject>
         activeObjects =
             new List<PhysicsTowerObject>();
+
+    private readonly List<LevelEntranceAnimationEntry>
+        levelEntranceAnimationEntries =
+            new List<LevelEntranceAnimationEntry>();
 
     /// <summary>
     /// Keyed by (definition, span) since a bigger footprint (e.g. a
@@ -17348,6 +17389,8 @@ public sealed class LevelRuntimeController : MonoBehaviour
     private bool hasPendingLevelHandle;
 
     private bool isLoadingLevel;
+
+    private Coroutine levelEntranceRoutine;
 
     private CannonController cannonController;
 
@@ -17425,7 +17468,7 @@ public sealed class LevelRuntimeController : MonoBehaviour
 
         if (mainMenuPanel != null)
         {
-            mainMenuPanel.SetActive(true);
+            UITransition.Show(mainMenuPanel);
         }
     }
 
@@ -17453,7 +17496,7 @@ public sealed class LevelRuntimeController : MonoBehaviour
 
         if (mainMenuPanel != null)
         {
-            mainMenuPanel.SetActive(false);
+            UITransition.Hide(mainMenuPanel);
         }
 
         SetGameplayWorldVisible(true);
@@ -17535,6 +17578,8 @@ public sealed class LevelRuntimeController : MonoBehaviour
 
         ClearCurrentLevel();
 
+        LevelLoadingStarted?.Invoke();
+
         runtimeTableAnimationTime = 0f;
 
 
@@ -17561,6 +17606,150 @@ public sealed class LevelRuntimeController : MonoBehaviour
         Physics.SyncTransforms();
 
 
+        if (ShouldAnimateLevelEntrance())
+        {
+            int animationRevision =
+                levelGenerationRevision;
+
+            levelEntranceRoutine = StartCoroutine(
+                AnimateLevelEntranceRoutine(animationRevision)
+            );
+
+            return;
+        }
+
+        FinishLevelGeneration();
+    }
+
+
+    private bool ShouldAnimateLevelEntrance()
+    {
+        return
+            Application.isPlaying &&
+            animateLevelEntrance &&
+            levelEntranceAnimationEntries.Count > 0;
+    }
+
+
+    private IEnumerator AnimateLevelEntranceRoutine(
+        int animationRevision)
+    {
+        if (levelEntranceInitialDelay > 0f)
+        {
+            float delayElapsed = 0f;
+
+            while (delayElapsed < levelEntranceInitialDelay)
+            {
+                if (animationRevision != levelGenerationRevision)
+                {
+                    yield break;
+                }
+
+                delayElapsed += Time.unscaledDeltaTime;
+                yield return null;
+            }
+        }
+
+        float duration =
+            Mathf.Max(0.01f, blockEntranceDuration);
+
+        float totalDuration =
+            duration +
+            blockEntranceStagger *
+            Mathf.Max(0, levelEntranceAnimationEntries.Count - 1);
+
+        float elapsed = 0f;
+
+        while (elapsed < totalDuration)
+        {
+            if (animationRevision != levelGenerationRevision)
+            {
+                yield break;
+            }
+
+            for (int i = 0;
+                 i < levelEntranceAnimationEntries.Count;
+                 i++)
+            {
+                LevelEntranceAnimationEntry entry =
+                    levelEntranceAnimationEntries[i];
+
+                if (entry == null || entry.Target == null)
+                {
+                    continue;
+                }
+
+                float normalizedTime =
+                    Mathf.Clamp01(
+                        (
+                            elapsed -
+                            i * blockEntranceStagger
+                        ) /
+                        duration
+                    );
+
+                float positionProgress =
+                    normalizedTime *
+                    normalizedTime *
+                    (3f - 2f * normalizedTime);
+
+                float scaleProgress =
+                    EaseOutBack(normalizedTime);
+
+                entry.Target.position =
+                    Vector3.LerpUnclamped(
+                        entry.StartPosition,
+                        entry.FinalPosition,
+                        positionProgress
+                    );
+
+                entry.Target.localScale =
+                    Vector3.LerpUnclamped(
+                        entry.StartScale,
+                        entry.FinalScale,
+                        scaleProgress
+                    );
+            }
+
+            elapsed += Time.unscaledDeltaTime;
+            yield return null;
+        }
+
+        foreach (LevelEntranceAnimationEntry entry
+                 in levelEntranceAnimationEntries)
+        {
+            if (entry == null || entry.Target == null)
+            {
+                continue;
+            }
+
+            entry.Target.position = entry.FinalPosition;
+            entry.Target.localScale = entry.FinalScale;
+        }
+
+        Physics.SyncTransforms();
+
+        levelEntranceRoutine = null;
+        FinishLevelGeneration();
+    }
+
+
+    private static float EaseOutBack(float value)
+    {
+        const float overshoot = 1.70158f;
+
+        float shiftedValue = value - 1f;
+
+        return
+            1f +
+            (overshoot + 1f) *
+            shiftedValue * shiftedValue * shiftedValue +
+            overshoot * shiftedValue * shiftedValue;
+    }
+
+
+    private void FinishLevelGeneration()
+    {
         levelGenerated =
             true;
 
@@ -18172,6 +18361,37 @@ public sealed class LevelRuntimeController : MonoBehaviour
                      */
                     instance.transform.localScale =
                         pieceScale;
+
+                    if (Application.isPlaying &&
+                        animateLevelEntrance)
+                    {
+                        Vector3 entranceUp =
+                            surfaceRotation * Vector3.up;
+
+                        Vector3 entranceStartPosition =
+                            spawnPosition -
+                            entranceUp * blockEntranceRiseDistance;
+
+                        Vector3 entranceStartScale =
+                            pieceScale * blockEntranceStartScale;
+
+                        instance.transform.position =
+                            entranceStartPosition;
+
+                        instance.transform.localScale =
+                            entranceStartScale;
+
+                        levelEntranceAnimationEntries.Add(
+                            new LevelEntranceAnimationEntry
+                            {
+                                Target = instance.transform,
+                                StartPosition = entranceStartPosition,
+                                FinalPosition = spawnPosition,
+                                StartScale = entranceStartScale,
+                                FinalScale = pieceScale
+                            }
+                        );
+                    }
 
 
                     /*
@@ -19420,6 +19640,8 @@ public sealed class LevelRuntimeController : MonoBehaviour
 
         isLoadingLevel = true;
 
+        LevelLoadingStarted?.Invoke();
+
         AsyncOperationHandle<GridLevelData> newHandle =
             Addressables.LoadAssetAsync<GridLevelData>(address);
 
@@ -19749,7 +19971,14 @@ public sealed class LevelRuntimeController : MonoBehaviour
     {
         if (gameplayPanel != null)
         {
-            gameplayPanel.SetActive(visible);
+            if (visible)
+            {
+                UITransition.Show(gameplayPanel);
+            }
+            else
+            {
+                UITransition.Hide(gameplayPanel);
+            }
         }
 
         if (levelOrigin != null &&
@@ -19933,6 +20162,14 @@ public sealed class LevelRuntimeController : MonoBehaviour
     public void ClearCurrentLevel()
     {
         levelGenerationRevision++;
+
+        if (levelEntranceRoutine != null)
+        {
+            StopCoroutine(levelEntranceRoutine);
+            levelEntranceRoutine = null;
+        }
+
+        levelEntranceAnimationEntries.Clear();
 
         levelGenerated =
             false;

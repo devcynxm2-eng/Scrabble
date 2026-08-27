@@ -10,7 +10,7 @@ public sealed class LifeUIController : MonoBehaviour
         "Optional. Example output: 5/20. " +
         "Agar sirf current lives dikhani hain to Show Max Lives OFF kar dein."
     )]
-    [SerializeField] private bool showMaxLives = true;
+    [SerializeField] private bool showMaxLives = false;
 
 
     [Header("Recovery Timer UI")]
@@ -171,7 +171,9 @@ public sealed class LifeUIController : MonoBehaviour
             return;
         }
 
-        if (showMaxLives)
+        if (showMaxLives &&
+            lifeManager != null &&
+            lifeManager.HasLifeLimit)
         {
             livesText.text =
                 $"{currentLives}/{maxLives}";

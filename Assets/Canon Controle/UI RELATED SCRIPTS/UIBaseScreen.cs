@@ -55,7 +55,14 @@ public class UIBaseScreen : MonoBehaviour
 
         if (Panel_View != null)
         {
-            Panel_View.SetActive(shouldBeActive);
+            if (shouldBeActive)
+            {
+                UITransition.Show(Panel_View);
+            }
+            else
+            {
+                UITransition.Hide(Panel_View);
+            }
         }
 
 

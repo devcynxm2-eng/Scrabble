@@ -21,14 +21,11 @@ public sealed class LifeManager : MonoBehaviour
     private int startingLives = 5;
 
     [SerializeField, Min(1)]
-    private int maxLives = 20;
+    private int recoveryAmount = 1;
 
-    [SerializeField, Min(1)]
-    private int recoveryAmount = 5;
-
-    [Tooltip("Default 300 seconds = 5 minutes.")]
+    [Tooltip("Default 900 seconds = 15 minutes.")]
     [SerializeField, Min(1f)]
-    private float recoveryIntervalSeconds = 300f;
+    private float recoveryIntervalSeconds = 900f;
 
 
     [Header("Behaviour")]
@@ -60,7 +57,10 @@ public sealed class LifeManager : MonoBehaviour
         currentLives;
 
     public int MaxLives =>
-        maxLives;
+        int.MaxValue;
+
+    public bool HasLifeLimit =>
+        false;
 
     public int RecoveryAmount =>
         recoveryAmount;
@@ -72,10 +72,9 @@ public sealed class LifeManager : MonoBehaviour
         currentLives > 0;
 
     public bool IsFull =>
-        currentLives >= maxLives;
+        false;
 
     public bool IsRecoveryRunning =>
-        currentLives < maxLives &&
         nextRecoveryUtcTicks > 0;
 
 
@@ -84,7 +83,7 @@ public sealed class LifeManager : MonoBehaviour
     /*
      * remainingSeconds:
      * - > 0  = next recovery tak remaining time
-     * - 0    = full lives ya timer inactive
+     * - 0    = recovery due hai ya timer initialize ho raha hai
      */
     public event Action<float> RecoveryTimerChanged;
 
@@ -126,18 +125,6 @@ public sealed class LifeManager : MonoBehaviour
 
     private void Update()
     {
-        if (IsFull)
-        {
-            if (nextRecoveryUtcTicks != 0)
-            {
-                StopRecoveryTimer();
-                SaveState();
-            }
-
-            RefreshTimerEventIfNeeded();
-            return;
-        }
-
         if (nextRecoveryUtcTicks <= 0)
         {
             StartRecoveryTimerFromNow();
@@ -198,17 +185,10 @@ public sealed class LifeManager : MonoBehaviour
 
     private void SanitizeInspectorValues()
     {
-        maxLives =
-            Mathf.Max(
-                1,
-                maxLives
-            );
-
         startingLives =
-            Mathf.Clamp(
-                startingLives,
+            Mathf.Max(
                 0,
-                maxLives
+                startingLives
             );
 
         recoveryAmount =
@@ -242,18 +222,12 @@ public sealed class LifeManager : MonoBehaviour
         if (!initialized)
         {
             currentLives =
-                Mathf.Clamp(
-                    startingLives,
+                Mathf.Max(
                     0,
-                    maxLives
+                    startingLives
                 );
 
-            nextRecoveryUtcTicks = 0;
-
-            if (currentLives < maxLives)
-            {
-                StartRecoveryTimerFromNow();
-            }
+            StartRecoveryTimerFromNow();
 
             PlayerPrefs.SetInt(
                 InitializedKey,
@@ -265,13 +239,12 @@ public sealed class LifeManager : MonoBehaviour
         }
 
         currentLives =
-            Mathf.Clamp(
+            Mathf.Max(
+                0,
                 PlayerPrefs.GetInt(
                     LivesKey,
                     startingLives
-                ),
-                0,
-                maxLives
+                )
             );
 
         string storedTicks =
@@ -327,20 +300,12 @@ public sealed class LifeManager : MonoBehaviour
             return false;
         }
 
-        bool wasFull =
-            IsFull;
-
         currentLives -= amount;
 
         /*
-         * Important:
-         * Agar 20/20 se 19/20 hua hai to naya 5 minute timer ab start hoga.
-         *
-         * Agar pehle se 10/20 tha aur timer already chal raha tha,
-         * consume karne par existing timer reset nahi hoga.
+         * Life use karne par running 15-minute timer reset nahi hota.
          */
-        if (wasFull ||
-            nextRecoveryUtcTicks <= 0)
+        if (nextRecoveryUtcTicks <= 0)
         {
             StartRecoveryTimerFromNow();
         }
@@ -365,17 +330,12 @@ public sealed class LifeManager : MonoBehaviour
         int previousLives =
             currentLives;
 
-        currentLives =
-            Mathf.Min(
-                maxLives,
-                currentLives + amount
-            );
+        currentLives = AddWithoutOverflow(
+            currentLives,
+            amount
+        );
 
-        if (currentLives >= maxLives)
-        {
-            StopRecoveryTimer();
-        }
-        else if (nextRecoveryUtcTicks <= 0)
+        if (nextRecoveryUtcTicks <= 0)
         {
             StartRecoveryTimerFromNow();
         }
@@ -392,17 +352,12 @@ public sealed class LifeManager : MonoBehaviour
         int value)
     {
         currentLives =
-            Mathf.Clamp(
-                value,
+            Mathf.Max(
                 0,
-                maxLives
+                value
             );
 
-        if (IsFull)
-        {
-            StopRecoveryTimer();
-        }
-        else
+        if (nextRecoveryUtcTicks <= 0)
         {
             StartRecoveryTimerFromNow();
         }
@@ -414,8 +369,7 @@ public sealed class LifeManager : MonoBehaviour
 
     public float GetRemainingRecoverySeconds()
     {
-        if (IsFull ||
-            nextRecoveryUtcTicks <= 0)
+        if (nextRecoveryUtcTicks <= 0)
         {
             return 0f;
         }
@@ -437,12 +391,6 @@ public sealed class LifeManager : MonoBehaviour
 
     private void ApplyElapsedRecovery()
     {
-        if (IsFull)
-        {
-            StopRecoveryTimer();
-            return;
-        }
-
         if (nextRecoveryUtcTicks <= 0)
         {
             StartRecoveryTimerFromNow();
@@ -471,14 +419,15 @@ public sealed class LifeManager : MonoBehaviour
 
         /*
          * Example:
-         * nextRecovery = 10:05
-         * now          = 10:16
+         * nextRecovery = 10:15
+         * now          = 11:01
          *
          * Due cycles:
-         * 10:05
-         * 10:10
          * 10:15
-         * = 3 cycles
+         * 10:30
+         * 10:45
+         * 11:00
+         * = 4 cycles
          */
         long overdueTicks =
             nowTicks -
@@ -492,52 +441,32 @@ public sealed class LifeManager : MonoBehaviour
             1 +
             additionalCycles;
 
-        int missingLives =
-            maxLives -
-            currentLives;
-
-        int maximumUsefulCycles =
-            Mathf.CeilToInt(
-                missingLives /
-                (float)recoveryAmount
-            );
-
-        int cyclesToApply =
-            (int)Math.Min(
-                dueCycles,
-                maximumUsefulCycles
-            );
-
-        if (cyclesToApply <= 0)
-        {
-            return;
-        }
-
         int previousLives =
             currentLives;
 
-        currentLives =
-            Mathf.Min(
-                maxLives,
-                currentLives +
-                cyclesToApply *
-                recoveryAmount
+        long availableLifeSpace =
+            int.MaxValue - (long)currentLives;
+
+        long cyclesToApply =
+            Math.Min(
+                dueCycles,
+                availableLifeSpace / recoveryAmount
             );
 
-        if (IsFull)
-        {
-            StopRecoveryTimer();
-        }
-        else
-        {
-            /*
-             * Original timer phase preserve hoti hai.
-             * Offline return par har recovery cycle ka proper elapsed time count hoga.
-             */
-            nextRecoveryUtcTicks +=
-                cyclesToApply *
-                intervalTicks;
-        }
+        long recoveredLives =
+            cyclesToApply * recoveryAmount;
+
+        currentLives = AddWithoutOverflow(
+            currentLives,
+            recoveredLives
+        );
+
+        /*
+         * Original timer phase preserve hoti hai.
+         * Offline return par har 15-minute cycle count hoga.
+         */
+        nextRecoveryUtcTicks +=
+            dueCycles * intervalTicks;
 
         SaveState();
 
@@ -550,12 +479,6 @@ public sealed class LifeManager : MonoBehaviour
 
     private void EnsureRecoveryTimerState()
     {
-        if (IsFull)
-        {
-            StopRecoveryTimer();
-            return;
-        }
-
         if (nextRecoveryUtcTicks <= 0)
         {
             StartRecoveryTimerFromNow();
@@ -565,12 +488,6 @@ public sealed class LifeManager : MonoBehaviour
 
     private void StartRecoveryTimerFromNow()
     {
-        if (IsFull)
-        {
-            StopRecoveryTimer();
-            return;
-        }
-
         nextRecoveryUtcTicks =
             DateTime.UtcNow.Ticks +
             SecondsToTicks(
@@ -579,9 +496,17 @@ public sealed class LifeManager : MonoBehaviour
     }
 
 
-    private void StopRecoveryTimer()
+    private static int AddWithoutOverflow(
+        int currentValue,
+        long amount)
     {
-        nextRecoveryUtcTicks = 0;
+        long total =
+            (long)currentValue + amount;
+
+        return (int)Math.Min(
+            int.MaxValue,
+            total
+        );
     }
 
 
@@ -622,7 +547,7 @@ public sealed class LifeManager : MonoBehaviour
     {
         LivesChanged?.Invoke(
             currentLives,
-            maxLives
+            MaxLives
         );
 
         RecoveryTimerChanged?.Invoke(
@@ -670,20 +595,12 @@ public sealed class LifeManager : MonoBehaviour
     private void DebugResetToStartingLives()
     {
         currentLives =
-            Mathf.Clamp(
-                startingLives,
+            Mathf.Max(
                 0,
-                maxLives
+                startingLives
             );
 
-        if (IsFull)
-        {
-            StopRecoveryTimer();
-        }
-        else
-        {
-            StartRecoveryTimerFromNow();
-        }
+        StartRecoveryTimerFromNow();
 
         SaveState();
         BroadcastAll();

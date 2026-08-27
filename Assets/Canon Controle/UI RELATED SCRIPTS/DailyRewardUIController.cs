@@ -1062,12 +1062,15 @@ public sealed class DailyRewardUIController : MonoBehaviour
     [SerializeField]
     private DailyRewardManager dailyRewardManager;
 
+    [SerializeField]
+    private CoinRewardAnimator rewardAnimator;
+
 
     private void Awake()
     {
         if (dailyRewardPanel != null)
         {
-            dailyRewardPanel.SetActive(false);
+            UITransition.HideImmediate(dailyRewardPanel);
         }
     }
 
@@ -1131,6 +1134,14 @@ public sealed class DailyRewardUIController : MonoBehaviour
 
     private void ResolveManager()
     {
+        if (rewardAnimator == null)
+        {
+            rewardAnimator =
+                FindFirstObjectByType<CoinRewardAnimator>(
+                    FindObjectsInactive.Include
+                );
+        }
+
         if (dailyRewardManager != null)
         {
             return;
@@ -1169,6 +1180,12 @@ public sealed class DailyRewardUIController : MonoBehaviour
 
         dailyRewardManager.TimerChanged +=
             HandleTimerChanged;
+
+        dailyRewardManager.RewardClaimed -=
+            HandleRewardClaimed;
+
+        dailyRewardManager.RewardClaimed +=
+            HandleRewardClaimed;
     }
 
 
@@ -1184,6 +1201,9 @@ public sealed class DailyRewardUIController : MonoBehaviour
 
         dailyRewardManager.TimerChanged -=
             HandleTimerChanged;
+
+        dailyRewardManager.RewardClaimed -=
+            HandleRewardClaimed;
     }
 
 
@@ -1211,7 +1231,7 @@ public sealed class DailyRewardUIController : MonoBehaviour
 
         if (dailyRewardPanel != null)
         {
-            dailyRewardPanel.SetActive(true);
+            UITransition.Show(dailyRewardPanel);
         }
 
         RefreshAll();
@@ -1232,7 +1252,7 @@ public sealed class DailyRewardUIController : MonoBehaviour
     {
         if (dailyRewardPanel != null)
         {
-            dailyRewardPanel.SetActive(false);
+            UITransition.Hide(dailyRewardPanel);
         }
     }
 
@@ -1255,6 +1275,178 @@ public sealed class DailyRewardUIController : MonoBehaviour
             .TryClaimCurrentReward();
 
         RefreshAll();
+    }
+
+
+    private void HandleRewardClaimed(
+        int claimedDayIndex,
+        DailyRewardDefinition reward)
+    {
+        if (reward == null)
+        {
+            return;
+        }
+
+        ResolveManager();
+
+        if (rewardAnimator == null)
+        {
+            Debug.LogWarning(
+                "DailyRewardUIController: CoinRewardAnimator missing hai.",
+                this
+            );
+
+            return;
+        }
+
+        List<RewardVisualType> visualTypes =
+            new List<RewardVisualType>();
+
+        switch (reward.rewardType)
+        {
+            case DailyRewardType.Coins:
+                AddVisualType(
+                    visualTypes,
+                    RewardVisualType.Coin
+                );
+                break;
+
+            case DailyRewardType.Lives:
+                AddVisualType(
+                    visualTypes,
+                    RewardVisualType.Life
+                );
+                break;
+
+            case DailyRewardType.InfiniteBalls:
+                AddVisualType(
+                    visualTypes,
+                    RewardVisualType.CanonBall
+                );
+                break;
+
+            case DailyRewardType.PowerCannon:
+                AddVisualType(
+                    visualTypes,
+                    RewardVisualType.Rocket
+                );
+                break;
+
+            case DailyRewardType.Custom:
+                AddCustomRewardVisuals(
+                    visualTypes,
+                    reward
+                );
+                break;
+        }
+
+        if (visualTypes.Count > 0)
+        {
+            if (reward.rewardType == DailyRewardType.Custom)
+            {
+                rewardAnimator.PlayRewardGroup(
+                    visualTypes.ToArray()
+                );
+            }
+            else
+            {
+                rewardAnimator.PlayRewardSequence(
+                    visualTypes.ToArray()
+                );
+            }
+        }
+    }
+
+
+    private static void AddCustomRewardVisuals(
+        List<RewardVisualType> visualTypes,
+        DailyRewardDefinition reward)
+    {
+        if (reward.customCoins > 0)
+        {
+            AddVisualType(
+                visualTypes,
+                RewardVisualType.Coin
+            );
+        }
+
+        if (reward.customLives > 0)
+        {
+            AddVisualType(
+                visualTypes,
+                RewardVisualType.Life
+            );
+        }
+
+        if (reward.customInfiniteBalls > 0)
+        {
+            AddVisualType(
+                visualTypes,
+                RewardVisualType.CanonBall
+            );
+        }
+
+        if (reward.customPowerCannon > 0)
+        {
+            AddVisualType(
+                visualTypes,
+                RewardVisualType.Rocket
+            );
+        }
+
+        if (visualTypes.Count > 0)
+        {
+            return;
+        }
+
+        string customId =
+            reward.customRewardId == null
+                ? string.Empty
+                : reward.customRewardId
+                    .Trim()
+                    .ToLowerInvariant();
+
+        if (customId.Contains("coin"))
+        {
+            AddVisualType(
+                visualTypes,
+                RewardVisualType.Coin
+            );
+        }
+        else if (customId.Contains("life"))
+        {
+            AddVisualType(
+                visualTypes,
+                RewardVisualType.Life
+            );
+        }
+        else if (customId.Contains("rocket"))
+        {
+            AddVisualType(
+                visualTypes,
+                RewardVisualType.Rocket
+            );
+        }
+        else if (customId.Contains("canon") ||
+                 customId.Contains("cannon") ||
+                 customId.Contains("ball"))
+        {
+            AddVisualType(
+                visualTypes,
+                RewardVisualType.CanonBall
+            );
+        }
+    }
+
+
+    private static void AddVisualType(
+        List<RewardVisualType> visualTypes,
+        RewardVisualType visualType)
+    {
+        if (!visualTypes.Contains(visualType))
+        {
+            visualTypes.Add(visualType);
+        }
     }
 
 
@@ -1568,6 +1760,3 @@ public sealed class DailyRewardUIController : MonoBehaviour
             $"{hours:00}:{minutes:00}:{secs:00}";
     }
 }
-
-
-

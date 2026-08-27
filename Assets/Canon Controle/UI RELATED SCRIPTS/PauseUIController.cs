@@ -230,7 +230,7 @@ public sealed class PauseUIController : MonoBehaviour
     {
         if (pausePanel != null)
         {
-            pausePanel.SetActive(false);
+            UITransition.HideImmediate(pausePanel);
         }
     }
 
@@ -328,7 +328,7 @@ public sealed class PauseUIController : MonoBehaviour
 
         if (pausePanel != null)
         {
-            pausePanel.SetActive(true);
+            UITransition.Show(pausePanel);
         }
 
         Time.timeScale = 0f;
@@ -341,7 +341,7 @@ public sealed class PauseUIController : MonoBehaviour
 
         if (pausePanel != null)
         {
-            pausePanel.SetActive(false);
+            UITransition.Hide(pausePanel);
         }
 
         popupGameplayVisibility?.ShowGameplay();
@@ -356,7 +356,7 @@ public sealed class PauseUIController : MonoBehaviour
 
         if (pausePanel != null)
         {
-            pausePanel.SetActive(false);
+            UITransition.Hide(pausePanel);
         }
 
         popupGameplayVisibility?.ShowGameplay();
@@ -383,7 +383,7 @@ public sealed class PauseUIController : MonoBehaviour
 
         if (pausePanel != null)
         {
-            pausePanel.SetActive(false);
+            UITransition.Hide(pausePanel);
         }
 
         Time.timeScale = 1f;
@@ -412,7 +412,7 @@ public sealed class PauseUIController : MonoBehaviour
 
         if (pausePanel != null)
         {
-            pausePanel.SetActive(false);
+            UITransition.Hide(pausePanel);
         }
 
         popupGameplayVisibility?.ShowGameplay();
