@@ -8264,8 +8264,8 @@ public sealed class CannonController : MonoBehaviour
     private LevelRuntimeController levelRuntimeController;
 
     [Tooltip(
-        "Last ball fire hone ke baad itna short realtime wait hoga. " +
-        "Is delay mein last shot ko Level Complete trigger karne ka chance milta hai."
+        "Tamam fired balls destroy hone ke baad itna realtime settle wait hoga. " +
+        "Is delay mein girte blocks ko Level Complete trigger karne ka chance milta hai."
     )]
     [SerializeField, Min(0f)]
     private float outOfMovesResultDelay = 0.75f;
@@ -8329,6 +8329,30 @@ public sealed class CannonController : MonoBehaviour
      */
     public float BottomDeadSpaceHeight =>
         bottomDeadSpaceHeight;
+
+    public Transform RocketLaunchPoint =>
+        muzzle != null
+            ? muzzle
+            : transform;
+
+    public Vector3 RocketShootDirection
+    {
+        get
+        {
+            if (muzzle == null)
+            {
+                return transform.forward;
+            }
+
+            Vector3 direction = hasAimPoint
+                ? currentAimPoint - muzzle.position
+                : muzzle.forward;
+
+            return direction.sqrMagnitude > 0.0001f
+                ? direction.normalized
+                : muzzle.forward;
+        }
+    }
 
 
     private Vector3 currentAimPoint;
@@ -8474,6 +8498,9 @@ public sealed class CannonController : MonoBehaviour
 
             subscribedLevelController.LevelGenerated +=
                 HandleLevelGenerated;
+
+            subscribedLevelController.LevelCompleted +=
+                HandleLevelCompleted;
         }
     }
 
@@ -8487,6 +8514,9 @@ public sealed class CannonController : MonoBehaviour
 
             subscribedLevelController.LevelGenerated -=
                 HandleLevelGenerated;
+
+            subscribedLevelController.LevelCompleted -=
+                HandleLevelCompleted;
         }
 
         subscribedLevelController = null;
@@ -8518,6 +8548,19 @@ public sealed class CannonController : MonoBehaviour
         cannonEntranceRoutine = StartCoroutine(
             AnimateCannonEntranceRoutine()
         );
+    }
+
+
+    private void HandleLevelCompleted(
+        GridLevelData completedLevel)
+    {
+        if (outOfMovesRoutine == null)
+        {
+            return;
+        }
+
+        StopCoroutine(outOfMovesRoutine);
+        outOfMovesRoutine = null;
     }
 
 
@@ -9852,32 +9895,45 @@ public sealed class CannonController : MonoBehaviour
     private IEnumerator WaitForBallsToResolveThenShowOutOfMoves()
     {
         /*
-         * Purana version cannonball destroy hone ka wait karta tha.
-         * CannonBallLifetime 5 seconds ho sakti hai, isliye popup late aata tha.
-         *
-         * Ab sirf short configurable delay wait hota hai.
-         * Is delay mein last shot agar level complete kar de to
-         * Level Complete popup priority lega.
+         * Ball count zero hona final result nahi hai. Last fired ball aur
+         * pehle se active balls ko hit, bounce, shrink aur destroy hone do.
+         * Har frame level complete check hoti rahegi taake Win popup ko
+         * hamesha Out Of Moves par priority mile.
          */
-        if (outOfMovesResultDelay > 0f)
+        while (HasActiveCannonBalls())
         {
-            yield return new WaitForSecondsRealtime(
-                outOfMovesResultDelay
-            );
+            if (ShouldCancelOutOfMovesCheck())
+            {
+                outOfMovesRoutine = null;
+                yield break;
+            }
+
+            yield return null;
+        }
+
+        /*
+         * Ball destroy hone ke baad girte huay tower blocks ko ek short
+         * settle window milti hai. Ye realtime par chalta hai taake kisi
+         * accidental Time.timeScale change se result check freeze na ho.
+         */
+        float settleElapsed = 0f;
+
+        while (settleElapsed < outOfMovesResultDelay)
+        {
+            if (ShouldCancelOutOfMovesCheck())
+            {
+                outOfMovesRoutine = null;
+                yield break;
+            }
+
+            settleElapsed += Time.unscaledDeltaTime;
+            yield return null;
         }
 
         outOfMovesRoutine = null;
 
-        if (infiniteBallsEnabled ||
-            remainingBalls > 0)
+        if (ShouldCancelOutOfMovesCheck())
         {
-            yield break;
-        }
-
-        if (levelRuntimeController != null &&
-            !levelRuntimeController.IsLevelGenerated)
-        {
-            // Level complete ho chuka hai.
             yield break;
         }
 
@@ -9890,6 +9946,41 @@ public sealed class CannonController : MonoBehaviour
         }
 
         OutOfMoves?.Invoke();
+    }
+
+
+    private bool HasActiveCannonBalls()
+    {
+        for (int i = activeCannonBalls.Count - 1;
+             i >= 0;
+             i--)
+        {
+            if (activeCannonBalls[i] == null)
+            {
+                activeCannonBalls.RemoveAt(i);
+            }
+        }
+
+        return activeCannonBalls.Count > 0;
+    }
+
+
+    private bool ShouldCancelOutOfMovesCheck()
+    {
+        if (infiniteBallsEnabled ||
+            remainingBalls > 0)
+        {
+            return true;
+        }
+
+        if (levelRuntimeController == null)
+        {
+            return false;
+        }
+
+        return
+            !levelRuntimeController.IsLevelGenerated ||
+            levelRuntimeController.RemainingTargets <= 0;
     }
 
 

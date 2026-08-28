@@ -639,6 +639,62 @@ public sealed class PhysicsTowerObject : MonoBehaviour
     }
 
 
+    public void ApplyExternalImpact(
+        Vector3 impulse,
+        Vector3 torqueImpulse,
+        bool countsAsDirectHit,
+        Vector3 hitPoint)
+    {
+        if (isCleared)
+        {
+            return;
+        }
+
+        if (countsAsDirectHit &&
+            TryHandleBreakableHit(
+                impulse,
+                hitPoint
+            ))
+        {
+            return;
+        }
+
+        if (IsLocked)
+        {
+            ActivatePhysics(
+                impulse,
+                torqueImpulse
+            );
+
+            return;
+        }
+
+        if (body == null)
+        {
+            ResolveReferences();
+        }
+
+        if (body == null || body.isKinematic)
+        {
+            return;
+        }
+
+        body.WakeUp();
+        body.AddForce(
+            impulse,
+            ForceMode.Impulse
+        );
+
+        if (torqueImpulse.sqrMagnitude > 0.0001f)
+        {
+            body.AddTorque(
+                torqueImpulse,
+                ForceMode.Impulse
+            );
+        }
+    }
+
+
     public void MoveLockedWithTable(
         Vector3 worldPosition,
         Quaternion worldRotation)

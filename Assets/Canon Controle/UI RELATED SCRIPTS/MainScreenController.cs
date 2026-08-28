@@ -83,6 +83,85 @@
 
 
 
+// using UnityEngine;
+// using UnityEngine.UI;
+
+// public sealed class MainScreenController : MonoBehaviour
+// {
+//     [Header("Home Screen Buttons")]
+//     [SerializeField] private Button rewardButton;
+//     [SerializeField] private Button settingButton;
+
+
+//     private void Start()
+//     {
+//         UIEventBroker.RequestScreen(
+//             UIScreenType.MainMenu
+//         );
+
+
+//         if (rewardButton != null)
+//         {
+//             rewardButton.onClick.RemoveListener(
+//                 OpenReward
+//             );
+
+//             rewardButton.onClick.AddListener(
+//                 OpenReward
+//             );
+//         }
+
+
+//         if (settingButton != null)
+//         {
+//             settingButton.onClick.RemoveListener(
+//                 OpenSettings
+//             );
+
+//             settingButton.onClick.AddListener(
+//                 OpenSettings
+//             );
+//         }
+//     }
+
+
+//     private void OnDestroy()
+//     {
+//         if (rewardButton != null)
+//         {
+//             rewardButton.onClick.RemoveListener(
+//                 OpenReward
+//             );
+//         }
+
+
+//         if (settingButton != null)
+//         {
+//             settingButton.onClick.RemoveListener(
+//                 OpenSettings
+//             );
+//         }
+//     }
+
+
+//     private void OpenReward()
+//     {
+//         UIEventBroker.RequestScreen(
+//             UIScreenType.RewardScreen
+//         );
+//     }
+
+
+//     private void OpenSettings()
+//     {
+//         UIEventBroker.RequestScreen(
+//             UIScreenType.SettingScreen
+//         );
+//     }
+// }
+
+
+
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -91,6 +170,11 @@ public sealed class MainScreenController : MonoBehaviour
     [Header("Home Screen Buttons")]
     [SerializeField] private Button rewardButton;
     [SerializeField] private Button settingButton;
+
+
+    [Header("Profile")]
+    [SerializeField] private PlayerProfile playerProfile;
+    [SerializeField] private Image profileAvatarImage;
 
 
     private void Start()
@@ -122,6 +206,19 @@ public sealed class MainScreenController : MonoBehaviour
                 OpenSettings
             );
         }
+
+
+        RefreshProfileAvatar();
+    }
+
+
+    private void OnEnable()
+    {
+        // Important:
+        // Agar screen switcher is GameObject ko SetActive(true/false)
+        // karke show/hide karta hai (settings se wapas main menu par
+        // aane par), to avatar yahan se refresh ho jayega automatically.
+        RefreshProfileAvatar();
     }
 
 
@@ -158,11 +255,38 @@ public sealed class MainScreenController : MonoBehaviour
             UIScreenType.SettingScreen
         );
     }
+
+
+    private void RefreshProfileAvatar()
+    {
+        if (playerProfile == null)
+        {
+            Debug.LogWarning(
+                "MainScreenController: PlayerProfile not assigned."
+            );
+
+            return;
+        }
+
+        if (profileAvatarImage == null)
+            return;
+
+        playerProfile.Load();
+
+        if (playerProfile.AvatarSprite != null)
+        {
+            profileAvatarImage.sprite = playerProfile.AvatarSprite;
+            profileAvatarImage.enabled = true;
+        }
+        else
+        {
+            profileAvatarImage.enabled = false;
+        }
+
+        profileAvatarImage.preserveAspect = true;
+        profileAvatarImage.type = Image.Type.Simple;
+    }
 }
-
-
-
-
 
 
 

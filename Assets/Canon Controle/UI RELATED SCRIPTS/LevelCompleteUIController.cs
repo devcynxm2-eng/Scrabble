@@ -939,6 +939,735 @@
 
 
 
+// using System.Collections;
+// using TMPro;
+// using UnityEngine;
+// using UnityEngine.UI;
+
+// public sealed class LevelCompleteUIController : MonoBehaviour
+// {
+//     [Header("UI")]
+//     [SerializeField] private GameObject levelCompletePanel;
+//     [SerializeField] private Button continueButton;
+
+//     [Tooltip(
+//         "Optional TMP text. Completed level number show karne ke liye."
+//     )]
+//     [SerializeField] private TMP_Text levelCompleteText;
+
+//     [Tooltip(
+//         "Level complete par is level mein earn kiye coins/score show karega. " +
+//         "Example: +100"
+//     )]
+//     [SerializeField] private TMP_Text earnedCoinsText;
+
+//     [SerializeField] private string earnedCoinsPrefix = "+";
+
+
+//     [Header("Stars")]
+//     [SerializeField] private Image star1;
+//     [SerializeField] private Image star2;
+//     [SerializeField] private Image star3;
+
+//     [Tooltip("Earned star ka Image color.")]
+//     [SerializeField] private Color earnedStarColor = Color.white;
+
+//     [Tooltip("Unearned star ka Image color / alpha.")]
+//     [SerializeField] private Color unearnedStarColor =
+//         new Color(0.32f, 0.32f, 0.32f, 0.7f);
+
+//     [Header("Star Reveal Animation")]
+
+//     [SerializeField]
+//     private bool animateStarReveal = true;
+
+//     [SerializeField, Min(0f)]
+//     private float starRevealInitialDelay = 0.12f;
+
+//     [SerializeField, Min(0.01f)]
+//     private float starPopDuration = 0.24f;
+
+//     [SerializeField, Min(0f)]
+//     private float starRevealStagger = 0.08f;
+
+//     [SerializeField, Range(0.05f, 1f)]
+//     private float starStartScale = 0.2f;
+
+//     [SerializeField, Range(1f, 1.6f)]
+//     private float starPopScale = 1.22f;
+
+
+//     [Header("Gameplay References")]
+//     [SerializeField] private LevelRuntimeController levelRuntimeController;
+//     [SerializeField] private ScoreManager scoreManager;
+//     [SerializeField] private StarRatingManager starRatingManager;
+
+//     [SerializeField]
+//     private PopupGameplayVisibilityController popupGameplayVisibility;
+
+
+//     [Header("Behaviour")]
+//     [SerializeField] private bool pauseGameWhenOpened = true;
+
+
+//     private bool isOpen;
+//     private bool isContinuing;
+//     private bool returnToMainMenuAfterContinue;
+
+//     private Coroutine starRevealRoutine;
+//     private Vector3 star1BaseScale;
+//     private Vector3 star2BaseScale;
+//     private Vector3 star3BaseScale;
+//     private bool starBaseScalesCaptured;
+//     private int starRevealTarget = -1;
+
+
+//     private void Awake()
+//     {
+//         CaptureStarBaseScales();
+
+//         if (levelCompletePanel != null)
+//         {
+//             UITransition.HideImmediate(levelCompletePanel);
+//         }
+//     }
+
+
+//     private void OnEnable()
+//     {
+//         ResolveReferences();
+//         Subscribe();
+
+//         if (continueButton != null)
+//         {
+//             continueButton.onClick.RemoveListener(
+//                 ContinueToNextLevel
+//             );
+
+//             continueButton.onClick.AddListener(
+//                 ContinueToNextLevel
+//             );
+//         }
+//     }
+
+
+//     private void OnDisable()
+//     {
+//         Unsubscribe();
+//         StopStarRevealAnimation(true);
+
+//         if (continueButton != null)
+//         {
+//             continueButton.onClick.RemoveListener(
+//                 ContinueToNextLevel
+//             );
+//         }
+//     }
+
+
+//     private void ResolveReferences()
+//     {
+//         if (levelRuntimeController == null)
+//         {
+//             levelRuntimeController =
+//                 FindFirstObjectByType<LevelRuntimeController>(
+//                     FindObjectsInactive.Include
+//                 );
+//         }
+
+//         if (scoreManager == null)
+//         {
+//             if (ScoreManager.Instance != null)
+//             {
+//                 scoreManager =
+//                     ScoreManager.Instance;
+//             }
+//             else
+//             {
+//                 scoreManager =
+//                     FindFirstObjectByType<ScoreManager>(
+//                         FindObjectsInactive.Include
+//                     );
+//             }
+//         }
+
+//         if (starRatingManager == null)
+//         {
+//             if (StarRatingManager.Instance != null)
+//             {
+//                 starRatingManager =
+//                     StarRatingManager.Instance;
+//             }
+//             else
+//             {
+//                 starRatingManager =
+//                     FindFirstObjectByType<StarRatingManager>(
+//                         FindObjectsInactive.Include
+//                     );
+//             }
+//         }
+
+//         if (popupGameplayVisibility == null)
+//         {
+//             popupGameplayVisibility =
+//                 FindFirstObjectByType<PopupGameplayVisibilityController>(
+//                     FindObjectsInactive.Include
+//                 );
+//         }
+//     }
+
+
+//     private void Subscribe()
+//     {
+//         if (levelRuntimeController != null)
+//         {
+//             levelRuntimeController.LevelCompleted -=
+//                 HandleLevelCompleted;
+
+//             levelRuntimeController.LevelCompleted +=
+//                 HandleLevelCompleted;
+
+//             levelRuntimeController.LevelGenerated -=
+//                 HandleLevelGenerated;
+
+//             levelRuntimeController.LevelGenerated +=
+//                 HandleLevelGenerated;
+//         }
+
+//         if (scoreManager != null)
+//         {
+//             scoreManager.ScoreAdded -=
+//                 HandleScoreAdded;
+
+//             scoreManager.ScoreAdded +=
+//                 HandleScoreAdded;
+//         }
+
+//         if (starRatingManager != null)
+//         {
+//             starRatingManager.StarsAwarded -=
+//                 HandleStarsAwarded;
+
+//             starRatingManager.StarsAwarded +=
+//                 HandleStarsAwarded;
+//         }
+//     }
+
+
+//     private void Unsubscribe()
+//     {
+//         if (levelRuntimeController != null)
+//         {
+//             levelRuntimeController.LevelCompleted -=
+//                 HandleLevelCompleted;
+
+//             levelRuntimeController.LevelGenerated -=
+//                 HandleLevelGenerated;
+//         }
+
+//         if (scoreManager != null)
+//         {
+//             scoreManager.ScoreAdded -=
+//                 HandleScoreAdded;
+//         }
+
+//         if (starRatingManager != null)
+//         {
+//             starRatingManager.StarsAwarded -=
+//                 HandleStarsAwarded;
+//         }
+//     }
+
+
+//     private void HandleLevelCompleted(
+//         GridLevelData completedLevel)
+//     {
+//         if (isOpen)
+//         {
+//             return;
+//         }
+
+//         isOpen = true;
+//         isContinuing = false;
+
+//         int completedLevelNumber =
+//             completedLevel != null
+//                 ? completedLevel.LevelNumber
+//                 : 0;
+
+//         returnToMainMenuAfterContinue =
+//             scoreManager != null
+//                 ? scoreManager.IsMilestoneLevel(
+//                     completedLevelNumber
+//                 )
+//                 : completedLevelNumber > 0 &&
+//                   completedLevelNumber % 10 == 0;
+
+//         bool hasNextLevel =
+//             levelRuntimeController != null &&
+//             levelRuntimeController.HasNextLevel;
+
+//         if (levelCompleteText != null)
+//         {
+//             if (completedLevel != null)
+//             {
+//                 levelCompleteText.text =
+//                     hasNextLevel
+//                         ? $"LEVEL {completedLevel.LevelNumber} COMPLETE"
+//                         : "ALL LEVELS COMPLETE";
+//             }
+//             else
+//             {
+//                 levelCompleteText.text =
+//                     hasNextLevel
+//                         ? "LEVEL COMPLETE"
+//                         : "ALL LEVELS COMPLETE";
+//             }
+//         }
+
+//         /*
+//          * Normal level par ScoreManager isi event par score add karta hai.
+//          * Har 10th level ka score main-menu coin animation tak pending rehta hai.
+//          *
+//          * Fallback ke liye current PointsPerLevel pehle hi show kar dete hain.
+//          */
+//         if (earnedCoinsText != null)
+//         {
+//             int fallbackEarned =
+//                 scoreManager != null
+//                     ? scoreManager.PointsPerLevel
+//                     : 0;
+
+//             SetEarnedCoinsText(
+//                 fallbackEarned
+//             );
+//         }
+
+//         /*
+//          * Event subscription order ki wajah se StarRatingManager ne same
+//          * LevelCompleted event par rating pehle ya baad mein calculate ki ho
+//          * sakti hai. Current value show karte hain; StarsAwarded event exact
+//          * result aate hi visuals refresh kar dega.
+//          */
+//         int currentStars =
+//             starRatingManager != null
+//                 ? starRatingManager.CalculateStars()
+//                 : 0;
+
+//         SetStarVisuals(
+//             0
+//         );
+
+//         if (continueButton != null)
+//         {
+//             continueButton.gameObject.SetActive(
+//                 hasNextLevel ||
+//                 returnToMainMenuAfterContinue
+//             );
+
+//             continueButton.interactable =
+//                 hasNextLevel ||
+//                 returnToMainMenuAfterContinue;
+//         }
+
+//         popupGameplayVisibility?.HideGameplay();
+
+//         if (levelCompletePanel != null)
+//         {
+//             UITransition.Show(levelCompletePanel);
+//         }
+
+//         if (pauseGameWhenOpened)
+//         {
+//             Time.timeScale = 0f;
+//         }
+
+//         PlayStarRevealAnimation(currentStars);
+//     }
+
+
+//     private void HandleScoreAdded(
+//         int amountAdded,
+//         int newTotalScore)
+//     {
+//         if (!isOpen)
+//         {
+//             return;
+//         }
+
+//         SetEarnedCoinsText(
+//             amountAdded
+//         );
+//     }
+
+
+//     private void SetEarnedCoinsText(
+//         int amount)
+//     {
+//         if (earnedCoinsText == null)
+//         {
+//             return;
+//         }
+
+//         earnedCoinsText.text =
+//             $"{earnedCoinsPrefix}{amount}";
+//     }
+
+
+//     private void HandleStarsAwarded(
+//         int stars)
+//     {
+//         if (!isOpen)
+//         {
+//             return;
+//         }
+
+//         PlayStarRevealAnimation(stars);
+//     }
+
+
+//     private void CaptureStarBaseScales()
+//     {
+//         if (starBaseScalesCaptured)
+//         {
+//             return;
+//         }
+
+//         star1BaseScale =
+//             star1 != null
+//                 ? star1.transform.localScale
+//                 : Vector3.one;
+
+//         star2BaseScale =
+//             star2 != null
+//                 ? star2.transform.localScale
+//                 : Vector3.one;
+
+//         star3BaseScale =
+//             star3 != null
+//                 ? star3.transform.localScale
+//                 : Vector3.one;
+
+//         starBaseScalesCaptured = true;
+//     }
+
+
+//     private void PlayStarRevealAnimation(int stars)
+//     {
+//         int safeStars = Mathf.Clamp(stars, 0, 3);
+
+//         if (starRevealRoutine != null &&
+//             starRevealTarget == safeStars)
+//         {
+//             return;
+//         }
+
+//         StopStarRevealAnimation(true);
+//         SetStarVisuals(0);
+//         starRevealTarget = safeStars;
+
+//         if (!animateStarReveal ||
+//             !Application.isPlaying ||
+//             safeStars <= 0)
+//         {
+//             SetStarVisuals(safeStars);
+//             return;
+//         }
+
+//         starRevealRoutine = StartCoroutine(
+//             AnimateStarsRoutine(safeStars)
+//         );
+//     }
+
+
+//     private IEnumerator AnimateStarsRoutine(int earnedStars)
+//     {
+//         if (starRevealInitialDelay > 0f)
+//         {
+//             yield return WaitForUnscaledSeconds(
+//                 starRevealInitialDelay
+//             );
+//         }
+
+//         Image[] stars =
+//             { star1, star2, star3 };
+
+//         Vector3[] baseScales =
+//             { star1BaseScale, star2BaseScale, star3BaseScale };
+
+//         for (int i = 0; i < earnedStars; i++)
+//         {
+//             Image starImage = stars[i];
+
+//             if (starImage != null)
+//             {
+//                 starImage.color = earnedStarColor;
+
+//                 yield return AnimateSingleStarRoutine(
+//                     starImage.transform,
+//                     baseScales[i]
+//                 );
+//             }
+
+//             if (i < earnedStars - 1 &&
+//                 starRevealStagger > 0f)
+//             {
+//                 yield return WaitForUnscaledSeconds(
+//                     starRevealStagger
+//                 );
+//             }
+//         }
+
+//         starRevealRoutine = null;
+//     }
+
+
+//     private IEnumerator AnimateSingleStarRoutine(
+//         Transform starTransform,
+//         Vector3 baseScale)
+//     {
+//         float duration = Mathf.Max(0.01f, starPopDuration);
+//         Vector3 smallScale = baseScale * starStartScale;
+//         Vector3 largeScale = baseScale * starPopScale;
+//         float elapsed = 0f;
+
+//         starTransform.localScale = smallScale;
+
+//         while (elapsed < duration)
+//         {
+//             float normalizedTime =
+//                 Mathf.Clamp01(elapsed / duration);
+
+//             if (normalizedTime < 0.65f)
+//             {
+//                 float growProgress =
+//                     SmoothStep(normalizedTime / 0.65f);
+
+//                 starTransform.localScale =
+//                     Vector3.LerpUnclamped(
+//                         smallScale,
+//                         largeScale,
+//                         growProgress
+//                     );
+//             }
+//             else
+//             {
+//                 float settleProgress =
+//                     SmoothStep(
+//                         (normalizedTime - 0.65f) / 0.35f
+//                     );
+
+//                 starTransform.localScale =
+//                     Vector3.LerpUnclamped(
+//                         largeScale,
+//                         baseScale,
+//                         settleProgress
+//                     );
+//             }
+
+//             elapsed += Time.unscaledDeltaTime;
+//             yield return null;
+//         }
+
+//         starTransform.localScale = baseScale;
+//     }
+
+
+//     private static IEnumerator WaitForUnscaledSeconds(float duration)
+//     {
+//         float elapsed = 0f;
+
+//         while (elapsed < duration)
+//         {
+//             elapsed += Time.unscaledDeltaTime;
+//             yield return null;
+//         }
+//     }
+
+
+//     private static float SmoothStep(float value)
+//     {
+//         float clampedValue = Mathf.Clamp01(value);
+
+//         return
+//             clampedValue *
+//             clampedValue *
+//             (3f - 2f * clampedValue);
+//     }
+
+
+//     private void StopStarRevealAnimation(bool restoreBaseScales)
+//     {
+//         if (starRevealRoutine != null)
+//         {
+//             StopCoroutine(starRevealRoutine);
+//             starRevealRoutine = null;
+//         }
+
+//         if (restoreBaseScales)
+//         {
+//             CaptureStarBaseScales();
+
+//             if (star1 != null)
+//             {
+//                 star1.transform.localScale = star1BaseScale;
+//             }
+
+//             if (star2 != null)
+//             {
+//                 star2.transform.localScale = star2BaseScale;
+//             }
+
+//             if (star3 != null)
+//             {
+//                 star3.transform.localScale = star3BaseScale;
+//             }
+//         }
+
+//         starRevealTarget = -1;
+//     }
+
+
+//     private void SetStarVisuals(
+//         int stars)
+//     {
+//         int safeStars =
+//             Mathf.Clamp(
+//                 stars,
+//                 0,
+//                 3
+//             );
+
+//         SetSingleStarVisual(
+//             star1,
+//             safeStars >= 1
+//         );
+
+//         SetSingleStarVisual(
+//             star2,
+//             safeStars >= 2
+//         );
+
+//         SetSingleStarVisual(
+//             star3,
+//             safeStars >= 3
+//         );
+//     }
+
+
+//     private void SetSingleStarVisual(
+//         Image starImage,
+//         bool earned)
+//     {
+//         if (starImage == null)
+//         {
+//             return;
+//         }
+
+//         starImage.color =
+//             earned
+//                 ? earnedStarColor
+//                 : unearnedStarColor;
+//     }
+
+
+//     private void HandleLevelGenerated(
+//         GridLevelData generatedLevel)
+//     {
+//         isOpen = false;
+//         isContinuing = false;
+//         returnToMainMenuAfterContinue = false;
+
+//         StopStarRevealAnimation(true);
+
+//         SetStarVisuals(0);
+
+//         if (levelCompletePanel != null)
+//         {
+//             UITransition.Hide(levelCompletePanel);
+//         }
+
+//         popupGameplayVisibility?.ShowGameplay();
+//     }
+
+
+//     public void ContinueToNextLevel()
+//     {
+//         if (isContinuing ||
+//             levelRuntimeController == null ||
+//             (!returnToMainMenuAfterContinue &&
+//              !levelRuntimeController.HasNextLevel))
+//         {
+//             return;
+//         }
+
+//         isContinuing = true;
+
+//         StopStarRevealAnimation(true);
+
+//         if (continueButton != null)
+//         {
+//             continueButton.interactable = false;
+//         }
+
+//         if (levelCompletePanel != null)
+//         {
+//             UITransition.Hide(levelCompletePanel);
+//         }
+
+//         isOpen = false;
+
+//         Time.timeScale = 1f;
+
+//         if (returnToMainMenuAfterContinue)
+//         {
+//             popupGameplayVisibility?.HideGameplay();
+
+//             bool menuShown =
+//                 levelRuntimeController
+//                     .AdvanceToNextLevelAndShowMainMenu();
+
+//             if (!menuShown)
+//             {
+//                 isOpen = true;
+//                 isContinuing = false;
+
+//                 if (continueButton != null)
+//                 {
+//                     continueButton.interactable = true;
+//                 }
+//             }
+
+//             return;
+//         }
+
+//         popupGameplayVisibility?.ShowGameplay();
+
+//         levelRuntimeController.LoadNextLevel();
+//     }
+
+
+//     public void Hide()
+//     {
+//         isOpen = false;
+//         isContinuing = false;
+//         returnToMainMenuAfterContinue = false;
+
+//         StopStarRevealAnimation(true);
+
+//         if (levelCompletePanel != null)
+//         {
+//             UITransition.Hide(levelCompletePanel);
+//         }
+
+//         popupGameplayVisibility?.ShowGameplay();
+//     }
+// }
+
+
+
+
+
 using System.Collections;
 using TMPro;
 using UnityEngine;
@@ -964,10 +1693,30 @@ public sealed class LevelCompleteUIController : MonoBehaviour
     [SerializeField] private string earnedCoinsPrefix = "+";
 
 
+    [Header("Score And Life Shot Impact")]
+    [Tooltip("Level Complete screen ka life count text.")]
+    [SerializeField] private TMP_Text lifeText;
+
+    [SerializeField, Min(1f)]
+    private float statsImpactStartScale = 2.3f;
+
+    [SerializeField, Min(0f)]
+    private float statsImpactStartYOffset = 90f;
+
+    [SerializeField, Min(0.01f)]
+    private float statsImpactHitDuration = 0.2f;
+
+    [SerializeField, Min(0.01f)]
+    private float statsImpactBounceDuration = 0.16f;
+
+
     [Header("Stars")]
     [SerializeField] private Image star1;
     [SerializeField] private Image star2;
     [SerializeField] private Image star3;
+
+    [Tooltip("Second star ke peechay wali gold ray image (start 2 back Image).")]
+    [SerializeField] private Image star2BackImage;
 
     [Tooltip("Earned star ka Image color.")]
     [SerializeField] private Color earnedStarColor = Color.white;
@@ -996,6 +1745,24 @@ public sealed class LevelCompleteUIController : MonoBehaviour
     [SerializeField, Range(1f, 1.6f)]
     private float starPopScale = 1.22f;
 
+    [Tooltip("Star reveal start mein apni jagah se kitna upar float kare.")]
+    [SerializeField, Min(0f)]
+    private float starFloatHeight = 110f;
+
+    [Tooltip("Second star reveal par gold ray ka starting rotation.")]
+    [SerializeField]
+    private float star2BackStartRotation = -28f;
+
+    [Header("Gold Ray Continuous Animation")]
+    [SerializeField, Min(0f)]
+    private float star2BackRotationSpeed = 24f;
+
+    [SerializeField, Range(0f, 0.2f)]
+    private float star2BackPulseAmount = 0.04f;
+
+    [SerializeField, Min(0.01f)]
+    private float star2BackPulseSpeed = 2f;
+
 
     [Header("Gameplay References")]
     [SerializeField] private LevelRuntimeController levelRuntimeController;
@@ -1006,24 +1773,47 @@ public sealed class LevelCompleteUIController : MonoBehaviour
     private PopupGameplayVisibilityController popupGameplayVisibility;
 
 
+    [Header("Level Complete Sequence")]
+    [SerializeField]
+    private LevelCompleteSequenceController levelCompleteSequenceController;
+
+
     [Header("Behaviour")]
     [SerializeField] private bool pauseGameWhenOpened = true;
 
 
     private bool isOpen;
     private bool isContinuing;
+    private bool returnToMainMenuAfterContinue;
 
     private Coroutine starRevealRoutine;
     private Vector3 star1BaseScale;
     private Vector3 star2BaseScale;
     private Vector3 star3BaseScale;
+    private Vector2 star1BasePosition;
+    private Vector2 star2BasePosition;
+    private Vector2 star3BasePosition;
+    private Vector3 star2BackBaseScale;
+    private Quaternion star2BackBaseRotation;
     private bool starBaseScalesCaptured;
     private int starRevealTarget = -1;
+    private int pendingStars;
+    private Coroutine star2BackLoopRoutine;
+
+    private Coroutine statsImpactRoutine;
+    private Vector2 scoreTextBasePosition;
+    private Vector2 lifeTextBasePosition;
+    private Vector3 scoreTextBaseScale;
+    private Vector3 lifeTextBaseScale;
+    private Quaternion scoreTextBaseRotation;
+    private Quaternion lifeTextBaseRotation;
+    private bool statsImpactBasePoseCaptured;
 
 
     private void Awake()
     {
         CaptureStarBaseScales();
+        CaptureStatsImpactBasePose();
 
         if (levelCompletePanel != null)
         {
@@ -1053,6 +1843,8 @@ public sealed class LevelCompleteUIController : MonoBehaviour
     private void OnDisable()
     {
         Unsubscribe();
+        levelCompleteSequenceController?.StopSequence();
+        StopStatsImpactAnimation(true);
         StopStarRevealAnimation(true);
 
         if (continueButton != null)
@@ -1110,6 +1902,14 @@ public sealed class LevelCompleteUIController : MonoBehaviour
         {
             popupGameplayVisibility =
                 FindFirstObjectByType<PopupGameplayVisibilityController>(
+                    FindObjectsInactive.Include
+                );
+        }
+
+        if (levelCompleteSequenceController == null)
+        {
+            levelCompleteSequenceController =
+                FindFirstObjectByType<LevelCompleteSequenceController>(
                     FindObjectsInactive.Include
                 );
         }
@@ -1189,6 +1989,19 @@ public sealed class LevelCompleteUIController : MonoBehaviour
         isOpen = true;
         isContinuing = false;
 
+        int completedLevelNumber =
+            completedLevel != null
+                ? completedLevel.LevelNumber
+                : 0;
+
+        returnToMainMenuAfterContinue =
+            scoreManager != null
+                ? scoreManager.IsMilestoneLevel(
+                    completedLevelNumber
+                )
+                : completedLevelNumber > 0 &&
+                  completedLevelNumber % 10 == 0;
+
         bool hasNextLevel =
             levelRuntimeController != null &&
             levelRuntimeController.HasNextLevel;
@@ -1212,8 +2025,8 @@ public sealed class LevelCompleteUIController : MonoBehaviour
         }
 
         /*
-         * ScoreManager isi LevelCompleted event par score add karta hai.
-         * ScoreAdded event thori der mein exact earned amount bhej dega.
+         * Normal level par ScoreManager isi event par score add karta hai.
+         * Har 10th level ka score main-menu coin animation tak pending rehta hai.
          *
          * Fallback ke liye current PointsPerLevel pehle hi show kar dete hain.
          */
@@ -1240,6 +2053,12 @@ public sealed class LevelCompleteUIController : MonoBehaviour
                 ? starRatingManager.CalculateStars()
                 : 0;
 
+        pendingStars = Mathf.Clamp(
+            currentStars,
+            0,
+            3
+        );
+
         SetStarVisuals(
             0
         );
@@ -1247,11 +2066,34 @@ public sealed class LevelCompleteUIController : MonoBehaviour
         if (continueButton != null)
         {
             continueButton.gameObject.SetActive(
-                hasNextLevel
+                hasNextLevel ||
+                returnToMainMenuAfterContinue
             );
 
             continueButton.interactable =
-                hasNextLevel;
+                hasNextLevel ||
+                returnToMainMenuAfterContinue;
+        }
+
+        if (levelCompleteSequenceController != null)
+        {
+            levelCompleteSequenceController
+                .PlayLevelCompleteSequence(
+                    ShowLevelCompletePopup
+                );
+        }
+        else
+        {
+            ShowLevelCompletePopup();
+        }
+    }
+
+
+    private void ShowLevelCompletePopup()
+    {
+        if (!isOpen)
+        {
+            return;
         }
 
         popupGameplayVisibility?.HideGameplay();
@@ -1266,11 +2108,275 @@ public sealed class LevelCompleteUIController : MonoBehaviour
             Time.timeScale = 0f;
         }
 
-        PlayStarRevealAnimation(currentStars);
+        PlayStarRevealAnimation(
+            pendingStars
+        );
+
+        PlayStatsImpactAnimation();
     }
 
 
-    private void HandleScoreAdded(
+    private void CaptureStatsImpactBasePose()
+    {
+        if (statsImpactBasePoseCaptured)
+        {
+            return;
+        }
+
+        RectTransform scoreRect =
+            earnedCoinsText != null
+                ? earnedCoinsText.rectTransform
+                : null;
+
+        RectTransform lifeRect =
+            lifeText != null
+                ? lifeText.rectTransform
+                : null;
+
+        if (scoreRect == null && lifeRect == null)
+        {
+            return;
+        }
+
+        if (scoreRect != null)
+        {
+            scoreTextBasePosition =
+                scoreRect.anchoredPosition;
+            scoreTextBaseScale =
+                scoreRect.localScale;
+            scoreTextBaseRotation =
+                scoreRect.localRotation;
+        }
+
+        if (lifeRect != null)
+        {
+            lifeTextBasePosition =
+                lifeRect.anchoredPosition;
+            lifeTextBaseScale =
+                lifeRect.localScale;
+            lifeTextBaseRotation =
+                lifeRect.localRotation;
+        }
+
+        statsImpactBasePoseCaptured = true;
+    }
+
+
+    private void PlayStatsImpactAnimation()
+    {
+        CaptureStatsImpactBasePose();
+
+        if (!statsImpactBasePoseCaptured)
+        {
+            return;
+        }
+
+        StopStatsImpactAnimation(true);
+
+        statsImpactRoutine = StartCoroutine(
+            StatsImpactRoutine()
+        );
+    }
+
+
+    private IEnumerator StatsImpactRoutine()
+    {
+        SetStatsImpactPose(
+            statsImpactStartScale,
+            statsImpactStartYOffset,
+            8f
+        );
+
+        float elapsed = 0f;
+
+        while (elapsed < statsImpactHitDuration)
+        {
+            float normalized = Mathf.Clamp01(
+                elapsed / statsImpactHitDuration
+            );
+
+            float hitProgress =
+                normalized * normalized;
+
+            SetStatsImpactPose(
+                Mathf.Lerp(
+                    statsImpactStartScale,
+                    0.82f,
+                    hitProgress
+                ),
+                Mathf.Lerp(
+                    statsImpactStartYOffset,
+                    0f,
+                    hitProgress
+                ),
+                Mathf.Lerp(
+                    8f,
+                    0f,
+                    hitProgress
+                )
+            );
+
+            elapsed += Time.unscaledDeltaTime;
+            yield return null;
+        }
+
+        SetStatsImpactPose(0.82f, 0f, 0f);
+
+        yield return AnimateStatsImpactScale(
+            0.82f,
+            1.14f,
+            statsImpactBounceDuration * 0.45f
+        );
+
+        yield return AnimateStatsImpactScale(
+            1.14f,
+            1f,
+            statsImpactBounceDuration * 0.55f
+        );
+
+        RestoreStatsImpactPose();
+        statsImpactRoutine = null;
+    }
+
+
+    private IEnumerator AnimateStatsImpactScale(
+        float fromScale,
+        float toScale,
+        float duration)
+    {
+        float elapsed = 0f;
+
+        while (elapsed < duration)
+        {
+            float progress = Mathf.SmoothStep(
+                0f,
+                1f,
+                Mathf.Clamp01(elapsed / duration)
+            );
+
+            SetStatsImpactPose(
+                Mathf.Lerp(
+                    fromScale,
+                    toScale,
+                    progress
+                ),
+                0f,
+                0f
+            );
+
+            elapsed += Time.unscaledDeltaTime;
+            yield return null;
+        }
+
+        SetStatsImpactPose(toScale, 0f, 0f);
+    }
+
+
+    private void SetStatsImpactPose(
+        float scaleMultiplier,
+        float yOffset,
+        float rotationAmount)
+    {
+        RectTransform scoreRect =
+            earnedCoinsText != null
+                ? earnedCoinsText.rectTransform
+                : null;
+
+        RectTransform lifeRect =
+            lifeText != null
+                ? lifeText.rectTransform
+                : null;
+
+        if (scoreRect != null)
+        {
+            scoreRect.anchoredPosition =
+                scoreTextBasePosition +
+                Vector2.up * yOffset;
+            scoreRect.localScale =
+                scoreTextBaseScale * scaleMultiplier;
+            scoreRect.localRotation =
+                scoreTextBaseRotation *
+                Quaternion.Euler(
+                    0f,
+                    0f,
+                    -rotationAmount
+                );
+        }
+
+        if (lifeRect != null)
+        {
+            lifeRect.anchoredPosition =
+                lifeTextBasePosition +
+                Vector2.up * yOffset;
+            lifeRect.localScale =
+                lifeTextBaseScale * scaleMultiplier;
+            lifeRect.localRotation =
+                lifeTextBaseRotation *
+                Quaternion.Euler(
+                    0f,
+                    0f,
+                    rotationAmount
+                );
+        }
+    }
+
+
+    private void StopStatsImpactAnimation(
+        bool restorePose)
+    {
+        if (statsImpactRoutine != null)
+        {
+            StopCoroutine(statsImpactRoutine);
+            statsImpactRoutine = null;
+        }
+
+        if (restorePose)
+        {
+            RestoreStatsImpactPose();
+        }
+    }
+
+
+    private void RestoreStatsImpactPose()
+    {
+        if (!statsImpactBasePoseCaptured)
+        {
+            return;
+        }
+
+        RectTransform scoreRect =
+            earnedCoinsText != null
+                ? earnedCoinsText.rectTransform
+                : null;
+
+        RectTransform lifeRect =
+            lifeText != null
+                ? lifeText.rectTransform
+                : null;
+
+        if (scoreRect != null)
+        {
+            scoreRect.anchoredPosition =
+                scoreTextBasePosition;
+            scoreRect.localScale =
+                scoreTextBaseScale;
+            scoreRect.localRotation =
+                scoreTextBaseRotation;
+        }
+
+        if (lifeRect != null)
+        {
+            lifeRect.anchoredPosition =
+                lifeTextBasePosition;
+            lifeRect.localScale =
+                lifeTextBaseScale;
+            lifeRect.localRotation =
+                lifeTextBaseRotation;
+        }
+    }
+
+
+    private void HandleLevelCompleted(
         int amountAdded,
         int newTotalScore)
     {
@@ -1306,7 +2412,19 @@ public sealed class LevelCompleteUIController : MonoBehaviour
             return;
         }
 
-        PlayStarRevealAnimation(stars);
+        pendingStars = Mathf.Clamp(
+            stars,
+            0,
+            3
+        );
+
+        if (levelCompletePanel != null &&
+            levelCompletePanel.activeSelf)
+        {
+            PlayStarRevealAnimation(
+                pendingStars
+            );
+        }
     }
 
 
@@ -1332,7 +2450,35 @@ public sealed class LevelCompleteUIController : MonoBehaviour
                 ? star3.transform.localScale
                 : Vector3.one;
 
+        star1BasePosition = GetStarAnchoredPosition(star1);
+        star2BasePosition = GetStarAnchoredPosition(star2);
+        star3BasePosition = GetStarAnchoredPosition(star3);
+
+        star2BackBaseScale =
+            star2BackImage != null
+                ? star2BackImage.transform.localScale
+                : Vector3.one;
+
+        star2BackBaseRotation =
+            star2BackImage != null
+                ? star2BackImage.transform.localRotation
+                : Quaternion.identity;
+
         starBaseScalesCaptured = true;
+    }
+
+
+    private static Vector2 GetStarAnchoredPosition(Image starImage)
+    {
+        RectTransform rectTransform =
+            starImage != null
+                ? starImage.rectTransform
+                : null;
+
+        return
+            rectTransform != null
+                ? rectTransform.anchoredPosition
+                : Vector2.zero;
     }
 
 
@@ -1379,6 +2525,9 @@ public sealed class LevelCompleteUIController : MonoBehaviour
         Vector3[] baseScales =
             { star1BaseScale, star2BaseScale, star3BaseScale };
 
+        Vector2[] basePositions =
+            { star1BasePosition, star2BasePosition, star3BasePosition };
+
         for (int i = 0; i < earnedStars; i++)
         {
             Image starImage = stars[i];
@@ -1387,10 +2536,26 @@ public sealed class LevelCompleteUIController : MonoBehaviour
             {
                 starImage.color = earnedStarColor;
 
+                bool animateStar2Back =
+                    i == 1 &&
+                    star2BackImage != null;
+
+                if (animateStar2Back)
+                {
+                    star2BackImage.color = earnedStarColor;
+                }
+
                 yield return AnimateSingleStarRoutine(
-                    starImage.transform,
-                    baseScales[i]
+                    starImage.rectTransform,
+                    baseScales[i],
+                    basePositions[i],
+                    animateStar2Back
                 );
+
+                if (animateStar2Back)
+                {
+                    StartStar2BackLoop();
+                }
             }
 
             if (i < earnedStars - 1 &&
@@ -1407,20 +2572,43 @@ public sealed class LevelCompleteUIController : MonoBehaviour
 
 
     private IEnumerator AnimateSingleStarRoutine(
-        Transform starTransform,
-        Vector3 baseScale)
+        RectTransform starTransform,
+        Vector3 baseScale,
+        Vector2 basePosition,
+        bool animateStar2Back)
     {
         float duration = Mathf.Max(0.01f, starPopDuration);
         Vector3 smallScale = baseScale * starStartScale;
         Vector3 largeScale = baseScale * starPopScale;
+        Vector2 floatStartPosition =
+            basePosition + Vector2.up * starFloatHeight;
         float elapsed = 0f;
 
         starTransform.localScale = smallScale;
+        starTransform.anchoredPosition = floatStartPosition;
+
+        if (animateStar2Back)
+        {
+            star2BackImage.transform.localScale =
+                star2BackBaseScale * starStartScale;
+
+            star2BackImage.transform.localRotation =
+                star2BackBaseRotation *
+                Quaternion.Euler(0f, 0f, star2BackStartRotation);
+        }
 
         while (elapsed < duration)
         {
             float normalizedTime =
                 Mathf.Clamp01(elapsed / duration);
+
+            float floatProgress = SmoothStep(normalizedTime);
+            starTransform.anchoredPosition =
+                Vector2.LerpUnclamped(
+                    floatStartPosition,
+                    basePosition,
+                    floatProgress
+                );
 
             if (normalizedTime < 0.65f)
             {
@@ -1433,6 +2621,16 @@ public sealed class LevelCompleteUIController : MonoBehaviour
                         largeScale,
                         growProgress
                     );
+
+                if (animateStar2Back)
+                {
+                    star2BackImage.transform.localScale =
+                        Vector3.LerpUnclamped(
+                            star2BackBaseScale * starStartScale,
+                            star2BackBaseScale * 1.08f,
+                            growProgress
+                        );
+                }
             }
             else
             {
@@ -1447,6 +2645,31 @@ public sealed class LevelCompleteUIController : MonoBehaviour
                         baseScale,
                         settleProgress
                     );
+
+                if (animateStar2Back)
+                {
+                    star2BackImage.transform.localScale =
+                        Vector3.LerpUnclamped(
+                            star2BackBaseScale * 1.08f,
+                            star2BackBaseScale,
+                            settleProgress
+                        );
+                }
+            }
+
+            if (animateStar2Back)
+            {
+                star2BackImage.transform.localRotation =
+                    Quaternion.SlerpUnclamped(
+                        star2BackBaseRotation *
+                            Quaternion.Euler(
+                                0f,
+                                0f,
+                                star2BackStartRotation
+                            ),
+                        star2BackBaseRotation,
+                        floatProgress
+                    );
             }
 
             elapsed += Time.unscaledDeltaTime;
@@ -1454,6 +2677,13 @@ public sealed class LevelCompleteUIController : MonoBehaviour
         }
 
         starTransform.localScale = baseScale;
+        starTransform.anchoredPosition = basePosition;
+
+        if (animateStar2Back)
+        {
+            star2BackImage.transform.localScale = star2BackBaseScale;
+            star2BackImage.transform.localRotation = star2BackBaseRotation;
+        }
     }
 
 
@@ -1480,8 +2710,77 @@ public sealed class LevelCompleteUIController : MonoBehaviour
     }
 
 
+    private void StartStar2BackLoop()
+    {
+        if (star2BackImage == null ||
+            !Application.isPlaying ||
+            !isActiveAndEnabled ||
+            star2BackLoopRoutine != null)
+        {
+            return;
+        }
+
+        star2BackLoopRoutine = StartCoroutine(
+            AnimateStar2BackLoopRoutine()
+        );
+    }
+
+
+    private IEnumerator AnimateStar2BackLoopRoutine()
+    {
+        float rotation = 0f;
+        float pulseTime = 0f;
+
+        while (star2BackImage != null)
+        {
+            float deltaTime = Time.unscaledDeltaTime;
+            rotation =
+                Mathf.Repeat(
+                    rotation + star2BackRotationSpeed * deltaTime,
+                    360f
+                );
+
+            pulseTime += deltaTime * star2BackPulseSpeed;
+
+            float pulseScale =
+                1f + Mathf.Sin(pulseTime * Mathf.PI * 2f) *
+                star2BackPulseAmount;
+
+            star2BackImage.transform.localRotation =
+                star2BackBaseRotation *
+                Quaternion.Euler(0f, 0f, rotation);
+
+            star2BackImage.transform.localScale =
+                star2BackBaseScale * pulseScale;
+
+            yield return null;
+        }
+
+        star2BackLoopRoutine = null;
+    }
+
+
+    private void StopStar2BackLoop(bool restoreBasePose)
+    {
+        if (star2BackLoopRoutine != null)
+        {
+            StopCoroutine(star2BackLoopRoutine);
+            star2BackLoopRoutine = null;
+        }
+
+        if (restoreBasePose && star2BackImage != null)
+        {
+            star2BackImage.transform.localScale = star2BackBaseScale;
+            star2BackImage.transform.localRotation =
+                star2BackBaseRotation;
+        }
+    }
+
+
     private void StopStarRevealAnimation(bool restoreBaseScales)
     {
+        StopStar2BackLoop(restoreBaseScales);
+
         if (starRevealRoutine != null)
         {
             StopCoroutine(starRevealRoutine);
@@ -1495,16 +2794,26 @@ public sealed class LevelCompleteUIController : MonoBehaviour
             if (star1 != null)
             {
                 star1.transform.localScale = star1BaseScale;
+                star1.rectTransform.anchoredPosition = star1BasePosition;
             }
 
             if (star2 != null)
             {
                 star2.transform.localScale = star2BaseScale;
+                star2.rectTransform.anchoredPosition = star2BasePosition;
             }
 
             if (star3 != null)
             {
                 star3.transform.localScale = star3BaseScale;
+                star3.rectTransform.anchoredPosition = star3BasePosition;
+            }
+
+            if (star2BackImage != null)
+            {
+                star2BackImage.transform.localScale = star2BackBaseScale;
+                star2BackImage.transform.localRotation =
+                    star2BackBaseRotation;
             }
         }
 
@@ -1536,6 +2845,20 @@ public sealed class LevelCompleteUIController : MonoBehaviour
             star3,
             safeStars >= 3
         );
+
+        SetSingleStarVisual(
+            star2BackImage,
+            safeStars >= 2
+        );
+
+        if (safeStars >= 2)
+        {
+            StartStar2BackLoop();
+        }
+        else
+        {
+            StopStar2BackLoop(true);
+        }
     }
 
 
@@ -1560,7 +2883,12 @@ public sealed class LevelCompleteUIController : MonoBehaviour
     {
         isOpen = false;
         isContinuing = false;
+        returnToMainMenuAfterContinue = false;
+        pendingStars = 0;
 
+        levelCompleteSequenceController?.StopSequence();
+
+        StopStatsImpactAnimation(true);
         StopStarRevealAnimation(true);
 
         SetStarVisuals(0);
@@ -1578,13 +2906,15 @@ public sealed class LevelCompleteUIController : MonoBehaviour
     {
         if (isContinuing ||
             levelRuntimeController == null ||
-            !levelRuntimeController.HasNextLevel)
+            (!returnToMainMenuAfterContinue &&
+             !levelRuntimeController.HasNextLevel))
         {
             return;
         }
 
         isContinuing = true;
 
+        StopStatsImpactAnimation(true);
         StopStarRevealAnimation(true);
 
         if (continueButton != null)
@@ -1599,19 +2929,58 @@ public sealed class LevelCompleteUIController : MonoBehaviour
 
         isOpen = false;
 
-        popupGameplayVisibility?.ShowGameplay();
-
         Time.timeScale = 1f;
+
+        if (returnToMainMenuAfterContinue)
+        {
+            popupGameplayVisibility?.HideGameplay();
+
+            bool menuShown =
+                levelRuntimeController
+                    .AdvanceToNextLevelAndShowMainMenu();
+
+            if (!menuShown)
+            {
+                isOpen = true;
+                isContinuing = false;
+
+                if (continueButton != null)
+                {
+                    continueButton.interactable = true;
+                }
+            }
+
+            return;
+        }
+
+        popupGameplayVisibility?.ShowGameplay();
 
         levelRuntimeController.LoadNextLevel();
     }
+private void HandleScoreAdded(
+    int amountAdded,
+    int newTotalScore)
+{
+    if (!isOpen)
+    {
+        return;
+    }
 
+    SetEarnedCoinsText(
+        amountAdded
+    );
+}
 
     public void Hide()
     {
         isOpen = false;
         isContinuing = false;
+        returnToMainMenuAfterContinue = false;
+        pendingStars = 0;
 
+        levelCompleteSequenceController?.StopSequence();
+
+        StopStatsImpactAnimation(true);
         StopStarRevealAnimation(true);
 
         if (levelCompletePanel != null)
@@ -1622,11 +2991,6 @@ public sealed class LevelCompleteUIController : MonoBehaviour
         popupGameplayVisibility?.ShowGameplay();
     }
 }
-
-
-
-
-
 
 
 

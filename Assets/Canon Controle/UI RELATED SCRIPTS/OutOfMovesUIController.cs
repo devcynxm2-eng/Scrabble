@@ -1668,6 +1668,7 @@
 
 
 
+using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -1733,9 +1734,41 @@ public sealed class OutOfMovesUIController : MonoBehaviour
     [SerializeField] private bool pauseGameWhenOpened = true;
 
 
+    [Header("Extra Shots Icon Impact")]
+    [Tooltip(
+        "Coins se balls milne par Add Move button ka child icon Image animate hoga."
+    )]
+    [SerializeField]
+    private RectTransform coinExtraShotsImpactIcon;
+
+    [Tooltip(
+        "Rewarded ad se balls milne par Ad's Move button ka child icon Image animate hoga."
+    )]
+    [SerializeField]
+    private RectTransform rewardedExtraShotsImpactIcon;
+
+    [SerializeField, Min(1f)]
+    private float impactStartScale = 2.4f;
+
+    [SerializeField, Min(0f)]
+    private float impactStartYOffset = 140f;
+
+    [SerializeField, Min(0.01f)]
+    private float impactHitDuration = 0.2f;
+
+    [SerializeField, Min(0.01f)]
+    private float impactBounceDuration = 0.16f;
+
+
     private bool isOpen;
     private bool rewardedAdInProgress;
     private bool rewardedAdEarned;
+    private RectTransform activeExtraShotsImpactIcon;
+    private Coroutine extraShotsImpactRoutine;
+    private Vector2 impactIconRestPosition;
+    private Vector3 impactIconRestScale;
+    private Quaternion impactIconRestRotation;
+    private bool impactIconRestPoseCaptured;
 
 
     private void Awake()
@@ -1791,6 +1824,7 @@ public sealed class OutOfMovesUIController : MonoBehaviour
 
     private void OnDisable()
     {
+        StopExtraShotsImpactAnimation(true);
         Unsubscribe();
 
         if (tryAgainButton != null)
@@ -2121,7 +2155,9 @@ public sealed class OutOfMovesUIController : MonoBehaviour
             return;
         }
 
-        ResumeGameplayAfterExtraShots();
+        ResumeGameplayAfterExtraShots(
+            coinExtraShotsImpactIcon
+        );
     }
 
 
@@ -2226,11 +2262,50 @@ public sealed class OutOfMovesUIController : MonoBehaviour
             return;
         }
 
-        ResumeGameplayAfterExtraShots();
+        ResumeGameplayAfterExtraShots(
+            rewardedExtraShotsImpactIcon
+        );
     }
 
 
-    private void ResumeGameplayAfterExtraShots()
+    private void ResumeGameplayAfterExtraShots(
+        RectTransform impactIcon)
+    {
+        StopExtraShotsImpactAnimation(true);
+
+        activeExtraShotsImpactIcon = impactIcon;
+        impactIconRestPoseCaptured = false;
+        CaptureImpactIconRestPose();
+
+        if (activeExtraShotsImpactIcon == null ||
+            !impactIconRestPoseCaptured)
+        {
+            CompleteResumeGameplayAfterExtraShots();
+            return;
+        }
+
+        /*
+         * Popup ko impact animation ke dauran visible rakho.
+         * TimeScale abhi zero ho sakta hai, isliye animation unscaled time use karti hai.
+         */
+        rewardedAdInProgress = true;
+        RefreshContinueUI();
+
+        extraShotsImpactRoutine = StartCoroutine(
+            ExtraShotsImpactThenResumeRoutine()
+        );
+    }
+
+
+    private IEnumerator ExtraShotsImpactThenResumeRoutine()
+    {
+        yield return ExtraShotsImpactRoutine();
+
+        CompleteResumeGameplayAfterExtraShots();
+    }
+
+
+    private void CompleteResumeGameplayAfterExtraShots()
     {
         isOpen = false;
         rewardedAdInProgress = false;
@@ -2244,6 +2319,182 @@ public sealed class OutOfMovesUIController : MonoBehaviour
         popupGameplayVisibility?.ShowGameplay();
 
         Time.timeScale = 1f;
+    }
+
+
+    private void CaptureImpactIconRestPose()
+    {
+        if (activeExtraShotsImpactIcon == null ||
+            impactIconRestPoseCaptured)
+        {
+            return;
+        }
+
+        impactIconRestPosition =
+            activeExtraShotsImpactIcon.anchoredPosition;
+        impactIconRestScale =
+            activeExtraShotsImpactIcon.localScale;
+        impactIconRestRotation =
+            activeExtraShotsImpactIcon.localRotation;
+        impactIconRestPoseCaptured = true;
+    }
+
+
+    private IEnumerator ExtraShotsImpactRoutine()
+    {
+        RectTransform icon = activeExtraShotsImpactIcon;
+
+        if (icon == null)
+        {
+            extraShotsImpactRoutine = null;
+            yield break;
+        }
+
+        Vector2 startPosition =
+            impactIconRestPosition +
+            Vector2.up * impactStartYOffset;
+
+        Vector3 startScale =
+            impactIconRestScale * impactStartScale;
+        Vector3 compressedScale =
+            impactIconRestScale * 0.82f;
+        Vector3 reboundScale =
+            impactIconRestScale * 1.14f;
+
+        icon.anchoredPosition = startPosition;
+        icon.localScale = startScale;
+        icon.localRotation =
+            impactIconRestRotation *
+            Quaternion.Euler(0f, 0f, -8f);
+
+        float elapsed = 0f;
+
+        while (elapsed < impactHitDuration &&
+               icon != null)
+        {
+            float normalized = Mathf.Clamp01(
+                elapsed / impactHitDuration
+            );
+
+            float progress =
+                normalized * normalized;
+
+            icon.anchoredPosition = Vector2.Lerp(
+                startPosition,
+                impactIconRestPosition,
+                progress
+            );
+
+            icon.localScale = Vector3.Lerp(
+                startScale,
+                compressedScale,
+                progress
+            );
+
+            icon.localRotation = Quaternion.Slerp(
+                impactIconRestRotation *
+                Quaternion.Euler(0f, 0f, -8f),
+                impactIconRestRotation,
+                progress
+            );
+
+            elapsed += Time.unscaledDeltaTime;
+            yield return null;
+        }
+
+        if (icon == null)
+        {
+            extraShotsImpactRoutine = null;
+            yield break;
+        }
+
+        icon.anchoredPosition = impactIconRestPosition;
+        icon.localScale = compressedScale;
+        icon.localRotation = impactIconRestRotation;
+
+        yield return AnimateImpactScale(
+            icon,
+            compressedScale,
+            reboundScale,
+            impactBounceDuration * 0.45f
+        );
+
+        yield return AnimateImpactScale(
+            icon,
+            reboundScale,
+            impactIconRestScale,
+            impactBounceDuration * 0.55f
+        );
+
+        RestoreImpactIconPose();
+        extraShotsImpactRoutine = null;
+    }
+
+
+    private static IEnumerator AnimateImpactScale(
+        RectTransform icon,
+        Vector3 from,
+        Vector3 to,
+        float duration)
+    {
+        float elapsed = 0f;
+
+        while (elapsed < duration &&
+               icon != null)
+        {
+            float progress = Mathf.SmoothStep(
+                0f,
+                1f,
+                Mathf.Clamp01(elapsed / duration)
+            );
+
+            icon.localScale = Vector3.Lerp(
+                from,
+                to,
+                progress
+            );
+
+            elapsed += Time.unscaledDeltaTime;
+            yield return null;
+        }
+
+        if (icon != null)
+        {
+            icon.localScale = to;
+        }
+    }
+
+
+    private void StopExtraShotsImpactAnimation(
+        bool restorePose)
+    {
+        if (extraShotsImpactRoutine != null)
+        {
+            StopCoroutine(extraShotsImpactRoutine);
+            extraShotsImpactRoutine = null;
+        }
+
+        if (restorePose)
+        {
+            RestoreImpactIconPose();
+        }
+    }
+
+
+    private void RestoreImpactIconPose()
+    {
+        if (activeExtraShotsImpactIcon == null ||
+            !impactIconRestPoseCaptured)
+        {
+            return;
+        }
+
+        activeExtraShotsImpactIcon.anchoredPosition =
+            impactIconRestPosition;
+        activeExtraShotsImpactIcon.localScale =
+            impactIconRestScale;
+        activeExtraShotsImpactIcon.localRotation =
+            impactIconRestRotation;
     }
 
 

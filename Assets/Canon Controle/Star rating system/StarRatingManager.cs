@@ -337,7 +337,7 @@ public sealed class StarRatingManager : MonoBehaviour
     private float threeStarRemainingFraction = 0.5f;
 
     [Tooltip(
-        "Agar extra shots ya gameplay power-up use hua ho to maximum " +
+        "Agar Out Of Moves ke baad extra shots liye gaye hon to maximum " +
         "kitne stars mil sakte hain."
     )]
     [SerializeField, Range(1, 3)]
@@ -594,8 +594,7 @@ public sealed class StarRatingManager : MonoBehaviour
          * Level complete ho sakta hai, lekin rating maximum configured value
          * (default 1 star) tak capped rahegi.
          */
-        if (UsedExtraShotsThisLevel ||
-            PowerUpUsedThisLevel)
+        if (UsedExtraShotsThisLevel)
         {
             return Mathf.Clamp(
                 maxStarsAfterExtraShots,
@@ -655,7 +654,6 @@ public sealed class StarRatingManager : MonoBehaviour
         return 1;
     }
 }
-
 
 
 
