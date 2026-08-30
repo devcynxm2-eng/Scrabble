@@ -1564,6 +1564,13 @@ public sealed class GameplayPowerUpController : MonoBehaviour
     [SerializeField, Min(0.1f)]
     private float rocketExplosionImpulse = 8f;
 
+    [Tooltip(
+        "Rocket select karne par wo cannon ke muzzle se kitna aage " +
+        "load ho kar dikhega. Barrel ke andar chhup raha ho to value barhayein."
+    )]
+    [SerializeField, Min(0f)]
+    private float armedRocketForwardOffset = 0.2f;
+
 
     [Header("References")]
     [SerializeField] private CannonController cannonController;
@@ -1582,6 +1589,13 @@ public sealed class GameplayPowerUpController : MonoBehaviour
 
     private bool infiniteBallsActive;
     private bool powerCannonActive;
+
+    /// <summary>
+    /// Rocket load ho chuka hai lekin player ne abhi shoot nahi kiya.
+    /// Is dauran top timer countdown nahi chalta — player jitna chahe
+    /// aim kar sakta hai.
+    /// </summary>
+    private bool powerCannonAwaitingShot;
 
     private float infiniteBallsRemainingTime;
     private float powerCannonRemainingTime;
@@ -1755,13 +1769,23 @@ public sealed class GameplayPowerUpController : MonoBehaviour
             rocketFlightDuration,
             rocketMaxDistance,
             rocketExplosionRadius,
-            rocketExplosionImpulse
+            rocketExplosionImpulse,
+            armedRocketForwardOffset
         );
     }
 
 
     private void SubscribeToLevel()
     {
+        if (cannonController != null)
+        {
+            cannonController.RocketShotFired -=
+                HandleRocketShotFired;
+
+            cannonController.RocketShotFired +=
+                HandleRocketShotFired;
+        }
+
         if (levelRuntimeController == null)
         {
             return;
@@ -1807,6 +1831,12 @@ public sealed class GameplayPowerUpController : MonoBehaviour
 
     private void UnsubscribeFromLevel()
     {
+        if (cannonController != null)
+        {
+            cannonController.RocketShotFired -=
+                HandleRocketShotFired;
+        }
+
         if (levelRuntimeController == null)
         {
             return;
@@ -1859,6 +1889,9 @@ public sealed class GameplayPowerUpController : MonoBehaviour
             return;
         }
 
+        /*
+         * Stock x0 — ad dekh kar x1 kamana hai.
+         */
         ShowRewardedForInfiniteBalls();
     }
 
@@ -1967,16 +2000,28 @@ public sealed class GameplayPowerUpController : MonoBehaviour
             return;
         }
 
+        /*
+         * Stock x0 — ad dekh kar x1 kamana hai.
+         */
         ShowRewardedForPowerCannon();
     }
 
 
+    /// <summary>
+    /// Rocket ab select karte hi fire NAHI hota.
+    ///
+    /// Select karne par rocket cannon ke muzzle par load ho jata hai aur
+    /// player ke aim ke sath ghoomta hai. Jab player normal tarah shoot
+    /// karta hai, CannonController RocketShotFired raise karta hai aur
+    /// tab rocket launch hota hai.
+    /// </summary>
     private void StartPowerCannonEffect()
     {
         ResolveReferences();
 
         powerCannonUsedThisLevel = true;
         powerCannonActive = true;
+        powerCannonAwaitingShot = true;
 
         powerCannonRemainingTime =
             rocketBarrage != null
@@ -1998,12 +2043,12 @@ public sealed class GameplayPowerUpController : MonoBehaviour
 
         if (rocketBarrage != null)
         {
-            rocketBarrage.PlayBarrage(
-                cannonController.RocketLaunchPoint,
-                cannonVisualRoot,
-                cannonController.RocketShootDirection
+            rocketBarrage.ArmRocket(
+                cannonController.RocketLaunchPoint
             );
         }
+
+        cannonController.ArmRocket();
 
         if (powerCannonRoutine != null)
         {
@@ -2022,6 +2067,52 @@ public sealed class GameplayPowerUpController : MonoBehaviour
         );
 
         RefreshButtons();
+        RefreshTopTimer();
+    }
+
+
+    /// <summary>
+    /// Player ne loaded rocket ko apne aim par shoot kiya.
+    /// </summary>
+    private void HandleRocketShotFired(
+        Vector3 aimPoint)
+    {
+        if (!powerCannonAwaitingShot)
+        {
+            return;
+        }
+
+        if (rocketBarrage == null ||
+            cannonController == null)
+        {
+            powerCannonAwaitingShot = false;
+            return;
+        }
+
+        Transform launchPoint =
+            cannonController.RocketLaunchPoint;
+
+        Vector3 launchDirection =
+            aimPoint - launchPoint.position;
+
+        if (launchDirection.sqrMagnitude < 0.0001f)
+        {
+            launchDirection = launchPoint.forward;
+        }
+
+        rocketBarrage.LaunchArmedRocket(
+            launchPoint,
+            cannonVisualRoot,
+            launchDirection.normalized
+        );
+
+        /*
+         * Flag launch ke BAAD clear karte hain. Warna timer routine usi
+         * frame mein awaiting-phase se nikal kar IsRunning == false dekh
+         * sakti hai aur power-up ko turant end kar deti.
+         */
+        powerCannonAwaitingShot = false;
+
         RefreshTopTimer();
     }
 
@@ -2086,6 +2177,24 @@ public sealed class GameplayPowerUpController : MonoBehaviour
 
     private IEnumerator PowerCannonTimerRoutine()
     {
+        /*
+         * Phase 1: rocket cannon mein loaded hai aur player aim kar raha
+         * hai. Yahan countdown nahi chalta — player jitna time chahe le.
+         */
+        while (powerCannonActive &&
+               powerCannonAwaitingShot)
+        {
+            yield return null;
+        }
+
+        if (!powerCannonActive)
+        {
+            yield break;
+        }
+
+        /*
+         * Phase 2: rocket launch ho chuka hai, ab flight ka countdown.
+         */
         while (powerCannonActive &&
                rocketBarrage != null &&
                rocketBarrage.IsRunning)
@@ -2129,6 +2238,7 @@ public sealed class GameplayPowerUpController : MonoBehaviour
     private void EndPowerCannon()
     {
         powerCannonActive = false;
+        powerCannonAwaitingShot = false;
         powerCannonRemainingTime = 0f;
 
         if (rocketBarrage != null)
@@ -2147,6 +2257,8 @@ public sealed class GameplayPowerUpController : MonoBehaviour
                 .SetRuntimeLaunchForceMultiplier(
                     1f
                 );
+
+            cannonController.DisarmRocket();
         }
 
         powerCannonRoutine = null;
@@ -2166,8 +2278,13 @@ public sealed class GameplayPowerUpController : MonoBehaviour
         bool showInfinite =
             infiniteBallsActive;
 
+        /*
+         * Rocket loaded hone se le kar shoot hone tak koi countdown nahi
+         * dikhate — timer sirf rocket ki flight ke dauran chalta hai.
+         */
         bool showPowerCannon =
-            powerCannonActive;
+            powerCannonActive &&
+            !powerCannonAwaitingShot;
 
         if (!showInfinite &&
             !showPowerCannon)
@@ -2307,6 +2424,7 @@ public sealed class GameplayPowerUpController : MonoBehaviour
 
         infiniteBallsActive = false;
         powerCannonActive = false;
+        powerCannonAwaitingShot = false;
 
         infiniteBallsRemainingTime = 0f;
         powerCannonRemainingTime = 0f;
@@ -2326,6 +2444,8 @@ public sealed class GameplayPowerUpController : MonoBehaviour
                 .SetRuntimeLaunchForceMultiplier(
                     1f
                 );
+
+            cannonController.DisarmRocket();
         }
 
         if (rocketBarrage != null)
@@ -2371,6 +2491,7 @@ public sealed class GameplayPowerUpController : MonoBehaviour
 
         infiniteBallsActive = false;
         powerCannonActive = false;
+        powerCannonAwaitingShot = false;
 
         infiniteBallsRemainingTime = 0f;
         powerCannonRemainingTime = 0f;
@@ -2524,6 +2645,14 @@ internal sealed class RuntimeRocketBarrage : MonoBehaviour
     private float maxFlightDistance = 30f;
     private float explosionRadius = 2.25f;
     private float explosionImpulse = 8f;
+    private float armedForwardOffset = 0.2f;
+
+    /// <summary>
+    /// Cannon mein loaded rocket. Muzzle ka child hota hai, is liye
+    /// player ke aim karte hi ye khud sath ghoomta hai. Shoot par yahi
+    /// object detach ho kar fly karta hai.
+    /// </summary>
+    private GameObject armedRocket;
 
     private Coroutine barrageRoutine;
     private readonly List<Coroutine> rocketRoutines =
@@ -2545,6 +2674,9 @@ internal sealed class RuntimeRocketBarrage : MonoBehaviour
     public bool IsRunning =>
         barrageRoutine != null;
 
+    public bool IsArmed =>
+        armedRocket != null;
+
     public float EstimatedDuration =>
         flightDuration +
         recoilDuration * 2f +
@@ -2557,8 +2689,14 @@ internal sealed class RuntimeRocketBarrage : MonoBehaviour
         float requestedFlightDuration,
         float requestedMaxFlightDistance,
         float requestedExplosionRadius,
-        float requestedExplosionImpulse)
+        float requestedExplosionImpulse,
+        float requestedArmedForwardOffset)
     {
+        armedForwardOffset = Mathf.Max(
+            0f,
+            requestedArmedForwardOffset
+        );
+
         recoilDistance = Mathf.Max(
             0f,
             requestedRecoilDistance
@@ -2591,15 +2729,97 @@ internal sealed class RuntimeRocketBarrage : MonoBehaviour
     }
 
 
-    public void PlayBarrage(
-        Transform launchPoint,
-        Transform recoilRoot,
-        Vector3 launchDirection)
+    /// <summary>
+    /// Rocket ko cannon ke muzzle par LOAD karta hai (fire nahi karta).
+    /// Muzzle ka child hone ki wajah se ye player ke aim ke sath ghoomta
+    /// hai. Actual launch ke liye LaunchArmedRocket call hota hai.
+    /// </summary>
+    public void ArmRocket(
+        Transform launchPoint)
     {
         StopBarrage();
 
         if (launchPoint == null)
         {
+            return;
+        }
+
+        EnsureMaterials();
+
+        armedRocket = CreateRocket(
+            launchPoint,
+            launchPoint.position
+        );
+
+        armedRocket.name = "Loaded Rocket";
+
+        /*
+         * Muzzle ke local space mein thoda aage rakhte hain taake rocket
+         * barrel ke andar chhupne ke bajaye bahar nazar aaye.
+         */
+        armedRocket.transform.localPosition =
+            Vector3.forward * armedForwardOffset;
+
+        armedRocket.transform.localRotation =
+            Quaternion.identity;
+    }
+
+
+    /// <summary>
+    /// Player ke shoot karne par loaded rocket ko detach kar ke uske
+    /// aim point ki taraf fire karta hai.
+    /// </summary>
+    public void LaunchArmedRocket(
+        Transform launchPoint,
+        Transform recoilRoot,
+        Vector3 launchDirection)
+    {
+        GameObject loadedRocket = armedRocket;
+
+        /*
+         * StopBarrage armedRocket ko destroy karta hai, is liye pehle
+         * reference nikal kar field clear karte hain.
+         */
+        armedRocket = null;
+
+        PlayBarrage(
+            launchPoint,
+            recoilRoot,
+            launchDirection,
+            loadedRocket
+        );
+    }
+
+
+    public void PlayBarrage(
+        Transform launchPoint,
+        Transform recoilRoot,
+        Vector3 launchDirection)
+    {
+        PlayBarrage(
+            launchPoint,
+            recoilRoot,
+            launchDirection,
+            null
+        );
+    }
+
+
+    private void PlayBarrage(
+        Transform launchPoint,
+        Transform recoilRoot,
+        Vector3 launchDirection,
+        GameObject existingRocket)
+    {
+        StopBarrage();
+
+        if (launchPoint == null)
+        {
+            if (existingRocket != null)
+            {
+                Destroy(existingRocket);
+            }
+
             return;
         }
 
@@ -2618,7 +2838,8 @@ internal sealed class RuntimeRocketBarrage : MonoBehaviour
             BarrageRoutine(
                 launchPoint,
                 recoilRoot,
-                launchDirection
+                launchDirection,
+                existingRocket
             )
         );
     }
@@ -2645,6 +2866,12 @@ internal sealed class RuntimeRocketBarrage : MonoBehaviour
         rocketRoutines.Clear();
         activeRocketCount = 0;
 
+        if (armedRocket != null)
+        {
+            Destroy(armedRocket);
+            armedRocket = null;
+        }
+
         RestoreCannonPosition();
         ClearSpawnedObjects();
     }
@@ -2653,7 +2880,8 @@ internal sealed class RuntimeRocketBarrage : MonoBehaviour
     private IEnumerator BarrageRoutine(
         Transform launchPoint,
         Transform recoilRoot,
-        Vector3 launchDirection)
+        Vector3 launchDirection,
+        GameObject existingRocket)
     {
         GameObject barrageRoot =
             new GameObject("Runtime Simple Rocket");
@@ -2662,6 +2890,11 @@ internal sealed class RuntimeRocketBarrage : MonoBehaviour
 
         if (launchDirection.sqrMagnitude < 0.0001f)
         {
+            if (existingRocket != null)
+            {
+                Destroy(existingRocket);
+            }
+
             ClearSpawnedObjects();
             RestoreCannonPosition();
             barrageRoutine = null;
@@ -2694,7 +2927,8 @@ internal sealed class RuntimeRocketBarrage : MonoBehaviour
                 barrageRoot.transform,
                 launchPosition,
                 impactPoint,
-                target
+                target,
+                existingRocket
             )
         );
 
@@ -3052,12 +3286,34 @@ internal sealed class RuntimeRocketBarrage : MonoBehaviour
         Transform parent,
         Vector3 startPosition,
         Vector3 impactPoint,
-        PhysicsTowerObject target)
+        PhysicsTowerObject target,
+        GameObject existingRocket)
     {
-        GameObject rocket = CreateRocket(
-            parent,
-            startPosition
-        );
+        GameObject rocket;
+
+        if (existingRocket != null)
+        {
+            /*
+             * Loaded rocket muzzle ka child tha. Ab detach kar ke barrage
+             * root ke neeche laate hain, warna ye cannon ke sath ghoomta
+             * rehta aur flight path ke bajaye barrel follow karta.
+             */
+            rocket = existingRocket;
+
+            rocket.transform.SetParent(
+                parent,
+                true
+            );
+
+            rocket.transform.position = startPosition;
+        }
+        else
+        {
+            rocket = CreateRocket(
+                parent,
+                startPosition
+            );
+        }
 
         spawnedObjects.Add(rocket);
 

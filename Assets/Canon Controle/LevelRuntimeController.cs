@@ -20702,6 +20702,27 @@ public sealed class LevelRuntimeController : MonoBehaviour
 
     private bool levelGenerated;
 
+    /// <summary>
+    /// Grid spawn ho chuka hai aur blocks apni entrance start-pose par
+    /// baithe hain — yani level dikhane ke liye tayyar hai. Ye
+    /// levelGenerated se pehle true hota hai, kyunki levelGenerated
+    /// entrance animation KHATAM hone par set hota hai.
+    /// </summary>
+    private bool levelReadyForReveal;
+
+    /// <summary>
+    /// Generation beech mein fail ho gayi (missing references / table).
+    /// Loading screen ko is par bhi hatna hai, warna wo atak jayega.
+    /// </summary>
+    private bool levelGenerationFailed;
+
+    /// <summary>
+    /// ON hone par entrance animation intezaar karti hai. Loading screen
+    /// hatne ke baad hi blocks rise karte hain, warna pura animation
+    /// loading panel ke peeche chal kar zaya ho jata hai.
+    /// </summary>
+    private bool holdLevelEntranceAnimation;
+
     private bool isPropagatingMirroredActivation;
 
     private int levelGenerationRevision;
@@ -20908,8 +20929,40 @@ public sealed class LevelRuntimeController : MonoBehaviour
     [ContextMenu("Generate Level")]
     public void GenerateLevel()
     {
+        GenerateLevel(false);
+    }
+
+
+    /// <summary>
+    /// holdEntranceAnimation ON ho to grid spawn to ho jata hai, lekin
+    /// blocks apni start-pose par ruke rehte hain jab tak
+    /// ReleaseLevelEntranceAnimation() call na ho. Ye loading screen ke
+    /// flow ke liye hai — pehle loading screen hatti hai, phir player ke
+    /// samne blocks rise karte hain.
+    /// </summary>
+    private void GenerateLevel(
+        bool holdEntranceAnimation)
+    {
+        levelReadyForReveal = false;
+        levelGenerationFailed = false;
+
+        holdLevelEntranceAnimation =
+            holdEntranceAnimation;
+
+
+        if (!holdEntranceAnimation)
+        {
+            /*
+             * Direct generate (Restart / LoadLevel / ContextMenu) —
+             * yahan koi loading screen nahi, is liye sab kuch foran visible.
+             */
+            SetLevelVisualsVisible(true);
+        }
+
+
         if (!ValidateReferences())
         {
+            levelGenerationFailed = true;
             return;
         }
 
@@ -20928,6 +20981,7 @@ public sealed class LevelRuntimeController : MonoBehaviour
 
         if (!PrepareTable())
         {
+            levelGenerationFailed = true;
             return;
         }
 
@@ -20938,10 +20992,38 @@ public sealed class LevelRuntimeController : MonoBehaviour
             0;
 
 
+        /*
+         * SpawnGrid fit-scale ke liye Collider.bounds parhta hai, jo
+         * inactive object par valid nahi hoti. Is liye blocks root ko
+         * spawn se pehle on karna zaroori hai — agar hold on hai to
+         * neeche isi frame mein dobara off ho jayega, is liye koi
+         * visible flash nahi hota.
+         */
+        SetSpawnedBlocksVisible(true);
+
+
         SpawnGrid();
 
 
         Physics.SyncTransforms();
+
+
+        /*
+         * Blocks ab apni entrance start-pose par maujood hain, is liye
+         * level dikhaya ja sakta hai — chahe animation abhi hold par ho.
+         */
+        levelReadyForReveal = true;
+
+
+        if (holdEntranceAnimation)
+        {
+            /*
+             * Grid measure ho chuka hai, ab pura level visual chupa dete
+             * hain taake loading screen ke dauran naya table bhi nazar
+             * na aaye. Reveal par ye wapas on hoga.
+             */
+            SetLevelVisualsVisible(false);
+        }
 
 
         if (ShouldAnimateLevelEntrance())
@@ -20972,6 +21054,21 @@ public sealed class LevelRuntimeController : MonoBehaviour
     private IEnumerator AnimateLevelEntranceRoutine(
         int animationRevision)
     {
+        /*
+         * Loading screen ke peeche animation play na ho. Blocks apni
+         * start-pose (neeche, chhote) par ruke rehte hain jab tak
+         * loading screen hat nahi jati.
+         */
+        while (holdLevelEntranceAnimation)
+        {
+            if (animationRevision != levelGenerationRevision)
+            {
+                yield break;
+            }
+
+            yield return null;
+        }
+
         if (levelEntranceInitialDelay > 0f)
         {
             float delayElapsed = 0f;
@@ -23016,6 +23113,14 @@ public sealed class LevelRuntimeController : MonoBehaviour
             LoadingScreenController.Instance.ShowLoading();
         }
 
+        /*
+         * Purane level ka table aur blocks abhi tak scene mein khare hain
+         * (PlayFromMainMenu ne SetGameplayWorldVisible(true) se unhein
+         * abhi on kiya hai) aur Addressable load ke poore dauran nazar
+         * aate rehte. Loading screen aate hi dono chupa dete hain.
+         */
+        SetLevelVisualsVisible(false);
+
         LevelLoadingStarted?.Invoke();
 
         AsyncOperationHandle<GridLevelData> newHandle =
@@ -23064,28 +23169,50 @@ public sealed class LevelRuntimeController : MonoBehaviour
             levelData.LevelNumber
         );
 
-        GenerateLevel();
-
         /*
-         * Loading screen hide after level generation request.
-         * Actual gameplay entrance animation is handled by LevelRuntimeController.
+         * Grid loading screen ke peeche spawn hota hai, lekin entrance
+         * animation hold par rehti hai.
          */
-        StartCoroutine(HideLoadingAfterGeneration());
+        GenerateLevel(true);
 
+        yield return HideLoadingAndRevealLevelRoutine();
     }
 
 
-    private IEnumerator HideLoadingAfterGeneration()
+    /// <summary>
+    /// Level ready hone ka intezaar karta hai, loading screen ko uske
+    /// minimum display time ke baad hataata hai, aur phir blocks ki
+    /// entrance animation release karta hai.
+    /// </summary>
+    private IEnumerator HideLoadingAndRevealLevelRoutine()
     {
-        while (!levelGenerated)
+        while (!levelReadyForReveal &&
+               !levelGenerationFailed)
         {
             yield return null;
         }
 
         if (LoadingScreenController.Instance != null)
         {
-            LoadingScreenController.Instance.HideLoading();
+            yield return LoadingScreenController
+                .Instance
+                .HideAfterMinimumTimeRoutine();
         }
+
+        /*
+         * Table aur blocks ab wapas on. Blocks abhi bhi apni entrance
+         * start-pose par hain, is liye pehla nazar aane wala frame
+         * "khali table" hai — theek wahi jagah se animation shuru hoti hai.
+         */
+        SetLevelVisualsVisible(true);
+
+        Physics.SyncTransforms();
+
+        /*
+         * Loading screen hat chuki hai — ab player ke samne blocks
+         * rise-and-pop karte hain.
+         */
+        holdLevelEntranceAnimation = false;
     }
 
 
@@ -23571,6 +23698,9 @@ public sealed class LevelRuntimeController : MonoBehaviour
         levelGenerated =
             false;
 
+        levelReadyForReveal =
+            false;
+
 
         for (int i =
                  activeObjects.Count - 1;
@@ -23643,6 +23773,66 @@ public sealed class LevelRuntimeController : MonoBehaviour
             levelOrigin != null
                 ? levelOrigin
                 : transform;
+    }
+
+
+    /// <summary>
+    /// Tables ko chupata/dikhata hai.
+    ///
+    /// Loading screen ke dauran table nazar nahi aana chahiye: canvas
+    /// Screen Space - CAMERA par hai, is liye wo 3D world ko cover nahi
+    /// karta. Blocks to apni entrance start-pose (5% scale, surface ke
+    /// neeche) ki wajah se waise hi nahi dikhte, lekin table full size
+    /// spawn hota hai aur saaf nazar aata hai.
+    ///
+    /// levelOrigin agar assign na ho to GetLevelOrigin() is controller ka
+    /// apna transform return karta hai — usay kabhi deactivate nahi karte,
+    /// warna chalti hui coroutines mar jayengi.
+    /// </summary>
+    private void SetTablesVisible(bool visible)
+    {
+        Transform levelRoot =
+            GetLevelOrigin();
+
+        if (levelRoot == null ||
+            levelRoot == transform)
+        {
+            return;
+        }
+
+        if (levelRoot.gameObject.activeSelf != visible)
+        {
+            levelRoot.gameObject.SetActive(visible);
+        }
+    }
+
+
+    /// <summary>
+    /// Spawn ho chuke blocks ko chupata/dikhata hai.
+    ///
+    /// IMPORTANT: ye sirf SpawnGrid() ke BAAD call karna hai. Fit-scale
+    /// measurement Collider.bounds parhti hai, aur inactive object par
+    /// wo valid nahi hoti.
+    /// </summary>
+    private void SetSpawnedBlocksVisible(bool visible)
+    {
+        if (runtimeObjectsRoot == null ||
+            runtimeObjectsRoot == transform)
+        {
+            return;
+        }
+
+        if (runtimeObjectsRoot.gameObject.activeSelf != visible)
+        {
+            runtimeObjectsRoot.gameObject.SetActive(visible);
+        }
+    }
+
+
+    private void SetLevelVisualsVisible(bool visible)
+    {
+        SetTablesVisible(visible);
+        SetSpawnedBlocksVisible(visible);
     }
 
 

@@ -36,8 +36,21 @@ public sealed class LoadingScreenController : MonoBehaviour
 
 
     [Header("Timing")]
-    [SerializeField]
+    [Tooltip(
+        "Loading screen kam az kam itni der visible rahega, chahe level " +
+        "isse pehle hi load ho jaye. Warna local Addressable load itna " +
+        "fast hota hai ke screen sirf ek flash ban kar reh jati hai."
+    )]
+    [SerializeField, Min(0f)]
     private float minimumLoadingTime = 1.5f;
+
+
+    private float loadingShownTime;
+    private bool isLoadingVisible;
+
+
+    public bool IsLoadingVisible =>
+        isLoadingVisible;
 
 
 
@@ -124,6 +137,12 @@ public sealed class LoadingScreenController : MonoBehaviour
         RandomizeLoadingContent();
 
 
+        loadingShownTime =
+            Time.unscaledTime;
+
+        isLoadingVisible = true;
+
+
         if(loadingPanel != null)
         {
             loadingPanel.SetActive(true);
@@ -134,8 +153,43 @@ public sealed class LoadingScreenController : MonoBehaviour
 
 
 
+    /// <summary>
+    /// Loading screen ko minimum display time pura hone ke baad hide
+    /// karta hai. Caller isay `yield return` kar ke wait kar sakta hai.
+    ///
+    /// Unscaled time use hota hai taake pause/timeScale se farq na pare.
+    /// </summary>
+    public IEnumerator HideAfterMinimumTimeRoutine()
+    {
+        if(isLoadingVisible)
+        {
+            float elapsed =
+                Time.unscaledTime -
+                loadingShownTime;
+
+
+            while(elapsed < minimumLoadingTime)
+            {
+                yield return null;
+
+                elapsed +=
+                    Time.unscaledDeltaTime;
+            }
+        }
+
+
+        HideLoading();
+    }
+
+
+
+
+
     public void HideLoading()
     {
+        isLoadingVisible = false;
+
+
         if(loadingPanel != null)
         {
             loadingPanel.SetActive(false);

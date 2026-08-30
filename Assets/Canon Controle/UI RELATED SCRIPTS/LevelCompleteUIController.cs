@@ -1669,6 +1669,7 @@
 
 
 using System.Collections;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -1753,6 +1754,59 @@ public sealed class LevelCompleteUIController : MonoBehaviour
     [SerializeField]
     private float star2BackStartRotation = -28f;
 
+    [Header("Small Star Burst")]
+
+    [Tooltip(
+        "ON: har earned star ke PEECHAY se bohat saare chhote stars " +
+        "nikal kar chaaron taraf phailenge, khud bhi spin aur scale " +
+        "karte hue."
+    )]
+    [SerializeField]
+    private bool playSmallStarBurst = true;
+
+    [Tooltip(
+        "Chhote star ka sprite. Khali chhod dein to main star ka apna " +
+        "sprite use hoga."
+    )]
+    [SerializeField]
+    private Sprite smallStarSprite;
+
+    [SerializeField, Range(1, 40)]
+    private int smallStarCount = 14;
+
+    [Tooltip(
+        "Star ke center se kitni door tak phailenge (min, max)."
+    )]
+    [SerializeField]
+    private Vector2 smallStarDistanceRange =
+        new Vector2(70f, 165f);
+
+    [Tooltip(
+        "Main star ke size ke muqable chhote star ka scale (min, max)."
+    )]
+    [SerializeField]
+    private Vector2 smallStarScaleRange =
+        new Vector2(0.14f, 0.30f);
+
+    [Tooltip(
+        "Ek chhote star ke poore burst ka time (min, max) seconds."
+    )]
+    [SerializeField]
+    private Vector2 smallStarDurationRange =
+        new Vector2(0.45f, 0.75f);
+
+    [Tooltip(
+        "Spin speed degrees per second (min, max). Direction random hoti hai."
+    )]
+    [SerializeField]
+    private Vector2 smallStarSpinSpeedRange =
+        new Vector2(90f, 320f);
+
+    [SerializeField]
+    private Color smallStarColor =
+        new Color(1f, 0.86f, 0.25f, 1f);
+
+
     [Header("Gold Ray Continuous Animation")]
     [SerializeField, Min(0f)]
     private float star2BackRotationSpeed = 24f;
@@ -1785,6 +1839,13 @@ public sealed class LevelCompleteUIController : MonoBehaviour
     private bool isOpen;
     private bool isContinuing;
     private bool returnToMainMenuAfterContinue;
+
+    /// <summary>
+    /// Runtime mein banaye gaye chhote star objects. Reveal dobara start
+    /// ya popup band hone par inhein saaf karna zaroori hai.
+    /// </summary>
+    private readonly List<GameObject> smallStarBurstObjects =
+        new List<GameObject>();
 
     private Coroutine starRevealRoutine;
     private Vector3 star1BaseScale;
@@ -2545,6 +2606,16 @@ public sealed class LevelCompleteUIController : MonoBehaviour
                     star2BackImage.color = earnedStarColor;
                 }
 
+                /*
+                 * Chhote stars ka burst star ke pop ke sath hi shuru hota
+                 * hai (blocking nahi hai), taake dono ek hi celebration
+                 * lagen.
+                 */
+                PlaySmallStarBurst(
+                    starImage,
+                    basePositions[i]
+                );
+
                 yield return AnimateSingleStarRoutine(
                     starImage.rectTransform,
                     baseScales[i],
@@ -2687,6 +2758,309 @@ public sealed class LevelCompleteUIController : MonoBehaviour
     }
 
 
+    /// <summary>
+    /// Star ke peechay se chhote stars ka burst. Har chhota star apni
+    /// random direction, distance, size, spin aur duration leta hai,
+    /// taake burst mechanical na lage.
+    ///
+    /// Ye blocking nahi hai — main star ka pop isi dauran chalta rehta hai.
+    /// </summary>
+    private void PlaySmallStarBurst(
+        Image starImage,
+        Vector2 starBasePosition)
+    {
+        if (!playSmallStarBurst ||
+            starImage == null ||
+            !Application.isPlaying ||
+            !isActiveAndEnabled)
+        {
+            return;
+        }
+
+        RectTransform parentRect =
+            starImage.rectTransform.parent as RectTransform;
+
+        if (parentRect == null)
+        {
+            return;
+        }
+
+        Sprite sprite =
+            smallStarSprite != null
+                ? smallStarSprite
+                : starImage.sprite;
+
+        if (sprite == null)
+        {
+            return;
+        }
+
+        int count =
+            Mathf.Max(1, smallStarCount);
+
+        Vector2 starSize =
+            starImage.rectTransform.rect.size;
+
+        if (starSize.x <= 1f ||
+            starSize.y <= 1f)
+        {
+            starSize = new Vector2(100f, 100f);
+        }
+
+        /*
+         * Angles ko equally divide kar ke har slice mein thoda random
+         * offset dete hain — full circle cover hota hai lekin spacing
+         * natural rehti hai.
+         */
+        float angleStep = 360f / count;
+        float angleOffset = Random.Range(0f, angleStep);
+
+        for (int i = 0; i < count; i++)
+        {
+            GameObject smallStar =
+                new GameObject(
+                    "SmallStarBurst",
+                    typeof(RectTransform),
+                    typeof(CanvasRenderer),
+                    typeof(Image)
+                );
+
+            RectTransform smallRect =
+                smallStar.GetComponent<RectTransform>();
+
+            smallRect.SetParent(parentRect, false);
+
+            /*
+             * Main star ke theek peechay insert karte hain, taake chhote
+             * stars uske "back" se nikalte hue nazar aayen.
+             */
+            smallRect.SetSiblingIndex(
+                starImage.rectTransform.GetSiblingIndex()
+            );
+
+            smallRect.anchorMin =
+                starImage.rectTransform.anchorMin;
+
+            smallRect.anchorMax =
+                starImage.rectTransform.anchorMax;
+
+            smallRect.pivot =
+                starImage.rectTransform.pivot;
+
+            smallRect.sizeDelta = starSize;
+            smallRect.anchoredPosition = starBasePosition;
+            smallRect.localScale = Vector3.zero;
+
+            Image smallImage =
+                smallStar.GetComponent<Image>();
+
+            smallImage.sprite = sprite;
+            smallImage.color = smallStarColor;
+            smallImage.raycastTarget = false;
+            smallImage.preserveAspect = true;
+
+            smallStarBurstObjects.Add(smallStar);
+
+            float angle =
+                angleOffset +
+                angleStep * i +
+                Random.Range(-angleStep * 0.3f, angleStep * 0.3f);
+
+            float radians = angle * Mathf.Deg2Rad;
+
+            Vector2 direction =
+                new Vector2(
+                    Mathf.Cos(radians),
+                    Mathf.Sin(radians)
+                );
+
+            Vector2 targetPosition =
+                starBasePosition +
+                direction *
+                Random.Range(
+                    Mathf.Min(
+                        smallStarDistanceRange.x,
+                        smallStarDistanceRange.y
+                    ),
+                    Mathf.Max(
+                        smallStarDistanceRange.x,
+                        smallStarDistanceRange.y
+                    )
+                );
+
+            float peakScale =
+                Random.Range(
+                    Mathf.Min(
+                        smallStarScaleRange.x,
+                        smallStarScaleRange.y
+                    ),
+                    Mathf.Max(
+                        smallStarScaleRange.x,
+                        smallStarScaleRange.y
+                    )
+                );
+
+            float duration =
+                Random.Range(
+                    Mathf.Min(
+                        smallStarDurationRange.x,
+                        smallStarDurationRange.y
+                    ),
+                    Mathf.Max(
+                        smallStarDurationRange.x,
+                        smallStarDurationRange.y
+                    )
+                );
+
+            float spinSpeed =
+                Random.Range(
+                    Mathf.Min(
+                        smallStarSpinSpeedRange.x,
+                        smallStarSpinSpeedRange.y
+                    ),
+                    Mathf.Max(
+                        smallStarSpinSpeedRange.x,
+                        smallStarSpinSpeedRange.y
+                    )
+                ) *
+                (Random.value < 0.5f ? -1f : 1f);
+
+            StartCoroutine(
+                AnimateSmallStarRoutine(
+                    smallStar,
+                    smallRect,
+                    smallImage,
+                    starBasePosition,
+                    targetPosition,
+                    peakScale,
+                    spinSpeed,
+                    duration,
+                    Random.Range(0f, 0.08f)
+                )
+            );
+        }
+    }
+
+
+    private IEnumerator AnimateSmallStarRoutine(
+        GameObject smallStar,
+        RectTransform smallRect,
+        Image smallImage,
+        Vector2 startPosition,
+        Vector2 targetPosition,
+        float peakScale,
+        float spinSpeed,
+        float duration,
+        float startDelay)
+    {
+        if (startDelay > 0f)
+        {
+            yield return WaitForUnscaledSeconds(startDelay);
+        }
+
+        if (smallStar == null)
+        {
+            yield break;
+        }
+
+        float safeDuration = Mathf.Max(0.05f, duration);
+        float elapsed = 0f;
+        float rotation = 0f;
+
+        Color baseColor = smallImage.color;
+
+        while (elapsed < safeDuration &&
+               smallStar != null)
+        {
+            float normalizedTime =
+                Mathf.Clamp01(elapsed / safeDuration);
+
+            // Bahar ki taraf tez nikal kar dheere dheere ruk jata hai.
+            float outwardProgress =
+                1f - Mathf.Pow(1f - normalizedTime, 3f);
+
+            smallRect.anchoredPosition =
+                Vector2.LerpUnclamped(
+                    startPosition,
+                    targetPosition,
+                    outwardProgress
+                );
+
+            /*
+             * Pehle 30% mein pop hota hai, phir aakhir tak simat kar
+             * gayab ho jata hai.
+             */
+            float scale =
+                normalizedTime < 0.3f
+                    ? Mathf.Lerp(
+                        0f,
+                        peakScale,
+                        SmoothStep(normalizedTime / 0.3f)
+                    )
+                    : Mathf.Lerp(
+                        peakScale,
+                        peakScale * 0.25f,
+                        SmoothStep(
+                            (normalizedTime - 0.3f) / 0.7f
+                        )
+                    );
+
+            smallRect.localScale = Vector3.one * scale;
+
+            rotation += spinSpeed * Time.unscaledDeltaTime;
+
+            smallRect.localRotation =
+                Quaternion.Euler(0f, 0f, rotation);
+
+            // Aakhri 45% mein fade out.
+            float alpha =
+                normalizedTime < 0.55f
+                    ? 1f
+                    : 1f - SmoothStep(
+                        (normalizedTime - 0.55f) / 0.45f
+                    );
+
+            smallImage.color =
+                new Color(
+                    baseColor.r,
+                    baseColor.g,
+                    baseColor.b,
+                    baseColor.a * alpha
+                );
+
+            elapsed += Time.unscaledDeltaTime;
+
+            yield return null;
+        }
+
+        smallStarBurstObjects.Remove(smallStar);
+
+        if (smallStar != null)
+        {
+            Destroy(smallStar);
+        }
+    }
+
+
+    private void ClearSmallStarBursts()
+    {
+        for (int i = smallStarBurstObjects.Count - 1;
+             i >= 0;
+             i--)
+        {
+            GameObject smallStar =
+                smallStarBurstObjects[i];
+
+            if (smallStar != null)
+            {
+                Destroy(smallStar);
+            }
+        }
+
+        smallStarBurstObjects.Clear();
+    }
+
+
     private static IEnumerator WaitForUnscaledSeconds(float duration)
     {
         float elapsed = 0f;
@@ -2780,6 +3154,8 @@ public sealed class LevelCompleteUIController : MonoBehaviour
     private void StopStarRevealAnimation(bool restoreBaseScales)
     {
         StopStar2BackLoop(restoreBaseScales);
+
+        ClearSmallStarBursts();
 
         if (starRevealRoutine != null)
         {

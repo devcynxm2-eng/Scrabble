@@ -76,8 +76,15 @@ public class ProfilePanel : MonoBehaviour
 
         if (avatarImage != null)
         {
-            avatarImage.sprite = playerProfile.AvatarSprite;
-            avatarImage.enabled = playerProfile.AvatarSprite != null;
+            // Saved avatar ho to wo laga dete hain, warna scene ka
+            // maujooda sprite waisa hi rehne dete hain.
+            // Image ko kisi bhi soorat mein disable NAHI karna.
+            if (playerProfile.AvatarSprite != null)
+            {
+                avatarImage.sprite = playerProfile.AvatarSprite;
+            }
+
+            avatarImage.enabled = true;
             avatarImage.preserveAspect = true;
             avatarImage.type = Image.Type.Simple;
         }

@@ -25,6 +25,10 @@ public class ProfileManager : MonoBehaviour
     [Header("Profile Panel")]
     [SerializeField] private ProfilePanel profilePanel;
 
+    [Header("Main Menu")]
+    [Tooltip("Optional. Khali chhod dein to scene se khud dhoond liya jayega.")]
+    [SerializeField] private MainScreenController mainScreenController;
+
     private void Awake()
     {
         if (Instance != null && Instance != this)
@@ -88,6 +92,29 @@ public class ProfileManager : MonoBehaviour
         else
         {
             Debug.LogError("ProfileManager: ProfilePanel reference missing.");
+        }
+
+        RefreshMainMenuProfile();
+    }
+
+    /// <summary>
+    /// Profile overlay ke peechay Main Panel active hi rehta hai, is liye
+    /// uska OnEnable dobara fire nahi hota. Edit ke baad main menu ki
+    /// profile image yahan se manually refresh karni parti hai.
+    /// </summary>
+    private void RefreshMainMenuProfile()
+    {
+        if (mainScreenController == null)
+        {
+            mainScreenController =
+                FindFirstObjectByType<MainScreenController>(
+                    FindObjectsInactive.Include
+                );
+        }
+
+        if (mainScreenController != null)
+        {
+            mainScreenController.RefreshProfileAvatar();
         }
     }
 }

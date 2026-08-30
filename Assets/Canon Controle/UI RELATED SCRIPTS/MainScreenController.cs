@@ -257,7 +257,13 @@ public sealed class MainScreenController : MonoBehaviour
     }
 
 
-    private void RefreshProfileAvatar()
+    /// <summary>
+    /// Public is liye hai ke profile update hote hi ProfileManager isay
+    /// turant call kar sake. Main Panel overlay ke peechay active hi
+    /// rehta hai, is liye OnEnable dobara fire nahi hota aur avatar
+    /// khud se refresh nahi hota tha.
+    /// </summary>
+    public void RefreshProfileAvatar()
     {
         if (playerProfile == null)
         {
@@ -273,15 +279,20 @@ public sealed class MainScreenController : MonoBehaviour
 
         playerProfile.Load();
 
+        /*
+         * Saved avatar ho to wo laga dete hain. Na ho to scene mein jo
+         * sprite pehle se assign hai wahi rehne dete hain.
+         *
+         * Image ko kisi bhi soorat mein disable NAHI karna — pehle
+         * avatar select na hone par ye off ho jati thi aur main menu se
+         * Profile Image gayab ho jati thi.
+         */
         if (playerProfile.AvatarSprite != null)
         {
             profileAvatarImage.sprite = playerProfile.AvatarSprite;
-            profileAvatarImage.enabled = true;
         }
-        else
-        {
-            profileAvatarImage.enabled = false;
-        }
+
+        profileAvatarImage.enabled = true;
 
         profileAvatarImage.preserveAspect = true;
         profileAvatarImage.type = Image.Type.Simple;

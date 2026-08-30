@@ -552,11 +552,19 @@ public sealed class PowerUpInventoryManager : MonoBehaviour
 
     [Header("Unlock Levels")]
 
+    /*
+     * TESTING: filhal dono power-ups Level 1 se hi unlocked hain.
+     *
+     * Final progression ke liye ye wapas 5 (Infinite Balls) aur
+     * 8 (Power Cannon) karne hain — scene ke PowerUpInventoryManager
+     * par bhi wahi values set karni hongi, warna serialized value
+     * code default ko override kar deti hai.
+     */
     [SerializeField, Min(1)]
-    private int infiniteBallsUnlockLevel = 5;
+    private int infiniteBallsUnlockLevel = 1;
 
     [SerializeField, Min(1)]
-    private int powerCannonUnlockLevel = 8;
+    private int powerCannonUnlockLevel = 1;
 
 
     [Header("Starter Amount")]
@@ -572,14 +580,16 @@ public sealed class PowerUpInventoryManager : MonoBehaviour
 
     [Tooltip(
         "Infinite Balls ka complete gameplay option/button root. " +
-        "Ye visible rahega, lekin Level 5 se pehle use nahi hoga."
+        "Ye hamesha visible rahega, lekin apne Unlock Level se " +
+        "pehle use nahi hoga."
     )]
     [SerializeField]
     private GameObject infiniteBallsOptionRoot;
 
     [Tooltip(
         "Power Cannon ka complete gameplay option/button root. " +
-        "Ye visible rahega, lekin Level 8 se pehle use nahi hoga."
+        "Ye hamesha visible rahega, lekin apne Unlock Level se " +
+        "pehle use nahi hoga."
     )]
     [SerializeField]
     private GameObject powerCannonOptionRoot;
@@ -804,8 +814,8 @@ public sealed class PowerUpInventoryManager : MonoBehaviour
          * - inventory/count visible reh sakta hai
          * - GameplayPowerUpController button ko use nahi karne dega
          *
-         * Infinite Balls actual use = Level 5+
-         * Power Cannon actual use = Level 8+
+         * Actual use har power-up ke apne Unlock Level se shuru hota
+         * hai (filhal testing ke liye dono Level 1 par hain).
          *
          * Daily Reward se pehle milne wali quantity save/show ho sakti hai,
          * lekin unlock level se pehle use nahi hogi.

@@ -8372,6 +8372,7 @@ public sealed class CannonController : MonoBehaviour
     private int totalBalls;
     private int remainingBalls;
     private bool ballLimitInitialized;
+    private bool rocketArmed;
 
     private readonly List<GameObject> activeCannonBalls =
         new List<GameObject>();
@@ -8398,6 +8399,33 @@ public sealed class CannonController : MonoBehaviour
 
     public event Action OutOfMoves;
     public event Action<int> ExtraShotsAdded;
+
+    /// <summary>
+    /// Rocket armed hone ke baad player ke shoot karte hi fire hota hai.
+    /// Argument player ka final aim point hai.
+    /// </summary>
+    public event Action<Vector3> RocketShotFired;
+
+
+    /// <summary>
+    /// Rocket power-up select hone par cannon "rocket mode" mein chala
+    /// jata hai: normal cannonball ki jagah agla shot rocket fire karega.
+    /// Aim bilkul normal tarah kaam karta rehta hai.
+    /// </summary>
+    public bool RocketArmed =>
+        rocketArmed;
+
+
+    public void ArmRocket()
+    {
+        rocketArmed = true;
+    }
+
+
+    public void DisarmRocket()
+    {
+        rocketArmed = false;
+    }
 
 
     public void SetGameplayActive(bool active)
@@ -8845,6 +8873,7 @@ public sealed class CannonController : MonoBehaviour
         infiniteBallsEnabled = false;
         runtimeBallSizeMultiplier = 1f;
         runtimeLaunchForceMultiplier = 1f;
+        rocketArmed = false;
 
         UpdateBallsHud();
     }
@@ -9603,9 +9632,90 @@ public sealed class CannonController : MonoBehaviour
     }
 
 
+    /// <summary>
+    /// Armed rocket ko player ke current aim par fire karta hai.
+    /// Guards fail hone par rocket armed hi rehta hai taake player
+    /// dobara aim kar ke shoot kar sake.
+    /// </summary>
+    private void TryFireArmedRocket()
+    {
+        if (
+            isCannonEntranceAnimating ||
+            (levelRuntimeController != null &&
+             !levelRuntimeController.IsLevelGenerated) ||
+            !hasAimPoint ||
+            muzzle == null ||
+            Time.time <
+            nextAllowedShotTime)
+        {
+            return;
+        }
+
+
+        Physics.SyncTransforms();
+
+
+        Vector3 rocketDirection =
+            currentAimPoint -
+            muzzle.position;
+
+
+        if (rocketDirection.sqrMagnitude < 0.0001f)
+        {
+            return;
+        }
+
+
+        if (
+            preventBackwardAim &&
+            IsDirectionBehindCannon(
+                rocketDirection.normalized
+            ))
+        {
+            return;
+        }
+
+
+        nextAllowedShotTime =
+            Time.time +
+            minimumShotInterval;
+
+        rocketArmed = false;
+
+
+        if (showDebugLines)
+        {
+            Debug.DrawLine(
+                muzzle.position,
+                currentAimPoint,
+                Color.red,
+                2f
+            );
+        }
+
+
+        RocketShotFired?.Invoke(
+            currentAimPoint
+        );
+    }
+
+
     public void Shoot()
     {
         EnsureBallLimitInitialized();
+
+        /*
+         * Rocket armed hai to ye shot cannonball nahi, rocket fire karega.
+         *
+         * Rocket power-up se aata hai, isliye ye normal ball count
+         * consume nahi karta aur remainingBalls == 0 hone par bhi
+         * player apna loaded rocket fire kar sakta hai.
+         */
+        if (rocketArmed)
+        {
+            TryFireArmedRocket();
+            return;
+        }
 
         if (
             isCannonEntranceAnimating ||
