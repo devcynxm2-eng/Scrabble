@@ -1,5 +1,6 @@
 using System.Collections;
 using System;
+using TMPro;
 using UnityEngine;
 
 
@@ -14,6 +15,28 @@ public sealed class LevelCompleteSequenceController : MonoBehaviour
     [Header("Particle Parent")]
     [SerializeField]
     private GameObject particleParent;
+
+
+
+    [Header("You Win Text")]
+    [Tooltip(
+        "Optional TMP text. Khali ho to controller particle screen ke " +
+        "center mein YOU WIN text khud create karega."
+    )]
+    [SerializeField]
+    private TMP_Text youWinText;
+
+    [SerializeField]
+    private string youWinMessage = "YOU WIN";
+
+    [SerializeField, Min(1f)]
+    private float youWinFontSize = 112f;
+
+    [SerializeField]
+    private Color youWinColor = new Color(1f, 0.82f, 0.12f, 1f);
+
+    [SerializeField]
+    private Vector2 youWinAnchoredPosition = new Vector2(0f, 100f);
 
 
 
@@ -100,12 +123,8 @@ public sealed class LevelCompleteSequenceController : MonoBehaviour
 
 
     [Header("Timing")]
-    [SerializeField]
-    private float firstParticleDuration = 1.5f;
-
-
-    [SerializeField]
-    private float secondParticleDuration = 1.5f;
+    [SerializeField, Min(0f)]
+    private float celebrationDuration = 1.5f;
 
 
     [SerializeField]
@@ -146,6 +165,10 @@ public sealed class LevelCompleteSequenceController : MonoBehaviour
 
     private void Awake()
     {
+        ResolveConfettiParticles();
+        EnsureYouWinText();
+        HideYouWinText();
+
         if(levelCompletePopup != null)
         {
             levelCompletePopup.SetActive(false);
@@ -179,6 +202,8 @@ public sealed class LevelCompleteSequenceController : MonoBehaviour
 
     private IEnumerator LevelCompleteRoutine()
     {
+        ResolveConfettiParticles();
+
         if(levelCompletePopup != null)
         {
             UITransition.HideImmediate(
@@ -202,27 +227,14 @@ public sealed class LevelCompleteSequenceController : MonoBehaviour
 
 
 
+        ShowYouWinText();
+
         ResolveRoots();
 
 
         // Pehle group ke cannons left/right se slide ho kar aate hain,
         // aur apni jagah pohanchne ke BAAD hi particles play hote hain.
-        yield return SlideInFirstGroupRoutine();
-
-
-        // First 2 particles
-        PlayParticle(
-            particleOne
-        );
-
-        PlayParticle(
-            particleTwo
-        );
-
-
-        yield return WaitForUnscaledSeconds(
-            firstParticleDuration
-        );
+        // Dono confetti cannons ek hi waqt sirf ek burst chalati hain.
 
 
 
@@ -250,7 +262,7 @@ public sealed class LevelCompleteSequenceController : MonoBehaviour
 
 
         yield return WaitForUnscaledSeconds(
-            secondParticleDuration
+            celebrationDuration
         );
 
 
@@ -258,6 +270,10 @@ public sealed class LevelCompleteSequenceController : MonoBehaviour
         StopParticle(particleTwo);
         StopParticle(particleThree);
         StopParticle(particleFour);
+
+
+
+        HideYouWinText();
 
 
 
@@ -338,6 +354,59 @@ public sealed class LevelCompleteSequenceController : MonoBehaviour
         }
 
         rootsResolved = true;
+    }
+
+
+    /// <summary>
+    /// Scene mein confetti references manually missing hon to particle
+    /// overlay ke andar se dono existing ParticleSystems khud pick karo.
+    /// </summary>
+    private void ResolveConfettiParticles()
+    {
+        if (particleParent == null ||
+            (particleThree != null && particleFour != null))
+        {
+            return;
+        }
+
+        ParticleSystem[] particles =
+            particleParent.GetComponentsInChildren<ParticleSystem>(true);
+
+        bool referencesChanged = false;
+
+        foreach (ParticleSystem candidate in particles)
+        {
+            if (candidate == null)
+            {
+                continue;
+            }
+
+            if (particleThree == null &&
+                candidate != particleFour)
+            {
+                particleThree = candidate;
+                referencesChanged = true;
+                continue;
+            }
+
+            if (particleFour == null &&
+                candidate != particleThree)
+            {
+                particleFour = candidate;
+                referencesChanged = true;
+            }
+
+            if (particleThree != null &&
+                particleFour != null)
+            {
+                break;
+            }
+        }
+
+        if (referencesChanged)
+        {
+            rootsResolved = false;
+        }
     }
 
 
@@ -624,7 +693,93 @@ public sealed class LevelCompleteSequenceController : MonoBehaviour
         );
 
 
+        ParticleSystem.MainModule main =
+            particle.main;
+
+        main.loop = false;
+
+
         particle.Play();
+    }
+
+
+    private void EnsureYouWinText()
+    {
+        if (youWinText != null ||
+            particleParent == null)
+        {
+            return;
+        }
+
+        GameObject textObject =
+            new GameObject(
+                "You Win Text",
+                typeof(RectTransform),
+                typeof(CanvasRenderer),
+                typeof(TextMeshProUGUI)
+            );
+
+        textObject.layer = particleParent.layer;
+
+        RectTransform textRect =
+            textObject.GetComponent<RectTransform>();
+
+        textRect.SetParent(
+            particleParent.transform,
+            false
+        );
+
+        textRect.anchorMin = new Vector2(0.5f, 0.5f);
+        textRect.anchorMax = new Vector2(0.5f, 0.5f);
+        textRect.pivot = new Vector2(0.5f, 0.5f);
+        textRect.anchoredPosition = youWinAnchoredPosition;
+        textRect.sizeDelta = new Vector2(900f, 200f);
+        textRect.SetAsLastSibling();
+
+        youWinText =
+            textObject.GetComponent<TextMeshProUGUI>();
+
+        youWinText.alignment =
+            TextAlignmentOptions.Center;
+
+        youWinText.fontStyle = FontStyles.Bold;
+        youWinText.fontSize = youWinFontSize;
+        youWinText.color = youWinColor;
+        youWinText.raycastTarget = false;
+        youWinText.textWrappingMode = TextWrappingModes.NoWrap;
+    }
+
+
+    private void ShowYouWinText()
+    {
+        EnsureYouWinText();
+
+        if (youWinText == null)
+        {
+            return;
+        }
+
+        youWinText.text =
+            string.IsNullOrWhiteSpace(youWinMessage)
+                ? "YOU WIN"
+                : youWinMessage;
+
+        youWinText.fontSize = youWinFontSize;
+        youWinText.color = youWinColor;
+        youWinText.rectTransform.anchoredPosition =
+            youWinAnchoredPosition;
+
+        youWinText.gameObject.SetActive(true);
+        youWinText.rectTransform.SetAsLastSibling();
+    }
+
+
+    private void HideYouWinText()
+    {
+        if (youWinText != null)
+        {
+            youWinText.gameObject.SetActive(false);
+        }
     }
 
 
@@ -673,6 +828,8 @@ public sealed class LevelCompleteSequenceController : MonoBehaviour
         StopParticle(particleTwo);
         StopParticle(particleThree);
         StopParticle(particleFour);
+
+        HideYouWinText();
 
         if(particleParent != null)
         {

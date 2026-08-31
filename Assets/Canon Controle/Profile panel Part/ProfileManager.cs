@@ -102,19 +102,40 @@ public class ProfileManager : MonoBehaviour
     /// uska OnEnable dobara fire nahi hota. Edit ke baad main menu ki
     /// profile image yahan se manually refresh karni parti hai.
     /// </summary>
-    private void RefreshMainMenuProfile()
-    {
-        if (mainScreenController == null)
-        {
-            mainScreenController =
-                FindFirstObjectByType<MainScreenController>(
-                    FindObjectsInactive.Include
-                );
-        }
+    // private void RefreshMainMenuProfile()
+    // {
+    //     if (mainScreenController == null)
+    //     {
+    //         mainScreenController =
+    //             FindFirstObjectByType<MainScreenController>(
+    //                 FindObjectsInactive.Include
+    //             );
+    //     }
 
-        if (mainScreenController != null)
-        {
-            mainScreenController.RefreshProfileAvatar();
-        }
+    //     if (mainScreenController != null)
+    //     {
+    //         mainScreenController.RefreshProfileAvatar();
+    //     }
+    // }
+
+
+
+private void RefreshMainMenuProfile()
+{
+    if (mainScreenController == null)
+    {
+        mainScreenController =
+            FindFirstObjectByType<MainScreenController>(
+                FindObjectsInactive.Include
+            );
     }
+
+    if (mainScreenController != null)
+    {
+        mainScreenController.RefreshProfile();
+    }
+}
+
+
+
 }
