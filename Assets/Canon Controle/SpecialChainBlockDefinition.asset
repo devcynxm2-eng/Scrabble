@@ -10,18 +10,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 55fc724be4a339441a4b3657fa5d8a5c, type: 3}
-  m_Name: CanDefinition 1
-  m_EditorClassIdentifier: 
+  m_Name: SpecialChainBlockDefinition
+  m_EditorClassIdentifier: Assembly-CSharp::PhysicsObjectDefinition
   prefab: {fileID: 2158590959970879959, guid: 4d0af81a01355104cb3c6f57602fd82b, type: 3}
-  displayName: Cube
+  displayName: Special (Chain)
   tintWithPaintColor: 0
   minimumPrewarmCount: 16
   chainReactionEnabled: 1
-  chainReactionRadius: 0.2
-  chainReactionMaxBlocks: 3
-  chainReactionImpulse: 3
-  chainReactionUpwardBias: 0.258
-  chainReactionVfxPrefab: {fileID: 0}
+  chainReactionRadius: 1.2
+  chainReactionMaxBlocks: 6
+  chainReactionImpulse: 6
+  chainReactionUpwardBias: 0.35
+  chainReactionVfxPrefab: {fileID: 984322152348338346, guid: 759bdd92817bad54f9ad1e076714532e, type: 3}
   chainReactionVfxLifetime: 2
   chainReactionPropagates: 1
   chainReactionPropagationDelay: 0.12

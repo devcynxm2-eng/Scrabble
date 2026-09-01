@@ -48,6 +48,16 @@ public sealed class LowerGroundDisappearEffect : MonoBehaviour
     private Vector3 scaleBeforeDisappear;
     private bool isDisappearing;
 
+    /*
+     * Shrink ka poora progress state. Popup ke dauran GameObject disable
+     * hone par coroutine mar jati hai, is liye progress coroutine ke
+     * local variable mein nahi balke yahan rakhte hain taake re-enable
+     * par wahin se resume kiya ja sake.
+     */
+    private float shrinkElapsed;
+    private bool bouncePhaseComplete;
+    private bool disappearInterrupted;
+
     public bool IsDisappearing => isDisappearing;
 
 
@@ -86,6 +96,48 @@ public sealed class LowerGroundDisappearEffect : MonoBehaviour
     }
 
 
+    /// <summary>
+    /// GameObject disable hote hi Unity is object ki tamam coroutines
+    /// maar deta hai, aur SetActive(true) unhein dobara start nahi karta.
+    /// Pause / level-complete popups blocks ko isi tarah hide karte hain,
+    /// is liye adhoora shrink yahan mark kar lete hain.
+    /// </summary>
+    private void OnDisable()
+    {
+        if (!isDisappearing ||
+            disappearRoutine == null)
+        {
+            return;
+        }
+
+        disappearRoutine = null;
+        disappearInterrupted = true;
+    }
+
+
+    /// <summary>
+    /// Popup ke dauran disable hone se adhoora reh jane wala shrink
+    /// sequence wahin se resume karta hai jahan wo ruka tha. Is ke baghair
+    /// ground par gira block hamesha ke liye khara reh jata hai aur kabhi
+    /// cleared count nahi hota.
+    /// </summary>
+    public void ResumeIfInterrupted()
+    {
+        if (!disappearInterrupted ||
+            !isDisappearing ||
+            disappearRoutine != null ||
+            !isActiveAndEnabled)
+        {
+            return;
+        }
+
+        disappearInterrupted = false;
+
+        disappearRoutine =
+            StartCoroutine(DisappearRoutine());
+    }
+
+
     public void ResetEffect()
     {
         if (disappearRoutine != null)
@@ -101,6 +153,9 @@ public sealed class LowerGroundDisappearEffect : MonoBehaviour
         }
 
         isDisappearing = false;
+        disappearInterrupted = false;
+        bouncePhaseComplete = false;
+        shrinkElapsed = 0f;
 
         if (body == null)
         {
@@ -185,6 +240,9 @@ public sealed class LowerGroundDisappearEffect : MonoBehaviour
         }
 
         isDisappearing = true;
+        disappearInterrupted = false;
+        bouncePhaseComplete = false;
+        shrinkElapsed = 0f;
         scaleBeforeDisappear = transform.localScale;
 
         if (fallbackRoutine != null)
@@ -224,19 +282,20 @@ public sealed class LowerGroundDisappearEffect : MonoBehaviour
 
     private IEnumerator DisappearRoutine()
     {
-        if (bounceVisibleDuration > 0f)
+        if (!bouncePhaseComplete &&
+            bounceVisibleDuration > 0f)
         {
             yield return new WaitForSeconds(
                 bounceVisibleDuration
             );
         }
 
-        float elapsed = 0f;
+        bouncePhaseComplete = true;
 
-        while (elapsed < shrinkDuration)
+        while (shrinkElapsed < shrinkDuration)
         {
             float frameTime = Time.deltaTime;
-            elapsed += frameTime;
+            shrinkElapsed += frameTime;
 
             /*
              * Rigidbody ko yahan freeze nahi karte. Ball/block apna
@@ -275,7 +334,7 @@ public sealed class LowerGroundDisappearEffect : MonoBehaviour
             }
 
             float progress = Mathf.Clamp01(
-                elapsed / shrinkDuration
+                shrinkElapsed / shrinkDuration
             );
 
             float remainingScale =

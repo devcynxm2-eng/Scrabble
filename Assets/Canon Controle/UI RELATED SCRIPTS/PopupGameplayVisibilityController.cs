@@ -539,9 +539,28 @@ public sealed class PopupGameplayVisibilityController : MonoBehaviour
             GameObject towerObject =
                 hiddenTowerObjects[i];
 
-            if (towerObject != null)
+            if (towerObject == null)
             {
-                towerObject.SetActive(true);
+                continue;
+            }
+
+            towerObject.SetActive(true);
+
+            /*
+             * HideTowerObjects() ke SetActive(false) ne is block ki
+             * shrink coroutine maar di thi, aur SetActive(true) usay
+             * khud restart nahi karta. Is liye adhoora sequence yahan
+             * manually resume karte hain, warna ground par gira hua
+             * block hamesha ke liye khara reh jata hai aur kabhi
+             * cleared count na hone ki wajah se level complete hi
+             * nahi ho pata.
+             */
+            LowerGroundDisappearEffect disappearEffect =
+                towerObject.GetComponent<LowerGroundDisappearEffect>();
+
+            if (disappearEffect != null)
+            {
+                disappearEffect.ResumeIfInterrupted();
             }
         }
 

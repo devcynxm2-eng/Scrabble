@@ -181,6 +181,116 @@ public sealed class LevelTablePlacement
     }
 }
 
+[Serializable]
+public sealed class LevelTrapPlacement
+{
+    /*
+     * Trap = level mein rakha gaya obstacle (stick, bar, blade) jo
+     * apni jagah par ghoom sakta hai aur/ya aage-peeche chal sakta hai.
+     *
+     * Ye tables se alag hai: trap par grid spawn nahi hota, ye sirf ball
+     * aur girte hue blocks ke raaste mein aata hai.
+     */
+
+    [Tooltip(
+        "Trap ka prefab — stick, bar, blade wagera. Behtar hai ke is par " +
+        "collider aur KINEMATIC Rigidbody ho, taake ye ball ko theek se " +
+        "dhakel sake."
+    )]
+    [SerializeField]
+    private GameObject prefab;
+
+    [Tooltip("Editor list mein pehchan ke liye. Khali ho to prefab ka naam.")]
+    [SerializeField]
+    private string displayName = string.Empty;
+
+    [Tooltip("Level origin ke relative position.")]
+    [SerializeField]
+    private Vector3 positionOffset = Vector3.zero;
+
+    [SerializeField]
+    private Vector3 rotationEuler = Vector3.zero;
+
+    [Tooltip("Prefab ki original scale ka multiplier.")]
+    [SerializeField]
+    private Vector3 scaleMultiplier = Vector3.one;
+
+
+    [Header("Rotation")]
+
+    [Tooltip("ON: trap apne axis par lagatar ghoomta rahega.")]
+    [SerializeField]
+    private bool enableRotation = false;
+
+    [Tooltip(
+        "Ghoomne ka axis. (0,0,1) = screen ke rukh par pinwheel ki " +
+        "tarah, (0,1,0) = upar se dekhne par."
+    )]
+    [SerializeField]
+    private Vector3 rotationAxis = Vector3.forward;
+
+    [Tooltip("Degrees per second. Manfi value ulti simt ghumati hai.")]
+    [SerializeField]
+    private float rotationSpeed = 90f;
+
+
+    [Header("Movement")]
+
+    [Tooltip(
+        "ON: trap apne axis par aage-peeche (ping-pong) chalega."
+    )]
+    [SerializeField]
+    private bool enableMovement = false;
+
+    [Tooltip(
+        "Chalne ka axis:\n" +
+        "(0,1,0) = upar/neeche\n" +
+        "(0,0,1) = aage/peeche\n" +
+        "(1,0,0) = left/right"
+    )]
+    [SerializeField]
+    private Vector3 movementAxis = Vector3.up;
+
+    [Tooltip("Markaz se kitna door tak jayega.")]
+    [SerializeField, Min(0f)]
+    private float movementDistance = 0.5f;
+
+    [Tooltip("Movement ki raftaar (cycles per second).")]
+    [SerializeField, Min(0f)]
+    private float movementSpeed = 0.3f;
+
+
+    public GameObject Prefab => prefab;
+
+    public string DisplayName =>
+        !string.IsNullOrEmpty(displayName)
+            ? displayName
+            : prefab != null
+                ? prefab.name
+                : "Trap";
+
+    public Vector3 PositionOffset => positionOffset;
+
+    public Vector3 RotationEuler => rotationEuler;
+
+    public Vector3 ScaleMultiplier => scaleMultiplier;
+
+    public bool RotationEnabled => enableRotation;
+
+    public Vector3 RotationAxis => rotationAxis;
+
+    public float RotationSpeed => rotationSpeed;
+
+    public bool MovementEnabled => enableMovement;
+
+    public Vector3 MovementAxis => movementAxis;
+
+    public float MovementDistance => movementDistance;
+
+    public float MovementSpeed => movementSpeed;
+}
+
+
 public sealed class GridLevelData : ScriptableObject
 {
     [Header("Level")]
@@ -211,6 +321,22 @@ public sealed class GridLevelData : ScriptableObject
     [SerializeField]
     private List<LevelTablePlacement> tablePlacements =
         new List<LevelTablePlacement>();
+
+
+    [Header("Traps")]
+
+    /*
+     * Optional. Khali list ka matlab hai "is level mein koi trap nahi",
+     * aur purane 100 levels deserialize hote waqt yahi khali list paate
+     * hain — is liye unka behaviour bilkul nahi badalta.
+     */
+    [Tooltip(
+        "Level ke moving / rotating obstacles. Khali chhorna bilkul " +
+        "theek hai."
+    )]
+    [SerializeField]
+    private List<LevelTrapPlacement> trapPlacements =
+        new List<LevelTrapPlacement>();
 
 
     [Header("Grid Blocks")]
@@ -322,6 +448,27 @@ public sealed class GridLevelData : ScriptableObject
 
     public Vector3 TableSizeMultiplier =>
         GetTableSizeMultiplier(0);
+
+
+    public IReadOnlyList<LevelTrapPlacement> TrapPlacements =>
+        trapPlacements;
+
+    public int TrapCount =>
+        trapPlacements != null
+            ? trapPlacements.Count
+            : 0;
+
+    public LevelTrapPlacement GetTrap(int index)
+    {
+        if (trapPlacements == null ||
+            index < 0 ||
+            index >= trapPlacements.Count)
+        {
+            return null;
+        }
+
+        return trapPlacements[index];
+    }
 
 
     public LevelTable GetTablePrefab(int index)

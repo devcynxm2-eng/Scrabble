@@ -339,9 +339,22 @@ public sealed class PauseUIController : MonoBehaviour
     {
         isPaused = false;
 
+        /*
+         * Yahan animated Hide use nahi karte.
+         *
+         * Pause panel ka Canvas Screen Space - Camera hai aur uska plane
+         * camera se 100 units door hai, jabke poora gameplay world sirf
+         * 2-7 units par baitha hai. Is liye jis lamhe dono ek sath screen
+         * par hon, tower UI ke ooper draw hota hai.
+         *
+         * Animated Hide panel ko 0.22s tak visible rakhta hai jabke neeche
+         * ShowGameplay() tower ko foran wapas le aata hai — usi window mein
+         * UI tower ke peechay chali jati hai. HideImmediate se overlap
+         * bilkul khatam ho jata hai.
+         */
         if (pausePanel != null)
         {
-            UITransition.Hide(pausePanel);
+            UITransition.HideImmediate(pausePanel);
         }
 
         popupGameplayVisibility?.ShowGameplay();

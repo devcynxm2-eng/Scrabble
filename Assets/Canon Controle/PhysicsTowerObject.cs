@@ -107,6 +107,8 @@
 
 
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
@@ -224,6 +226,27 @@ public sealed class PhysicsTowerObject : MonoBehaviour
     private bool isCleared;
 
     private bool breakableForSpawn;
+
+    /*
+     * Special "chain reaction" block ka runtime state. Ye values spawn
+     * ke waqt ConfigureChainReaction() palette definition se bharta hai.
+     * Aam blocks par chainReactionEnabled false rehta hai.
+     */
+    private bool chainReactionEnabled;
+    private float chainReactionRadius;
+    private int chainReactionMaxBlocks = 1;
+    private float chainReactionImpulse;
+    private float chainReactionUpwardBias;
+    private GameObject chainReactionVfxPrefab;
+    private float chainReactionVfxLifetime = 2f;
+    private bool chainReactionPropagates;
+    private float chainReactionPropagationDelay;
+
+    /* Block detonate hone ka intezaar kar raha hai (chain aa rahi hai). */
+    private bool chainReactionScheduled;
+
+    /* Har block sirf ek baar phat sakta hai — is se blast loop nahi banta. */
+    private bool chainReactionTriggered;
 
     private int remainingBreakHits = 1;
 
@@ -350,6 +373,299 @@ public sealed class PhysicsTowerObject : MonoBehaviour
     {
         breakableForSpawn = isBreakable;
         remainingBreakHits = Mathf.Max(1, hitsToBreak);
+    }
+
+
+    /// <summary>
+    /// Spawn ke waqt palette definition se special-block settings copy
+    /// karta hai. Definition null ho ya chain reaction OFF ho to ye block
+    /// bilkul aam block ki tarah behave karta hai — is liye purane levels
+    /// par koi asar nahi parta.
+    /// </summary>
+    public void ConfigureChainReaction(
+        PhysicsObjectDefinition definition)
+    {
+        chainReactionTriggered = false;
+
+        if (definition == null ||
+            !definition.ChainReactionEnabled)
+        {
+            chainReactionEnabled = false;
+            return;
+        }
+
+        chainReactionEnabled = true;
+        chainReactionRadius = definition.ChainReactionRadius;
+        chainReactionMaxBlocks = definition.ChainReactionMaxBlocks;
+        chainReactionImpulse = definition.ChainReactionImpulse;
+        chainReactionUpwardBias = definition.ChainReactionUpwardBias;
+        chainReactionVfxPrefab = definition.ChainReactionVfxPrefab;
+        chainReactionVfxLifetime = definition.ChainReactionVfxLifetime;
+        chainReactionPropagates = definition.ChainReactionPropagates;
+        chainReactionPropagationDelay =
+            definition.ChainReactionPropagationDelay;
+        chainReactionScheduled = false;
+    }
+
+
+    /// <summary>
+    /// Special block ka blast. Radius ke andar maujood blocks ko distance
+    /// ke hisaab se sort kar ke sirf sab se qareeb wale
+    /// chainReactionMaxBlocks ko urata hai — isi cap ki wajah se poora
+    /// tower nahi girta.
+    /// </summary>
+    public void TriggerChainReaction(
+        Vector3 hitPoint)
+    {
+        if (!chainReactionEnabled ||
+            chainReactionTriggered ||
+            isCleared)
+        {
+            return;
+        }
+
+        chainReactionTriggered = true;
+        chainReactionScheduled = false;
+
+        Vector3 blastCenter =
+            body != null
+                ? body.worldCenterOfMass
+                : transform.position;
+
+        SpawnChainReactionVfx(blastCenter);
+
+        List<PhysicsTowerObject> neighbours =
+            CollectChainReactionNeighbours(blastCenter);
+
+        for (int i = 0; i < neighbours.Count; i++)
+        {
+            PhysicsTowerObject neighbour = neighbours[i];
+
+            if (neighbour == null ||
+                neighbour.IsCleared)
+            {
+                continue;
+            }
+
+            Vector3 neighbourCenter =
+                neighbour.Body != null
+                    ? neighbour.Body.worldCenterOfMass
+                    : neighbour.transform.position;
+
+            Vector3 offset =
+                neighbourCenter - blastCenter;
+
+            float distance = offset.magnitude;
+
+            Vector3 direction =
+                distance > 0.001f
+                    ? offset / distance
+                    : Vector3.up;
+
+            /*
+             * Blast ko halka upar ki taraf jhukate hain, warna blocks
+             * sirf side mein khisakte hain aur explosion feel nahi hota.
+             */
+            direction =
+                (direction +
+                 Vector3.up * chainReactionUpwardBias).normalized;
+
+            /* Qareeb wale blocks ko zyada zor milta hai. */
+            float falloff =
+                chainReactionRadius > 0.001f
+                    ? 1f - Mathf.Clamp01(distance / chainReactionRadius)
+                    : 1f;
+
+            float force =
+                chainReactionImpulse *
+                Mathf.Lerp(0.45f, 1f, falloff);
+
+            Vector3 torqueImpulse =
+                UnityEngine.Random.insideUnitSphere *
+                (force * 0.08f);
+
+            /*
+             * Agar parosi KHUD bhi special block hai aur propagation ON
+             * hai, to usay abhi torte nahi — usay thori der baad khud
+             * phatne ke liye schedule karte hain.
+             *
+             * Yehi is feature ki jaan hai: chain NAZAR aani chahiye,
+             * block-dar-block safar karti hui. Pehle ye seedha recursive
+             * call tha, jis se poori chain EK hi frame mein chal jati thi
+             * aur chain reaction ke bajaye ek bara dhamaka lagta tha.
+             */
+            if (chainReactionPropagates &&
+                neighbour.CanChainDetonate)
+            {
+                neighbour.ScheduleChainDetonation(
+                    chainReactionPropagationDelay,
+                    blastCenter
+                );
+
+                continue;
+            }
+
+            /*
+             * Aam parosi: countsAsDirectHit = true, taake breakable
+             * blocks blast se waqai tootein, sirf dhakka na khayein.
+             */
+            neighbour.ApplyExternalImpact(
+                direction * force,
+                torqueImpulse,
+                true,
+                blastCenter
+            );
+        }
+
+        /*
+         * Special block khud bhi phat kar khatam ho jata hai.
+         */
+        MarkCleared();
+    }
+
+
+    /// <summary>
+    /// Ye block khud phat sakta hai ya nahi — yani special hai, abhi tak
+    /// phata nahi, aur pehle se qatar mein bhi nahi.
+    /// </summary>
+    public bool CanChainDetonate =>
+        chainReactionEnabled &&
+        !chainReactionTriggered &&
+        !chainReactionScheduled &&
+        !isCleared;
+
+
+    /// <summary>
+    /// Is block ko thori der baad phatne ke liye schedule karta hai,
+    /// taake chain visibly safar kare.
+    /// </summary>
+    public void ScheduleChainDetonation(
+        float delay,
+        Vector3 sourcePoint)
+    {
+        if (!CanChainDetonate)
+        {
+            return;
+        }
+
+        /*
+         * Delay 0 ho, ya block inactive ho (coroutine chal hi nahi
+         * sakti), to foran phaad dete hain — behaviour purane recursive
+         * version jaisa, magar sirf usi soorat mein.
+         */
+        if (delay <= 0f ||
+            !isActiveAndEnabled)
+        {
+            TriggerChainReaction(sourcePoint);
+            return;
+        }
+
+        chainReactionScheduled = true;
+
+        StartCoroutine(
+            ChainDetonationRoutine(delay, sourcePoint)
+        );
+    }
+
+
+    private IEnumerator ChainDetonationRoutine(
+        float delay,
+        Vector3 sourcePoint)
+    {
+        yield return new WaitForSeconds(delay);
+
+        chainReactionScheduled = false;
+
+        TriggerChainReaction(sourcePoint);
+    }
+
+
+    private List<PhysicsTowerObject> CollectChainReactionNeighbours(
+        Vector3 blastCenter)
+    {
+        List<PhysicsTowerObject> found =
+            new List<PhysicsTowerObject>();
+
+        Collider[] overlaps = Physics.OverlapSphere(
+            blastCenter,
+            chainReactionRadius,
+            ~0,
+            QueryTriggerInteraction.Ignore
+        );
+
+        for (int i = 0; i < overlaps.Length; i++)
+        {
+            Collider overlap = overlaps[i];
+
+            if (overlap == null)
+            {
+                continue;
+            }
+
+            PhysicsTowerObject tower =
+                overlap.GetComponentInParent<
+                    PhysicsTowerObject>();
+
+            if (tower == null ||
+                tower == this ||
+                tower.IsCleared ||
+                found.Contains(tower))
+            {
+                continue;
+            }
+
+            found.Add(tower);
+        }
+
+        /*
+         * Sab se qareeb blocks pehle — cap lagne par wahi bachte hain
+         * jo blast ke sab se nazdeek thay.
+         */
+        found.Sort(
+            (first, second) =>
+            {
+                float firstDistance =
+                    (first.transform.position -
+                     blastCenter).sqrMagnitude;
+
+                float secondDistance =
+                    (second.transform.position -
+                     blastCenter).sqrMagnitude;
+
+                return firstDistance.CompareTo(secondDistance);
+            }
+        );
+
+        if (found.Count > chainReactionMaxBlocks)
+        {
+            found.RemoveRange(
+                chainReactionMaxBlocks,
+                found.Count - chainReactionMaxBlocks
+            );
+        }
+
+        return found;
+    }
+
+
+    private void SpawnChainReactionVfx(
+        Vector3 blastCenter)
+    {
+        if (chainReactionVfxPrefab == null)
+        {
+            return;
+        }
+
+        GameObject vfx = Instantiate(
+            chainReactionVfxPrefab,
+            blastCenter,
+            Quaternion.identity
+        );
+
+        Destroy(
+            vfx,
+            Mathf.Max(0.1f, chainReactionVfxLifetime)
+        );
     }
 
 
@@ -516,8 +832,20 @@ public sealed class PhysicsTowerObject : MonoBehaviour
 
         breakableForSpawn = false;
         remainingBreakHits = 1;
+        chainReactionEnabled = false;
+        chainReactionTriggered = false;
+        chainReactionScheduled = false;
 
-        if (body == null)
+        /*
+         * lowerGroundDisappearEffect ko bhi check karte hain, sirf body ko
+         * nahi. body ek [SerializeField] hai — prefab par pehle se assigned
+         * hota hai — jabke effect Awake ki ResolveReferences() se milta hai.
+         * Agar koi caller Awake chale baghair spawn kare (jaise editor-time
+         * level preview), to purani condition ResolveReferences() ko skip
+         * kar deti thi aur agli line null reference throw karti thi.
+         */
+        if (body == null ||
+            lowerGroundDisappearEffect == null)
         {
             ResolveReferences();
         }
@@ -827,11 +1155,25 @@ public sealed class PhysicsTowerObject : MonoBehaviour
                     maximumImpactImpulse
                 );
 
+            Vector3 cannonBallHitPoint =
+                collision.contactCount > 0
+                    ? collision.GetContact(0).point
+                    : transform.position;
+
+            /*
+             * Special block: direct hit par pehle blast. Aam blocks ke
+             * liye ye branch skip ho jati hai.
+             */
+            if (chainReactionEnabled &&
+                !chainReactionTriggered)
+            {
+                TriggerChainReaction(cannonBallHitPoint);
+                return;
+            }
+
             if (TryHandleBreakableHit(
                     impulse,
-                    collision.contactCount > 0
-                        ? collision.GetContact(0).point
-                        : transform.position))
+                    cannonBallHitPoint))
             {
                 return;
             }

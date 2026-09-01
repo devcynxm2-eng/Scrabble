@@ -33,6 +33,76 @@ public sealed class PhysicsObjectDefinition : ScriptableObject
     [SerializeField, Min(0)]
     private int minimumPrewarmCount = 16;
 
+    [Header("Chain Reaction")]
+
+    /*
+     * Special "chain reaction" block.
+     *
+     * Ye poori settings SIRF un definitions par ON hoti hain jo special
+     * block ke liye banayi gayi hon. Purani definitions mein ye fields
+     * default (OFF) rehti hain, is liye maujooda levels ka behaviour
+     * bilkul nahi badalta.
+     */
+    [Tooltip(
+        "ON: is block par cannonball lagte hi aas paas ke blocks par " +
+        "blast hoga. Poora tower nahi girta — sirf radius ke andar ke " +
+        "chand blocks urte hain."
+    )]
+    [SerializeField]
+    private bool chainReactionEnabled = false;
+
+    [Tooltip("Blast ka radius world units mein.")]
+    [SerializeField, Min(0f)]
+    private float chainReactionRadius = 1.2f;
+
+    [Tooltip(
+        "Ek blast mein zyada se zyada kitne blocks affect honge. " +
+        "Yehi cap poore tower ko girne se rokta hai — qareeb tareen " +
+        "blocks ko tarjeeh milti hai."
+    )]
+    [SerializeField, Min(1)]
+    private int chainReactionMaxBlocks = 6;
+
+    [Tooltip("Har affected block ko milne wala impulse.")]
+    [SerializeField, Min(0f)]
+    private float chainReactionImpulse = 6f;
+
+    [Tooltip(
+        "Blast ko thora upar ki taraf dhakelta hai taake blocks " +
+        "sirf side mein khisakne ke bajaye uchhal kar giren."
+    )]
+    [SerializeField, Range(0f, 1f)]
+    private float chainReactionUpwardBias = 0.35f;
+
+    [Tooltip(
+        "Electric / explosion particle prefab. Blast ki jagah par " +
+        "spawn hoga. Khali chhorna bhi theek hai."
+    )]
+    [SerializeField]
+    private GameObject chainReactionVfxPrefab;
+
+    [Tooltip("VFX kitne seconds baad khud destroy ho jayega.")]
+    [SerializeField, Min(0.1f)]
+    private float chainReactionVfxLifetime = 2f;
+
+    [Tooltip(
+        "ON: agar blast ki zad mein koi doosra special block aaye to " +
+        "wo bhi phatega. Is se multi-stage chain banti hai. Har block " +
+        "sirf ek baar phat sakta hai, is liye infinite loop nahi banta."
+    )]
+    [SerializeField]
+    private bool chainReactionPropagates = true;
+
+    [Tooltip(
+        "Agla special block kitni der baad phatega. YEHI wo cheez hai jo " +
+        "isay 'chain reaction' banati hai — 0 rakhne par poori chain ek " +
+        "hi frame mein chal jati hai aur ek bara dhamaka lagta hai.\n\n" +
+        "0.10 - 0.20 ke darmiyan achha lagta hai."
+    )]
+    [SerializeField, Min(0f)]
+    private float chainReactionPropagationDelay = 0.12f;
+
+
     [Header("Grid Fit")]
 
     [Tooltip(
@@ -65,6 +135,33 @@ public sealed class PhysicsObjectDefinition : ScriptableObject
 
     public bool TintWithPaintColor =>
         tintWithPaintColor;
+
+    public bool ChainReactionEnabled =>
+        chainReactionEnabled;
+
+    public float ChainReactionRadius =>
+        chainReactionRadius;
+
+    public int ChainReactionMaxBlocks =>
+        chainReactionMaxBlocks;
+
+    public float ChainReactionImpulse =>
+        chainReactionImpulse;
+
+    public float ChainReactionUpwardBias =>
+        chainReactionUpwardBias;
+
+    public GameObject ChainReactionVfxPrefab =>
+        chainReactionVfxPrefab;
+
+    public float ChainReactionVfxLifetime =>
+        chainReactionVfxLifetime;
+
+    public bool ChainReactionPropagates =>
+        chainReactionPropagates;
+
+    public float ChainReactionPropagationDelay =>
+        chainReactionPropagationDelay;
 
     public bool AutoFitToCell =>
         autoFitToCell;

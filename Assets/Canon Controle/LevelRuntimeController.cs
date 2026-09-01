@@ -20686,6 +20686,19 @@ public sealed class LevelRuntimeController : MonoBehaviour
     private readonly List<LevelTable> cachedTables =
         new List<LevelTable>();
 
+    /*
+     * Traps = level ke moving / rotating obstacles. Purane levels mein
+     * trap list khali hoti hai, is liye ye collections khali rehte hain
+     * aur unke behaviour par koi asar nahi parta.
+     */
+    private readonly List<GameObject> cachedTraps =
+        new List<GameObject>();
+
+    private readonly List<Vector3> cachedTrapBasePositions =
+        new List<Vector3>();
+
+    private float runtimeTrapAnimationTime;
+
     private readonly List<LevelTable> cachedTablePrefabs =
         new List<LevelTable>();
 
@@ -20978,6 +20991,8 @@ public sealed class LevelRuntimeController : MonoBehaviour
             levelData
         );
 
+
+        PrepareTraps();
 
         if (!PrepareTable())
         {
@@ -21863,6 +21878,14 @@ public sealed class LevelRuntimeController : MonoBehaviour
                     );
 
                     /*
+                     * Special block ki chain-reaction settings palette
+                     * definition se aati hain. Aam definitions par ye
+                     * OFF hoti hain, is liye purane levels ka behaviour
+                     * bilkul nahi badalta.
+                     */
+                    instance.ConfigureChainReaction(definition);
+
+                    /*
                      * Bare footprint ke SAARE cells is instance ko
                      * point karte hain — is se agar upar kuch spawn ho
                      * to woh footprint ke kisi bhi column par "supported"
@@ -21942,6 +21965,7 @@ public sealed class LevelRuntimeController : MonoBehaviour
         }
 
         AnimateEnabledTables();
+        AnimateTraps();
 
         if (activeObjects.Count == 0)
         {
@@ -22336,6 +22360,13 @@ public sealed class LevelRuntimeController : MonoBehaviour
                     levelData.GetTableSizeMultiplier(index)
                 );
 
+            /*
+             * Tables reuse hote hain. Agar is prefab ka top alag rotating
+             * root hai to uska jama shuda spin yahan saaf karte hain,
+             * warna pichhle level ka angle agle level mein carry ho jata.
+             */
+            table.ResetRotatingRoot();
+
             table.gameObject.SetActive(true);
 
             if (table.TowerSurfaceCollider == null)
@@ -22353,6 +22384,206 @@ public sealed class LevelRuntimeController : MonoBehaviour
         currentTable = cachedTables[0];
 
         return true;
+    }
+
+
+    /// <summary>
+    /// Level ke traps (moving / rotating obstacles) spawn karta hai.
+    ///
+    /// Traps tables se alag hain: in par grid spawn nahi hota, ye sirf
+    /// ball aur girte hue blocks ke raaste mein aate hain. Jis level mein
+    /// koi trap authored nahi (yani saare purane levels), wahan ye method
+    /// sirf purane traps saaf kar ke wapas chala jata hai.
+    /// </summary>
+    private void PrepareTraps()
+    {
+        DestroyTraps();
+
+        if (levelData == null ||
+            levelData.TrapCount <= 0)
+        {
+            return;
+        }
+
+        Transform levelRoot =
+            GetLevelOrigin();
+
+        for (int index = 0;
+             index < levelData.TrapCount;
+             index++)
+        {
+            LevelTrapPlacement placement =
+                levelData.GetTrap(index);
+
+            if (placement == null ||
+                placement.Prefab == null)
+            {
+                continue;
+            }
+
+            GameObject trap = Instantiate(
+                placement.Prefab,
+                levelRoot
+            );
+
+            trap.name =
+                "Trap " + index + " - " + placement.DisplayName;
+
+            trap.transform.localPosition =
+                placement.PositionOffset;
+
+            trap.transform.localRotation =
+                Quaternion.Euler(placement.RotationEuler);
+
+            Vector3 authoredScale =
+                placement.Prefab.transform.localScale;
+
+            Vector3 multiplier =
+                placement.ScaleMultiplier;
+
+            trap.transform.localScale =
+                new Vector3(
+                    authoredScale.x * multiplier.x,
+                    authoredScale.y * multiplier.y,
+                    authoredScale.z * multiplier.z
+                );
+
+            cachedTraps.Add(trap);
+            cachedTrapBasePositions.Add(placement.PositionOffset);
+        }
+
+        runtimeTrapAnimationTime = 0f;
+    }
+
+
+    /// <summary>
+    /// Traps ko har FixedUpdate par ghumata aur ping-pong move karta hai.
+    /// Kinematic Rigidbody maujood ho to MovePosition/MoveRotation use
+    /// karte hain, warna physics ko trap ki velocity nazar nahi aati.
+    /// </summary>
+    private void AnimateTraps()
+    {
+        if (levelData == null ||
+            cachedTraps.Count == 0)
+        {
+            return;
+        }
+
+        runtimeTrapAnimationTime +=
+            Time.fixedDeltaTime;
+
+        for (int index = 0;
+             index < cachedTraps.Count;
+             index++)
+        {
+            GameObject trap = cachedTraps[index];
+
+            LevelTrapPlacement placement =
+                levelData.GetTrap(index);
+
+            if (trap == null ||
+                placement == null)
+            {
+                continue;
+            }
+
+            bool canMove =
+                placement.MovementEnabled &&
+                placement.MovementAxis.sqrMagnitude >= 0.0001f &&
+                placement.MovementDistance > 0f &&
+                placement.MovementSpeed > 0f;
+
+            bool canRotate =
+                placement.RotationEnabled &&
+                placement.RotationAxis.sqrMagnitude >= 0.0001f &&
+                !Mathf.Approximately(placement.RotationSpeed, 0f);
+
+            if (!canMove && !canRotate)
+            {
+                continue;
+            }
+
+            Transform trapTransform = trap.transform;
+
+            if (canMove)
+            {
+                float movementPhase =
+                    runtimeTrapAnimationTime *
+                    placement.MovementSpeed *
+                    Mathf.PI * 2f;
+
+                trapTransform.localPosition =
+                    cachedTrapBasePositions[index] +
+                    placement.MovementAxis.normalized *
+                    Mathf.Sin(movementPhase) *
+                    placement.MovementDistance;
+            }
+
+            if (canRotate)
+            {
+                trapTransform.localRotation =
+                    trapTransform.localRotation *
+                    Quaternion.AngleAxis(
+                        placement.RotationSpeed * Time.fixedDeltaTime,
+                        placement.RotationAxis.normalized
+                    );
+            }
+
+            Rigidbody trapBody =
+                trap.GetComponent<Rigidbody>();
+
+            if (trapBody != null &&
+                trapBody.isKinematic)
+            {
+                trapBody.MovePosition(trapTransform.position);
+                trapBody.MoveRotation(trapTransform.rotation);
+            }
+        }
+    }
+
+
+    private void DestroyTraps()
+    {
+        for (int index = 0;
+             index < cachedTraps.Count;
+             index++)
+        {
+            GameObject trap = cachedTraps[index];
+
+            if (trap == null)
+            {
+                continue;
+            }
+
+            if (Application.isPlaying)
+            {
+                Destroy(trap);
+            }
+            else
+            {
+                DestroyImmediate(trap);
+            }
+        }
+
+        cachedTraps.Clear();
+        cachedTrapBasePositions.Clear();
+        runtimeTrapAnimationTime = 0f;
+    }
+
+
+    private void SetTrapsVisible(bool visible)
+    {
+        for (int index = 0;
+             index < cachedTraps.Count;
+             index++)
+        {
+            GameObject trap = cachedTraps[index];
+
+            if (trap != null)
+            {
+                trap.SetActive(visible);
+            }
+        }
     }
 
 
@@ -22447,8 +22678,25 @@ public sealed class LevelRuntimeController : MonoBehaviour
             }
 
             Transform tableTransform = table.transform;
-            Vector3 oldWorldPosition = tableTransform.position;
-            Quaternion oldWorldRotation = tableTransform.rotation;
+
+            /*
+             * Movement poore table par lagti hai (stick bhi sath chalti
+             * hai), magar ROTATION sirf rotation pivot par.
+             *
+             * Prefab mein Rotating Root assign ho to pivot wohi top hissa
+             * hai — neeche wali stick khari rehti hai aur sirf top apne
+             * tower ke sath ghoomta hai. Assign na ho (yani saare purane
+             * prefabs) to pivot poora table hai, aur behaviour bilkul
+             * pehle jaisa rehta hai.
+             *
+             * Blocks ka delta bhi pivot se hi nikalta hai, kyunke pivot
+             * table ka child hai — is liye parent ki movement aur apni
+             * rotation, dono uske world transform mein aa jati hain.
+             */
+            Transform pivotTransform = table.RotationPivot;
+
+            Vector3 oldWorldPosition = pivotTransform.position;
+            Quaternion oldWorldRotation = pivotTransform.rotation;
 
             if (canMove)
             {
@@ -22466,20 +22714,20 @@ public sealed class LevelRuntimeController : MonoBehaviour
 
             if (canRotate)
             {
-                tableTransform.localRotation =
-                    tableTransform.localRotation *
+                pivotTransform.localRotation =
+                    pivotTransform.localRotation *
                     Quaternion.AngleAxis(
                         rotationSpeed * Time.fixedDeltaTime,
                         rotationAxis.normalized
                     );
             }
 
-            Vector3 newWorldPosition = tableTransform.position;
+            Vector3 newWorldPosition = pivotTransform.position;
             Vector3 tableVelocity =
                 (newWorldPosition - oldWorldPosition) /
                 Mathf.Max(0.0001f, Time.fixedDeltaTime);
             Quaternion worldRotationDelta =
-                tableTransform.rotation *
+                pivotTransform.rotation *
                 Quaternion.Inverse(oldWorldRotation);
 
             for (int objectIndex = 0;
@@ -23635,6 +23883,8 @@ public sealed class LevelRuntimeController : MonoBehaviour
         }
 
         cachedTables.Clear();
+
+        DestroyTraps();
         cachedTablePrefabs.Clear();
         currentTable = null;
     }
