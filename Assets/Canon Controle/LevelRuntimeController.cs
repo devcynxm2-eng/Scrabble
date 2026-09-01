@@ -21877,6 +21877,8 @@ public sealed class LevelRuntimeController : MonoBehaviour
                         cell.HitsToBreak
                     );
 
+                    instance.ConfigureBreakEffects(definition);
+
                     /*
                      * Special block ki chain-reaction settings palette
                      * definition se aati hain. Aam definitions par ye
@@ -22487,11 +22489,21 @@ public sealed class LevelRuntimeController : MonoBehaviour
                 continue;
             }
 
-            bool canMove =
+            bool canPingPongMove =
                 placement.MovementEnabled &&
+                placement.MovementMode == TrapMovementMode.PingPong &&
                 placement.MovementAxis.sqrMagnitude >= 0.0001f &&
                 placement.MovementDistance > 0f &&
                 placement.MovementSpeed > 0f;
+
+            bool canStepPathMove =
+                placement.MovementEnabled &&
+                placement.MovementMode == TrapMovementMode.StepPath &&
+                HasUsableTrapMovementPath(placement) &&
+                placement.MovementSpeed > 0f;
+
+            bool canMove =
+                canPingPongMove || canStepPathMove;
 
             bool canRotate =
                 placement.RotationEnabled &&
@@ -22507,16 +22519,32 @@ public sealed class LevelRuntimeController : MonoBehaviour
 
             if (canMove)
             {
-                float movementPhase =
-                    runtimeTrapAnimationTime *
-                    placement.MovementSpeed *
-                    Mathf.PI * 2f;
+                if (canStepPathMove)
+                {
+                    float travelledDistance =
+                        runtimeTrapAnimationTime *
+                        placement.MovementSpeed;
 
-                trapTransform.localPosition =
-                    cachedTrapBasePositions[index] +
-                    placement.MovementAxis.normalized *
-                    Mathf.Sin(movementPhase) *
-                    placement.MovementDistance;
+                    trapTransform.localPosition =
+                        cachedTrapBasePositions[index] +
+                        EvaluateTrapMovementPath(
+                            placement,
+                            travelledDistance
+                        );
+                }
+                else
+                {
+                    float movementPhase =
+                        runtimeTrapAnimationTime *
+                        placement.MovementSpeed *
+                        Mathf.PI * 2f;
+
+                    trapTransform.localPosition =
+                        cachedTrapBasePositions[index] +
+                        placement.MovementAxis.normalized *
+                        Mathf.Sin(movementPhase) *
+                        placement.MovementDistance;
+                }
             }
 
             if (canRotate)
@@ -22539,6 +22567,93 @@ public sealed class LevelRuntimeController : MonoBehaviour
                 trapBody.MoveRotation(trapTransform.rotation);
             }
         }
+    }
+
+
+    private static bool HasUsableTrapMovementPath(
+        LevelTrapPlacement placement)
+    {
+        IReadOnlyList<Vector3> steps =
+            placement.MovementSteps;
+
+        if (steps == null)
+        {
+            return false;
+        }
+
+        for (int index = 0; index < steps.Count; index++)
+        {
+            if (steps[index].sqrMagnitude >= 0.0001f)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+
+    private static Vector3 EvaluateTrapMovementPath(
+        LevelTrapPlacement placement,
+        float travelledDistance)
+    {
+        IReadOnlyList<Vector3> steps =
+            placement.MovementSteps;
+
+        Vector3 finalOffset = Vector3.zero;
+        float pathLength = 0f;
+
+        for (int index = 0; index < steps.Count; index++)
+        {
+            Vector3 step = steps[index];
+            pathLength += step.magnitude;
+            finalOffset += step;
+        }
+
+        // An open route gets a final smooth segment back to its start.
+        float closingLength = finalOffset.magnitude;
+        pathLength += closingLength;
+
+        if (pathLength <= 0.0001f)
+        {
+            return Vector3.zero;
+        }
+
+        float remainingDistance =
+            Mathf.Repeat(travelledDistance, pathLength);
+
+        Vector3 currentOffset = Vector3.zero;
+
+        for (int index = 0; index < steps.Count; index++)
+        {
+            Vector3 step = steps[index];
+            float stepLength = step.magnitude;
+
+            if (stepLength <= 0.0001f)
+            {
+                continue;
+            }
+
+            if (remainingDistance <= stepLength)
+            {
+                return currentOffset +
+                       step * (remainingDistance / stepLength);
+            }
+
+            remainingDistance -= stepLength;
+            currentOffset += step;
+        }
+
+        if (closingLength > 0.0001f)
+        {
+            Vector3 closingStep = -finalOffset;
+
+            return currentOffset +
+                   closingStep *
+                   Mathf.Clamp01(remainingDistance / closingLength);
+        }
+
+        return Vector3.zero;
     }
 
 
@@ -22571,7 +22686,7 @@ public sealed class LevelRuntimeController : MonoBehaviour
     }
 
 
-    private void SetTrapsVisible(bool visible)
+    public void SetTrapsVisible(bool visible)
     {
         for (int index = 0;
              index < cachedTraps.Count;
@@ -23777,6 +23892,8 @@ public sealed class LevelRuntimeController : MonoBehaviour
             cannonController.SetGameplayActive(visible);
         }
 
+        SetTrapsVisible(visible);
+
         if (gameplayRestartButton == null)
         {
             GameRestartController restartController =
@@ -24083,6 +24200,7 @@ public sealed class LevelRuntimeController : MonoBehaviour
     {
         SetTablesVisible(visible);
         SetSpawnedBlocksVisible(visible);
+        SetTrapsVisible(visible);
     }
 
 

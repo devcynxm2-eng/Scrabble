@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 
 [CreateAssetMenu(
     fileName = "PhysicsObjectDefinition",
@@ -32,6 +33,86 @@ public sealed class PhysicsObjectDefinition : ScriptableObject
     )]
     [SerializeField, Min(0)]
     private int minimumPrewarmCount = 16;
+
+    [Header("Break Behaviour")]
+
+    [Tooltip(
+        "Optional prefab containing the already-broken pieces. Each piece " +
+        "should have its own Rigidbody and Collider. Empty uses the block " +
+        "prefab's break visual or generated fallback shards."
+    )]
+    [SerializeField]
+    private GameObject brokenPiecesPrefab;
+
+    [Tooltip(
+        "Optional individual piece prefabs. Assign Piece 1, Piece 2, etc. " +
+        "The runtime combines them automatically and adds missing Rigidbody " +
+        "or Collider components. This list takes priority over the combined " +
+        "Broken Pieces Prefab above."
+    )]
+    [SerializeField]
+    private GameObject[] brokenPiecePrefabs;
+
+    [Tooltip(
+        "ON: this object breaks when it receives a direct cannon-ball hit. " +
+        "Useful for glass/ice boxes."
+    )]
+    [SerializeField]
+    private bool breakOnCannonBallHit;
+
+    [Tooltip(
+        "ON: after this object has fallen from the tower, it breaks when " +
+        "it reaches the lower ground."
+    )]
+    [SerializeField]
+    private bool breakOnGroundImpact;
+
+    [Tooltip(
+        "Minimum collision speed required before a lower-ground impact " +
+        "can break the object."
+    )]
+    [SerializeField, Min(0f)]
+    private float minimumGroundBreakSpeed = 0.6f;
+
+    [Tooltip("Outward force applied to the broken pieces.")]
+    [SerializeField, Min(0f)]
+    private float brokenPiecesImpulse = 1.4f;
+
+    [Tooltip("Broken pieces are removed after this many seconds.")]
+    [SerializeField, Min(0.1f)]
+    private float brokenPiecesLifetime = 2.5f;
+
+    [Tooltip(
+        "Extra scale correction for the broken prefab. Leave at (1,1,1) " +
+        "when its root matches the intact object."
+    )]
+    [SerializeField]
+    private Vector3 brokenPiecesScaleMultiplier = Vector3.one;
+
+    [Header("Glass Shatter Style")]
+
+    [Tooltip(
+        "ON creates several small randomized copies from the supplied piece " +
+        "prefabs, producing a sharp glass-like shatter instead of a few large chunks."
+    )]
+    [SerializeField]
+    private bool useGlassShatterStyle;
+
+    [Tooltip("How many small shards to create from every supplied piece prefab.")]
+    [SerializeField, Range(1, 5)]
+    private int glassCopiesPerPiece = 3;
+
+    [Tooltip("Random size range used for glass shards.")]
+    [SerializeField]
+    private Vector2 glassPieceScaleRange = new Vector2(0.22f, 0.38f);
+
+    [Tooltip("Small starting spread around the exact break position.")]
+    [SerializeField, Min(0f)]
+    private float glassSpawnSpread = 0.16f;
+
+    [Tooltip("Extra upward kick added to the glass burst.")]
+    [SerializeField, Min(0f)]
+    private float glassUpwardImpulse = 0.35f;
 
     [Header("Chain Reaction")]
 
@@ -78,8 +159,9 @@ public sealed class PhysicsObjectDefinition : ScriptableObject
         "Electric / explosion particle prefab. Blast ki jagah par " +
         "spawn hoga. Khali chhorna bhi theek hai."
     )]
+    [FormerlySerializedAs("chainReactionVfxPrefab")]
     [SerializeField]
-    private GameObject chainReactionVfxPrefab;
+    private ParticleSystem chainReactionParticlePrefab;
 
     [Tooltip("VFX kitne seconds baad khud destroy ho jayega.")]
     [SerializeField, Min(0.1f)]
@@ -136,6 +218,45 @@ public sealed class PhysicsObjectDefinition : ScriptableObject
     public bool TintWithPaintColor =>
         tintWithPaintColor;
 
+    public GameObject BrokenPiecesPrefab =>
+        brokenPiecesPrefab;
+
+    public GameObject[] BrokenPiecePrefabs =>
+        brokenPiecePrefabs;
+
+    public bool BreakOnCannonBallHit =>
+        breakOnCannonBallHit;
+
+    public bool BreakOnGroundImpact =>
+        breakOnGroundImpact;
+
+    public float MinimumGroundBreakSpeed =>
+        minimumGroundBreakSpeed;
+
+    public float BrokenPiecesImpulse =>
+        brokenPiecesImpulse;
+
+    public float BrokenPiecesLifetime =>
+        brokenPiecesLifetime;
+
+    public Vector3 BrokenPiecesScaleMultiplier =>
+        brokenPiecesScaleMultiplier;
+
+    public bool UseGlassShatterStyle =>
+        useGlassShatterStyle;
+
+    public int GlassCopiesPerPiece =>
+        glassCopiesPerPiece;
+
+    public Vector2 GlassPieceScaleRange =>
+        glassPieceScaleRange;
+
+    public float GlassSpawnSpread =>
+        glassSpawnSpread;
+
+    public float GlassUpwardImpulse =>
+        glassUpwardImpulse;
+
     public bool ChainReactionEnabled =>
         chainReactionEnabled;
 
@@ -151,8 +272,8 @@ public sealed class PhysicsObjectDefinition : ScriptableObject
     public float ChainReactionUpwardBias =>
         chainReactionUpwardBias;
 
-    public GameObject ChainReactionVfxPrefab =>
-        chainReactionVfxPrefab;
+    public ParticleSystem ChainReactionParticlePrefab =>
+        chainReactionParticlePrefab;
 
     public float ChainReactionVfxLifetime =>
         chainReactionVfxLifetime;

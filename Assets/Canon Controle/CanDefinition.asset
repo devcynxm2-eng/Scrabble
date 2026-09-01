@@ -11,9 +11,28 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 55fc724be4a339441a4b3657fa5d8a5c, type: 3}
   m_Name: CanDefinition
-  m_EditorClassIdentifier:
+  m_EditorClassIdentifier: 
   prefab: {fileID: 2158590959970879959, guid: 9db96b0768974e847aa3a7230454a45f, type: 3}
   displayName: Cube
+  tintWithPaintColor: 0
   minimumPrewarmCount: 16
+  brokenPiecesPrefab: {fileID: 6223535953319733832, guid: 61dc1e04c2740cc4ca7a35c6644e1b2d, type: 3}
+  brokenPiecePrefabs:
+  - {fileID: 0}
+  breakOnCannonBallHit: 0
+  breakOnGroundImpact: 1
+  minimumGroundBreakSpeed: 0.6
+  brokenPiecesImpulse: 1.4
+  brokenPiecesLifetime: 2.5
+  brokenPiecesScaleMultiplier: {x: 1, y: 1, z: 1}
+  chainReactionEnabled: 0
+  chainReactionRadius: 1.2
+  chainReactionMaxBlocks: 6
+  chainReactionImpulse: 6
+  chainReactionUpwardBias: 0.35
+  chainReactionParticlePrefab: {fileID: 0}
+  chainReactionVfxLifetime: 2
+  chainReactionPropagates: 1
+  chainReactionPropagationDelay: 0.12
   autoFitToCell: 1
   manualScaleMultiplier: {x: 1, y: 1, z: 1}

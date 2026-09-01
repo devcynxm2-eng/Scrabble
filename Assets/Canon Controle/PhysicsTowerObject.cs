@@ -227,6 +227,21 @@ public sealed class PhysicsTowerObject : MonoBehaviour
 
     private bool breakableForSpawn;
 
+    /* Per-object-type break rules copied from PhysicsObjectDefinition. */
+    private GameObject configuredBrokenPiecesPrefab;
+    private GameObject[] configuredBrokenPiecePrefabs;
+    private bool breakOnCannonBallHit;
+    private bool breakOnGroundImpact;
+    private float minimumGroundBreakSpeed;
+    private float configuredBreakShardImpulse;
+    private float configuredBreakShardLifetime;
+    private Vector3 configuredBrokenPiecesScaleMultiplier = Vector3.one;
+    private bool useGlassShatterStyle;
+    private int glassCopiesPerPiece = 1;
+    private Vector2 glassPieceScaleRange = Vector2.one;
+    private float glassSpawnSpread;
+    private float glassUpwardImpulse;
+
     /*
      * Special "chain reaction" block ka runtime state. Ye values spawn
      * ke waqt ConfigureChainReaction() palette definition se bharta hai.
@@ -237,7 +252,7 @@ public sealed class PhysicsTowerObject : MonoBehaviour
     private int chainReactionMaxBlocks = 1;
     private float chainReactionImpulse;
     private float chainReactionUpwardBias;
-    private GameObject chainReactionVfxPrefab;
+    private ParticleSystem chainReactionParticlePrefab;
     private float chainReactionVfxLifetime = 2f;
     private bool chainReactionPropagates;
     private float chainReactionPropagationDelay;
@@ -377,6 +392,62 @@ public sealed class PhysicsTowerObject : MonoBehaviour
 
 
     /// <summary>
+    /// Copies the break rules from the palette definition into this pooled
+    /// instance. Normal and glass definitions can therefore use different
+    /// triggers and different broken-pieces prefabs.
+    /// </summary>
+    public void ConfigureBreakEffects(
+        PhysicsObjectDefinition definition)
+    {
+        configuredBrokenPiecesPrefab = null;
+        configuredBrokenPiecePrefabs = null;
+        breakOnCannonBallHit = false;
+        breakOnGroundImpact = false;
+        minimumGroundBreakSpeed = 0f;
+        configuredBreakShardImpulse = breakShardImpulse;
+        configuredBreakShardLifetime = breakShardLifetime;
+        configuredBrokenPiecesScaleMultiplier = Vector3.one;
+        useGlassShatterStyle = false;
+        glassCopiesPerPiece = 1;
+        glassPieceScaleRange = Vector2.one;
+        glassSpawnSpread = 0f;
+        glassUpwardImpulse = 0f;
+
+        if (definition == null)
+        {
+            return;
+        }
+
+        configuredBrokenPiecesPrefab =
+            definition.BrokenPiecesPrefab;
+        configuredBrokenPiecePrefabs =
+            definition.BrokenPiecePrefabs;
+        breakOnCannonBallHit =
+            definition.BreakOnCannonBallHit;
+        breakOnGroundImpact =
+            definition.BreakOnGroundImpact;
+        minimumGroundBreakSpeed =
+            definition.MinimumGroundBreakSpeed;
+        configuredBreakShardImpulse =
+            definition.BrokenPiecesImpulse;
+        configuredBreakShardLifetime =
+            definition.BrokenPiecesLifetime;
+        configuredBrokenPiecesScaleMultiplier =
+            definition.BrokenPiecesScaleMultiplier;
+        useGlassShatterStyle =
+            definition.UseGlassShatterStyle;
+        glassCopiesPerPiece =
+            Mathf.Max(1, definition.GlassCopiesPerPiece);
+        glassPieceScaleRange =
+            definition.GlassPieceScaleRange;
+        glassSpawnSpread =
+            Mathf.Max(0f, definition.GlassSpawnSpread);
+        glassUpwardImpulse =
+            Mathf.Max(0f, definition.GlassUpwardImpulse);
+    }
+
+
+    /// <summary>
     /// Spawn ke waqt palette definition se special-block settings copy
     /// karta hai. Definition null ho ya chain reaction OFF ho to ye block
     /// bilkul aam block ki tarah behave karta hai — is liye purane levels
@@ -399,7 +470,8 @@ public sealed class PhysicsTowerObject : MonoBehaviour
         chainReactionMaxBlocks = definition.ChainReactionMaxBlocks;
         chainReactionImpulse = definition.ChainReactionImpulse;
         chainReactionUpwardBias = definition.ChainReactionUpwardBias;
-        chainReactionVfxPrefab = definition.ChainReactionVfxPrefab;
+        chainReactionParticlePrefab =
+            definition.ChainReactionParticlePrefab;
         chainReactionVfxLifetime = definition.ChainReactionVfxLifetime;
         chainReactionPropagates = definition.ChainReactionPropagates;
         chainReactionPropagationDelay =
@@ -432,7 +504,7 @@ public sealed class PhysicsTowerObject : MonoBehaviour
                 ? body.worldCenterOfMass
                 : transform.position;
 
-        SpawnChainReactionVfx(blastCenter);
+        SpawnChainReactionParticle(blastCenter);
 
         List<PhysicsTowerObject> neighbours =
             CollectChainReactionNeighbours(blastCenter);
@@ -648,22 +720,29 @@ public sealed class PhysicsTowerObject : MonoBehaviour
     }
 
 
-    private void SpawnChainReactionVfx(
+    private void SpawnChainReactionParticle(
         Vector3 blastCenter)
     {
-        if (chainReactionVfxPrefab == null)
+        if (chainReactionParticlePrefab == null)
         {
             return;
         }
 
-        GameObject vfx = Instantiate(
-            chainReactionVfxPrefab,
+        ParticleSystem particleSystem = Instantiate(
+            chainReactionParticlePrefab,
             blastCenter,
             Quaternion.identity
         );
 
+        /*
+         * Direct ParticleSystem reference use hota hai. withChildren=true
+         * ki wajah se prefab ke child particle systems bhi play honge.
+         */
+        particleSystem.gameObject.SetActive(true);
+        particleSystem.Play(true);
+
         Destroy(
-            vfx,
+            particleSystem.gameObject,
             Mathf.Max(0.1f, chainReactionVfxLifetime)
         );
     }
@@ -832,6 +911,19 @@ public sealed class PhysicsTowerObject : MonoBehaviour
 
         breakableForSpawn = false;
         remainingBreakHits = 1;
+        configuredBrokenPiecesPrefab = null;
+        configuredBrokenPiecePrefabs = null;
+        breakOnCannonBallHit = false;
+        breakOnGroundImpact = false;
+        minimumGroundBreakSpeed = 0f;
+        configuredBreakShardImpulse = breakShardImpulse;
+        configuredBreakShardLifetime = breakShardLifetime;
+        configuredBrokenPiecesScaleMultiplier = Vector3.one;
+        useGlassShatterStyle = false;
+        glassCopiesPerPiece = 1;
+        glassPieceScaleRange = Vector2.one;
+        glassSpawnSpread = 0f;
+        glassUpwardImpulse = 0f;
         chainReactionEnabled = false;
         chainReactionTriggered = false;
         chainReactionScheduled = false;
@@ -1124,11 +1216,36 @@ public sealed class PhysicsTowerObject : MonoBehaviour
     private void OnCollisionEnter(
         Collision collision)
     {
-        if (!IsLocked ||
-            isCleared ||
+        if (isCleared ||
             collision == null ||
             collision.collider == null)
         {
+            return;
+        }
+
+        /*
+         * A fallen block is dynamic, so this check must happen before the
+         * locked-only cannon/support collision flow below.
+         */
+        if (!IsLocked &&
+            breakOnGroundImpact &&
+            lowerGroundDisappearEffect != null &&
+            lowerGroundDisappearEffect.IsGroundCollision(
+                collision,
+                out _) &&
+            collision.relativeVelocity.magnitude >=
+                minimumGroundBreakSpeed)
+        {
+            Vector3 groundHitPoint =
+                collision.contactCount > 0
+                    ? collision.GetContact(0).point
+                    : transform.position;
+
+            BreakImmediately(
+                Vector3.zero,
+                groundHitPoint,
+                true
+            );
             return;
         }
 
@@ -1173,12 +1290,22 @@ public sealed class PhysicsTowerObject : MonoBehaviour
 
             if (TryHandleBreakableHit(
                     impulse,
-                    cannonBallHitPoint))
+                    cannonBallHitPoint,
+                    true))
             {
                 return;
             }
 
-            ActivatePhysics(impulse);
+            if (IsLocked)
+            {
+                ActivatePhysics(impulse);
+            }
+
+            return;
+        }
+
+        if (!IsLocked)
+        {
             return;
         }
 
@@ -1241,23 +1368,52 @@ public sealed class PhysicsTowerObject : MonoBehaviour
 
     private bool TryHandleBreakableHit(
         Vector3 impulse,
-        Vector3 hitPoint)
+        Vector3 hitPoint,
+        bool isDirectCannonBallHit = false)
     {
-        if (!breakableForSpawn ||
+        bool definitionBreaksFromThisHit =
+            isDirectCannonBallHit &&
+            breakOnCannonBallHit;
+
+        if ((!breakableForSpawn &&
+             !definitionBreaksFromThisHit) ||
             isCleared)
         {
             return false;
         }
 
-        remainingBreakHits =
-            Mathf.Max(0, remainingBreakHits - 1);
-
-        if (remainingBreakHits > 0)
+        if (breakableForSpawn)
         {
-            return true;
+            remainingBreakHits =
+                Mathf.Max(0, remainingBreakHits - 1);
+
+            if (remainingBreakHits > 0)
+            {
+                return true;
+            }
         }
 
-        SpawnBreakEffect(impulse, hitPoint);
+        BreakImmediately(impulse, hitPoint);
+
+        return true;
+    }
+
+
+    private void BreakImmediately(
+        Vector3 impulse,
+        Vector3 hitPoint,
+        bool isGroundBreak = false)
+    {
+        if (isCleared)
+        {
+            return;
+        }
+
+        SpawnBreakEffect(
+            impulse,
+            hitPoint,
+            isGroundBreak
+        );
 
         isCleared = true;
 
@@ -1272,30 +1428,57 @@ public sealed class PhysicsTowerObject : MonoBehaviour
         {
             gameObject.SetActive(false);
         }
-
-        return true;
     }
 
 
     private void SpawnBreakEffect(
         Vector3 impulse,
-        Vector3 hitPoint)
+        Vector3 hitPoint,
+        bool isGroundBreak)
     {
-        if (brokenVisualPrefab != null)
+        if (HasConfiguredIndividualPieces())
+        {
+            SpawnIndividualBreakPieces(
+                impulse,
+                hitPoint,
+                isGroundBreak
+            );
+            return;
+        }
+
+        GameObject breakPrefab =
+            configuredBrokenPiecesPrefab != null
+                ? configuredBrokenPiecesPrefab
+                : brokenVisualPrefab;
+
+        if (breakPrefab != null)
         {
             GameObject brokenVisual =
                 Instantiate(
-                    brokenVisualPrefab,
+                    breakPrefab,
                     transform.position,
                     transform.rotation,
                     transform.parent
                 );
 
             brokenVisual.transform.localScale =
-                transform.localScale;
+                Vector3.Scale(
+                    transform.localScale,
+                    configuredBrokenPiecesScaleMultiplier
+                );
 
             Rigidbody[] fragmentBodies =
                 brokenVisual.GetComponentsInChildren<Rigidbody>(true);
+
+            float fragmentExplosionImpulse =
+                isGroundBreak
+                    ? configuredBreakShardImpulse * 0.08f
+                    : configuredBreakShardImpulse;
+
+            ConfigureBrokenFragmentExit(
+                fragmentBodies,
+                brokenVisual.GetComponentsInChildren<Collider>(true)
+            );
 
             foreach (Rigidbody fragmentBody in fragmentBodies)
             {
@@ -1312,7 +1495,7 @@ public sealed class PhysicsTowerObject : MonoBehaviour
                     ForceMode.Impulse
                 );
                 fragmentBody.AddExplosionForce(
-                    breakShardImpulse,
+                    fragmentExplosionImpulse,
                     hitPoint,
                     1.5f,
                     0.05f,
@@ -1322,18 +1505,392 @@ public sealed class PhysicsTowerObject : MonoBehaviour
 
             Destroy(
                 brokenVisual,
-                breakShardLifetime
+                configuredBreakShardLifetime
             );
             return;
         }
 
-        SpawnFallbackShards(impulse, hitPoint);
+        SpawnFallbackShards(
+            impulse,
+            hitPoint,
+            isGroundBreak
+        );
+    }
+
+
+    private bool HasConfiguredIndividualPieces()
+    {
+        if (configuredBrokenPiecePrefabs == null)
+        {
+            return false;
+        }
+
+        foreach (GameObject piecePrefab in configuredBrokenPiecePrefabs)
+        {
+            if (piecePrefab != null)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+
+    private void SpawnIndividualBreakPieces(
+        Vector3 impulse,
+        Vector3 hitPoint,
+        bool isGroundBreak)
+    {
+        GameObject piecesRoot =
+            new GameObject($"{name} Broken Pieces");
+
+        piecesRoot.layer = gameObject.layer;
+        piecesRoot.transform.SetParent(transform.parent, false);
+        piecesRoot.transform.localPosition = transform.localPosition;
+        piecesRoot.transform.localRotation = transform.localRotation;
+        piecesRoot.transform.localScale =
+            Vector3.Scale(
+                transform.localScale,
+                configuredBrokenPiecesScaleMultiplier
+            );
+
+        List<Rigidbody> pieceBodies =
+            new List<Rigidbody>();
+
+        foreach (GameObject piecePrefab in configuredBrokenPiecePrefabs)
+        {
+            if (piecePrefab == null)
+            {
+                continue;
+            }
+
+            int copies =
+                useGlassShatterStyle
+                    ? glassCopiesPerPiece
+                    : 1;
+
+            for (int copy = 0; copy < copies; copy++)
+            {
+                GameObject piece =
+                    Instantiate(
+                        piecePrefab,
+                        piecesRoot.transform,
+                        false
+                    );
+
+                /*
+                 * Project-window prefabs can accidentally retain the scene
+                 * position from which they were created. Fragments always
+                 * start at the intact object's local origin.
+                 */
+                piece.transform.localPosition =
+                    useGlassShatterStyle
+                        ? Random.insideUnitSphere * glassSpawnSpread
+                        : Vector3.zero;
+                piece.transform.localRotation =
+                    useGlassShatterStyle
+                        ? Random.rotation
+                        : Quaternion.identity;
+
+                if (useGlassShatterStyle)
+                {
+                    float minimumScale =
+                        Mathf.Max(
+                            0.01f,
+                            Mathf.Min(
+                                glassPieceScaleRange.x,
+                                glassPieceScaleRange.y
+                            )
+                        );
+                    float maximumScale =
+                        Mathf.Max(
+                            minimumScale,
+                            Mathf.Max(
+                                glassPieceScaleRange.x,
+                                glassPieceScaleRange.y
+                            )
+                        );
+
+                    piece.transform.localScale *=
+                        Random.Range(minimumScale, maximumScale);
+                }
+
+                piece.layer = gameObject.layer;
+                EnsureIndividualPiecePhysics(
+                    piece,
+                    pieceBodies
+                );
+            }
+        }
+
+        int bodyCount = Mathf.Max(1, pieceBodies.Count);
+        float fragmentExplosionImpulse =
+            isGroundBreak
+                ? configuredBreakShardImpulse * 0.08f
+                : configuredBreakShardImpulse;
+
+        ConfigureBrokenFragmentExit(
+            pieceBodies,
+            piecesRoot.GetComponentsInChildren<Collider>(true)
+        );
+
+        foreach (Rigidbody pieceBody in pieceBodies)
+        {
+            if (pieceBody == null)
+            {
+                continue;
+            }
+
+            pieceBody.isKinematic = false;
+            pieceBody.useGravity = true;
+            pieceBody.collisionDetectionMode =
+                CollisionDetectionMode.ContinuousSpeculative;
+            pieceBody.AddForce(
+                impulse / bodyCount,
+                ForceMode.Impulse
+            );
+            pieceBody.AddExplosionForce(
+                fragmentExplosionImpulse,
+                hitPoint,
+                1.5f,
+                0.05f,
+                ForceMode.Impulse
+            );
+
+            if (useGlassShatterStyle &&
+                !isGroundBreak)
+            {
+                Vector3 shardDirection =
+                    pieceBody.worldCenterOfMass - hitPoint;
+
+                if (shardDirection.sqrMagnitude < 0.0001f)
+                {
+                    shardDirection = Random.onUnitSphere;
+                }
+
+                shardDirection.y =
+                    Mathf.Abs(shardDirection.y) + 0.2f;
+
+                pieceBody.AddForce(
+                    shardDirection.normalized *
+                    configuredBreakShardImpulse *
+                    Random.Range(0.65f, 1.15f) +
+                    Vector3.up * glassUpwardImpulse,
+                    ForceMode.Impulse
+                );
+            }
+
+            pieceBody.AddTorque(
+                Random.onUnitSphere *
+                configuredBreakShardImpulse *
+                0.2f,
+                ForceMode.Impulse
+            );
+        }
+
+        Destroy(
+            piecesRoot,
+            configuredBreakShardLifetime
+        );
+    }
+
+
+    /// <summary>
+    /// Fragments remain physical against the ground, but never push or
+    /// support tower blocks (or each other). On reaching the lower ground,
+    /// each rigid fragment uses the existing bounce/scale-down exit effect.
+    /// </summary>
+    private void ConfigureBrokenFragmentExit(
+        IEnumerable<Rigidbody> fragmentBodies,
+        Collider[] fragmentColliders)
+    {
+        if (fragmentBodies != null)
+        {
+            foreach (Rigidbody fragmentBody in fragmentBodies)
+            {
+                if (fragmentBody == null)
+                {
+                    continue;
+                }
+
+                LowerGroundDisappearEffect disappearEffect =
+                    fragmentBody.GetComponent<LowerGroundDisappearEffect>();
+
+                if (disappearEffect == null)
+                {
+                    disappearEffect =
+                        fragmentBody.gameObject.AddComponent<
+                            LowerGroundDisappearEffect>();
+                }
+
+                disappearEffect.SetDestroyOnComplete(true);
+                disappearEffect.SetAcceptUnmarkedStaticGround(true);
+                disappearEffect.ConfigureExitMotion(
+                    0.45f,
+                    0.22f,
+                    0.1f,
+                    0.55f
+                );
+                disappearEffect.ResetEffect();
+            }
+        }
+
+        if (fragmentColliders == null)
+        {
+            return;
+        }
+
+        /* Broken pieces do not collide with one another. */
+        for (int first = 0;
+             first < fragmentColliders.Length;
+             first++)
+        {
+            Collider firstCollider = fragmentColliders[first];
+
+            if (firstCollider == null)
+            {
+                continue;
+            }
+
+            for (int second = first + 1;
+                 second < fragmentColliders.Length;
+                 second++)
+            {
+                Collider secondCollider = fragmentColliders[second];
+
+                if (secondCollider != null)
+                {
+                    Physics.IgnoreCollision(
+                        firstCollider,
+                        secondCollider,
+                        true
+                    );
+                }
+            }
+        }
+
+        /* Broken pieces pass through every intact/falling tower object. */
+        PhysicsTowerObject[] towerObjects =
+            FindObjectsByType<PhysicsTowerObject>(
+                FindObjectsInactive.Exclude,
+                FindObjectsSortMode.None
+            );
+
+        foreach (PhysicsTowerObject towerObject in towerObjects)
+        {
+            if (towerObject == null)
+            {
+                continue;
+            }
+
+            if (towerObject.physicsColliders == null ||
+                towerObject.physicsColliders.Length == 0)
+            {
+                towerObject.ResolveReferences();
+            }
+
+            foreach (Collider fragmentCollider in fragmentColliders)
+            {
+                if (fragmentCollider == null)
+                {
+                    continue;
+                }
+
+                foreach (Collider towerCollider in towerObject.physicsColliders)
+                {
+                    if (towerCollider != null &&
+                        towerCollider != fragmentCollider)
+                    {
+                        Physics.IgnoreCollision(
+                            fragmentCollider,
+                            towerCollider,
+                            true
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+
+    private void EnsureIndividualPiecePhysics(
+        GameObject piece,
+        List<Rigidbody> destinationBodies)
+    {
+        if (piece == null ||
+            destinationBodies == null)
+        {
+            return;
+        }
+
+        Collider[] colliders =
+            piece.GetComponentsInChildren<Collider>(true);
+
+        if (colliders == null ||
+            colliders.Length == 0)
+        {
+            MeshFilter[] meshFilters =
+                piece.GetComponentsInChildren<MeshFilter>(true);
+
+            if (meshFilters != null &&
+                meshFilters.Length > 0)
+            {
+                foreach (MeshFilter meshFilter in meshFilters)
+                {
+                    if (meshFilter == null ||
+                        meshFilter.sharedMesh == null)
+                    {
+                        continue;
+                    }
+
+                    meshFilter.gameObject.AddComponent<BoxCollider>();
+                }
+            }
+            else
+            {
+                piece.AddComponent<BoxCollider>();
+            }
+        }
+
+        Rigidbody[] existingBodies =
+            piece.GetComponentsInChildren<Rigidbody>(true);
+
+        if (existingBodies == null ||
+            existingBodies.Length == 0)
+        {
+            Rigidbody addedBody =
+                piece.AddComponent<Rigidbody>();
+
+            int configuredPieceCount =
+                Mathf.Max(1, configuredBrokenPiecePrefabs.Length);
+
+            addedBody.mass =
+                body != null
+                    ? Mathf.Max(
+                        0.01f,
+                        body.mass / configuredPieceCount
+                    )
+                    : 0.08f;
+
+            destinationBodies.Add(addedBody);
+            return;
+        }
+
+        foreach (Rigidbody existingBody in existingBodies)
+        {
+            if (existingBody != null)
+            {
+                destinationBodies.Add(existingBody);
+            }
+        }
     }
 
 
     private void SpawnFallbackShards(
         Vector3 impulse,
-        Vector3 hitPoint)
+        Vector3 hitPoint,
+        bool isGroundBreak)
     {
         if (!TryGetPhysicsBounds(out Bounds bounds))
         {
@@ -1373,6 +1930,15 @@ public sealed class PhysicsTowerObject : MonoBehaviour
                 Mathf.Max(0.025f, bounds.size.y / shardDivisor),
                 Mathf.Max(0.025f, bounds.size.z / shardDivisor)
             );
+
+        List<Rigidbody> fallbackBodies =
+            new List<Rigidbody>(shardCount);
+        List<Collider> fallbackColliders =
+            new List<Collider>(shardCount);
+        float fragmentExplosionImpulse =
+            isGroundBreak
+                ? configuredBreakShardImpulse * 0.08f
+                : configuredBreakShardImpulse;
 
         for (int index = 0;
              index < shardCount;
@@ -1415,6 +1981,16 @@ public sealed class PhysicsTowerObject : MonoBehaviour
             Rigidbody shardBody =
                 shard.AddComponent<Rigidbody>();
 
+            fallbackBodies.Add(shardBody);
+
+            Collider shardCollider =
+                shard.GetComponent<Collider>();
+
+            if (shardCollider != null)
+            {
+                fallbackColliders.Add(shardCollider);
+            }
+
             shardBody.mass =
                 body != null
                     ? Mathf.Max(0.01f, body.mass / shardCount)
@@ -1426,7 +2002,7 @@ public sealed class PhysicsTowerObject : MonoBehaviour
                 ForceMode.Impulse
             );
             shardBody.AddExplosionForce(
-                breakShardImpulse *
+                fragmentExplosionImpulse *
                 Random.Range(0.75f, 1.2f),
                 hitPoint,
                 Mathf.Max(0.5f, bounds.extents.magnitude * 2f),
@@ -1435,13 +2011,18 @@ public sealed class PhysicsTowerObject : MonoBehaviour
             );
             shardBody.AddTorque(
                 Random.onUnitSphere *
-                breakShardImpulse *
+                configuredBreakShardImpulse *
                 0.2f,
                 ForceMode.Impulse
             );
 
-            Destroy(shard, breakShardLifetime);
+            Destroy(shard, configuredBreakShardLifetime);
         }
+
+        ConfigureBrokenFragmentExit(
+            fallbackBodies,
+            fallbackColliders.ToArray()
+        );
     }
 
 

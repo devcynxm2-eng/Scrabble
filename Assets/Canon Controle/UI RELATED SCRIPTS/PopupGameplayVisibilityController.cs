@@ -293,6 +293,7 @@ public sealed class PopupGameplayVisibilityController : MonoBehaviour
 
         HideCannon();
         HideTables();
+        HideTraps();
         HideTowerObjects();
     }
 
@@ -310,6 +311,7 @@ public sealed class PopupGameplayVisibilityController : MonoBehaviour
 
         ShowCannon();
         ShowTables();
+        ShowTraps();
         ShowTowerObjects();
     }
 
@@ -471,6 +473,24 @@ public sealed class PopupGameplayVisibilityController : MonoBehaviour
             {
                 table.gameObject.SetActive(true);
             }
+        }
+    }
+
+
+    private void HideTraps()
+    {
+        if (levelRuntimeController != null)
+        {
+            levelRuntimeController.SetTrapsVisible(false);
+        }
+    }
+
+
+    private void ShowTraps()
+    {
+        if (levelRuntimeController != null)
+        {
+            levelRuntimeController.SetTrapsVisible(true);
         }
     }
 

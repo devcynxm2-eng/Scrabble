@@ -79,6 +79,26 @@ public sealed class LowerGroundDisappearEffect : MonoBehaviour
     }
 
 
+    /// <summary>
+    /// Allows short-lived fragments to use the same ground shrink flow with
+    /// a much smaller bounce than full-size tower objects.
+    /// </summary>
+    public void ConfigureExitMotion(
+        float newBounceSpeed,
+        float newSidewaysVelocityRetention,
+        float newBounceVisibleDuration,
+        float newShrinkDuration)
+    {
+        bounceSpeed = Mathf.Max(0f, newBounceSpeed);
+        sidewaysVelocityRetention =
+            Mathf.Clamp01(newSidewaysVelocityRetention);
+        bounceVisibleDuration =
+            Mathf.Max(0f, newBounceVisibleDuration);
+        shrinkDuration =
+            Mathf.Max(0.05f, newShrinkDuration);
+    }
+
+
     public void ScheduleSmoothFallback(
         float delay)
     {
@@ -178,39 +198,46 @@ public sealed class LowerGroundDisappearEffect : MonoBehaviour
 
     private void OnCollisionEnter(Collision collision)
     {
-        if (collision == null ||
-            collision.collider == null)
-        {
-            return;
-        }
-
-        Vector3 bounceNormal = Vector3.up;
-
-        if (collision.contactCount > 0)
-        {
-            bounceNormal =
-                collision.GetContact(0).normal;
-        }
-
-        bool isMarkedLowerGround =
-            IsMarkedLowerGround(
-                collision.collider
-            );
-
-        bool isUnmarkedStaticGround =
-            acceptUnmarkedStaticGround &&
-            IsUnmarkedStaticGround(
+        if (!IsGroundCollision(
                 collision,
-                bounceNormal
-            );
-
-        if (!isMarkedLowerGround &&
-            !isUnmarkedStaticGround)
+                out Vector3 bounceNormal))
         {
             return;
         }
 
         TryBeginDisappear(bounceNormal);
+    }
+
+
+    /// <summary>
+    /// Shared lower-ground test used by PhysicsTowerObject so a configured
+    /// object can replace the normal bounce/shrink exit with broken pieces.
+    /// </summary>
+    public bool IsGroundCollision(
+        Collision collision,
+        out Vector3 contactNormal)
+    {
+        contactNormal = Vector3.up;
+
+        if (collision == null ||
+            collision.collider == null)
+        {
+            return false;
+        }
+
+        if (collision.contactCount > 0)
+        {
+            contactNormal =
+                collision.GetContact(0).normal;
+        }
+
+        return
+            IsMarkedLowerGround(collision.collider) ||
+            (acceptUnmarkedStaticGround &&
+             IsUnmarkedStaticGround(
+                 collision,
+                 contactNormal
+             ));
     }
 
 

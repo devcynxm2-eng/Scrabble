@@ -181,6 +181,13 @@ public sealed class LevelTablePlacement
     }
 }
 
+public enum TrapMovementMode
+{
+    PingPong,
+    StepPath
+}
+
+
 [Serializable]
 public sealed class LevelTrapPlacement
 {
@@ -243,6 +250,13 @@ public sealed class LevelTrapPlacement
     private bool enableMovement = false;
 
     [Tooltip(
+        "Ping Pong: ek axis par aage-peeche.\n" +
+        "Step Path: neeche diye gaye vectors ko sequence mein follow karega."
+    )]
+    [SerializeField]
+    private TrapMovementMode movementMode = TrapMovementMode.PingPong;
+
+    [Tooltip(
         "Chalne ka axis:\n" +
         "(0,1,0) = upar/neeche\n" +
         "(0,0,1) = aage/peeche\n" +
@@ -255,9 +269,26 @@ public sealed class LevelTrapPlacement
     [SerializeField, Min(0f)]
     private float movementDistance = 0.5f;
 
-    [Tooltip("Movement ki raftaar (cycles per second).")]
+    [Tooltip(
+        "Ping Pong mein cycles per second. Step Path mein world units per second."
+    )]
     [SerializeField, Min(0f)]
     private float movementSpeed = 0.3f;
+
+    [Tooltip(
+        "Step Path ke local movement vectors, order ke mutabiq. Misal: " +
+        "(1,0,0), (0,1,0), (-1,0,0), (0,-1,0). " +
+        "Agar path start par khatam na ho to trap smoothly start par wapas aayega."
+    )]
+    [SerializeField]
+    private List<Vector3> movementSteps =
+        new List<Vector3>
+        {
+            Vector3.right,
+            Vector3.up,
+            Vector3.left,
+            Vector3.down
+        };
 
 
     public GameObject Prefab => prefab;
@@ -283,11 +314,15 @@ public sealed class LevelTrapPlacement
 
     public bool MovementEnabled => enableMovement;
 
+    public TrapMovementMode MovementMode => movementMode;
+
     public Vector3 MovementAxis => movementAxis;
 
     public float MovementDistance => movementDistance;
 
     public float MovementSpeed => movementSpeed;
+
+    public IReadOnlyList<Vector3> MovementSteps => movementSteps;
 }
 
 

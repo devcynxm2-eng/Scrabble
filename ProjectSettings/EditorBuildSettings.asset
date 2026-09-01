@@ -11,6 +11,9 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/Canon_Controller.unity
     guid: 8b3eded9aa4b5eb43894d548fd9ae321
+  - enabled: 0
+    path: Assets/Scenes/BalanceBoss_Demo.unity
+    guid: f634a315611368a4da8902f4a646660b
   m_configObjects:
     com.unity.addressableassets: {fileID: 11400000, guid: bcab3572ab8093b459523491e03294ec, type: 2}
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}

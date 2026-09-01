@@ -8408,6 +8408,77 @@ public sealed class CannonController : MonoBehaviour
 
 
     /// <summary>
+    /// LevelRuntimeController ke baghair chalne wale modes (jaise Balance
+    /// Boss) ke liye cannon ko runtime references deta hai.
+    /// </summary>
+    public void ConfigureStandaloneMode(
+        Transform standaloneYawPivot,
+        Transform standalonePitchPivot,
+        Transform standaloneMuzzle,
+        Transform standaloneRoot,
+        Camera standaloneCamera,
+        GameObject standaloneBallPrefab,
+        Transform aimPlaneReference,
+        int ballLimit)
+    {
+        DisconnectLevelController();
+
+        levelRuntimeController = null;
+        yawPivot = standaloneYawPivot;
+        pitchPivot = standalonePitchPivot;
+        muzzle = standaloneMuzzle;
+        cannonRoot = standaloneRoot != null
+            ? standaloneRoot
+            : transform;
+        aimCamera = standaloneCamera != null
+            ? standaloneCamera
+            : Camera.main;
+        cannonBallPrefab = standaloneBallPrefab;
+        fallbackAimPlaneReference = aimPlaneReference;
+        fallbackBallLimit = Mathf.Max(1, ballLimit);
+
+        animateCannonEntrance = false;
+        autoCreateBallsHud = false;
+        exactStraightShot = true;
+        maxAimDistance = 500f;
+        fallbackAimDistance = 100f;
+        bottomDeadSpaceHeight = 0f;
+
+        CaptureCannonRestPose();
+        CacheCannonColliders();
+        ResetStandaloneBallLimit(fallbackBallLimit);
+    }
+
+
+    /// <summary>
+    /// Standalone turn ko exact shot count se restart karta hai.
+    /// Purane in-flight shots bhi safely clear ho jate hain.
+    /// </summary>
+    public void ResetStandaloneBallLimit(int ballLimit)
+    {
+        fallbackBallLimit = Mathf.Max(1, ballLimit);
+
+        for (int index = 0;
+             index < activeCannonBalls.Count;
+             index++)
+        {
+            GameObject activeBall = activeCannonBalls[index];
+
+            if (activeBall == null)
+            {
+                continue;
+            }
+
+            activeBall.SetActive(false);
+            Destroy(activeBall);
+        }
+
+        activeCannonBalls.Clear();
+        ResetBallLimit(null);
+    }
+
+
+    /// <summary>
     /// Rocket power-up select hone par cannon "rocket mode" mein chala
     /// jata hai: normal cannonball ki jagah agla shot rocket fire karega.
     /// Aim bilkul normal tarah kaam karta rehta hai.
@@ -9886,6 +9957,16 @@ public sealed class CannonController : MonoBehaviour
                 spawnPosition,
                 spawnRotation
             );
+
+        /*
+         * PhysicsTowerObject uses this marker to distinguish a real fired
+         * cannon ball from ordinary tower-object collisions. Keep it on the
+         * spawned root so child colliders can find it through GetComponentInParent.
+         */
+        if (cannonBall.GetComponent<CannonBallMarker>() == null)
+        {
+            cannonBall.AddComponent<CannonBallMarker>();
+        }
 
 
         if (!Mathf.Approximately(

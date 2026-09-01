@@ -14,7 +14,32 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   prefab: {fileID: 100000007, guid: 8ee73eb8eb9feb86406c1856af5cb587, type: 3}
   displayName: Cylinder
+  tintWithPaintColor: 0
   minimumPrewarmCount: 16
-  naturalFootprint: {x: 1, y: 2, z: 1}
+  brokenPiecesPrefab: {fileID: 0}
+  brokenPiecePrefabs:
+  - {fileID: 6223535953319733832, guid: f93311eddaf003b4c89fba73ad56a652, type: 3}
+  - {fileID: 6223535953319733832, guid: ce7b9737a6df4d94b8921f7d7ae2f059, type: 3}
+  - {fileID: 6223535953319733832, guid: 13a29bf05df59b549884439bddc6df43, type: 3}
+  breakOnCannonBallHit: 1
+  breakOnGroundImpact: 1
+  minimumGroundBreakSpeed: 0.15
+  brokenPiecesImpulse: 1.4
+  brokenPiecesLifetime: 2.5
+  brokenPiecesScaleMultiplier: {x: 1, y: 1, z: 1}
+  useGlassShatterStyle: 1
+  glassCopiesPerPiece: 3
+  glassPieceScaleRange: {x: 0.22, y: 0.38}
+  glassSpawnSpread: 0.16
+  glassUpwardImpulse: 0.35
+  chainReactionEnabled: 0
+  chainReactionRadius: 1.2
+  chainReactionMaxBlocks: 6
+  chainReactionImpulse: 6
+  chainReactionUpwardBias: 0.35
+  chainReactionParticlePrefab: {fileID: 0}
+  chainReactionVfxLifetime: 2
+  chainReactionPropagates: 1
+  chainReactionPropagationDelay: 0.12
   autoFitToCell: 1
   manualScaleMultiplier: {x: 1, y: 1, z: 1}

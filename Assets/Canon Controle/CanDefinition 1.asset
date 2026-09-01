@@ -16,12 +16,22 @@ MonoBehaviour:
   displayName: Cube
   tintWithPaintColor: 0
   minimumPrewarmCount: 16
+  brokenPiecesPrefab: {fileID: 0}
+  brokenPiecePrefabs:
+  - {fileID: 6223535953319733832, guid: faf40699200d9e44da1a529efa561687, type: 3}
+  - {fileID: 6223535953319733832, guid: 655bd3b5e6286fd4baf9837f75d098a9, type: 3}
+  breakOnCannonBallHit: 0
+  breakOnGroundImpact: 1
+  minimumGroundBreakSpeed: 0.6
+  brokenPiecesImpulse: 1.4
+  brokenPiecesLifetime: 2.5
+  brokenPiecesScaleMultiplier: {x: 1, y: 1, z: 1}
   chainReactionEnabled: 1
   chainReactionRadius: 0.2
   chainReactionMaxBlocks: 3
   chainReactionImpulse: 3
   chainReactionUpwardBias: 0.258
-  chainReactionVfxPrefab: {fileID: 0}
+  chainReactionParticlePrefab: {fileID: 6100022945525440682, guid: 759bdd92817bad54f9ad1e076714532e, type: 3}
   chainReactionVfxLifetime: 2
   chainReactionPropagates: 1
   chainReactionPropagationDelay: 0.12
