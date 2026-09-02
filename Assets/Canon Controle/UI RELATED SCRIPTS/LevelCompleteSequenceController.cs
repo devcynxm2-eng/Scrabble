@@ -171,7 +171,15 @@ public sealed class LevelCompleteSequenceController : MonoBehaviour
 
         if(levelCompletePopup != null)
         {
-            levelCompletePopup.SetActive(false);
+            /*
+             * UITransition ke through hide karte hain, raw SetActive se
+             * nahi - warna is panel ki base pose (scale / anchored
+             * position / alpha) UITransition ke paas kabhi register hi
+             * nahi hoti. Neeche LevelCompleteRoutine aur
+             * LevelCompleteUIController dono isay UITransition se hi
+             * show/hide karte hain.
+             */
+            UITransition.HideImmediate(levelCompletePopup);
         }
 
 

@@ -79,23 +79,46 @@ public sealed class PhysicsObjectPool : MonoBehaviour
 
 
         /*
-         * Har palette entry (shape) apni khud ki minimum prewarm count
-         * ke sath, plus worst-case ke liye poori occupied cell count —
-         * kyunke koi bhi shape theoretically har occupied cell par
-         * use ho sakti hai.
+         * Pehle har palette entry ko poori OccupiedCellCount tak prewarm
+         * kiya jata tha - worst case, ye maan kar ke koi bhi shape har
+         * cell par aa sakti hai. Chhote palette (2-3 shapes) par ye theek
+         * tha, magar shape variety ke liye palette barhate hi ye hazaaron
+         * objects bana deta hai (10 shapes x 100 cells = 1000).
+         *
+         * Ab grid scan kar ke har definition ka ASAL usage count nikalte
+         * hain. Jo shape is level mein kahin use hi nahi hoti, uska ek
+         * bhi object nahi banta - aur agar kabhi zarurat par gayi to
+         * Get() waise bhi demand par naya bana leta hai.
          */
-        foreach (PhysicsObjectDefinition definition
-                 in palette)
+        Dictionary<int, int> usageByDefinitionIndex =
+            CountDefinitionUsage(levelData);
+
+        for (int index = 0;
+             index < palette.Count;
+             index++)
         {
+            PhysicsObjectDefinition definition =
+                palette[index];
+
             if (definition == null ||
                 definition.Prefab == null)
             {
                 continue;
             }
 
+            int usage;
+
+            if (!usageByDefinitionIndex.TryGetValue(
+                    index,
+                    out usage) ||
+                usage <= 0)
+            {
+                continue;
+            }
+
             int requiredCount =
                 Mathf.Max(
-                    levelData.OccupiedCellCount,
+                    usage,
                     definition.MinimumPrewarmCount
                 );
 
@@ -104,6 +127,58 @@ public sealed class PhysicsObjectPool : MonoBehaviour
                 requiredCount
             );
         }
+    }
+
+
+    /// <summary>
+    /// Har palette index ke liye ginti karta hai ke is level mein wo
+    /// shape kitni dafa actually spawn hogi. Covered cells count nahi
+    /// hotin - unka anchor cell hi spawn karta hai.
+    /// </summary>
+    private static Dictionary<int, int> CountDefinitionUsage(
+        GridLevelData levelData)
+    {
+        Dictionary<int, int> usage =
+            new Dictionary<int, int>();
+
+        int tableCount =
+            Mathf.Max(1, levelData.TableCount);
+
+        for (int tableIndex = 0;
+             tableIndex < tableCount;
+             tableIndex++)
+        {
+            for (int y = 0; y < levelData.GridHeight; y++)
+            {
+                for (int z = 0; z < levelData.GridDepth; z++)
+                {
+                    for (int x = 0; x < levelData.GridWidth; x++)
+                    {
+                        GridCellData cell =
+                            levelData.GetCell(x, y, z, tableIndex);
+
+                        if (cell == null ||
+                            !cell.Occupied ||
+                            cell.IsCovered)
+                        {
+                            continue;
+                        }
+
+                        int current;
+
+                        usage.TryGetValue(
+                            cell.DefinitionIndex,
+                            out current
+                        );
+
+                        usage[cell.DefinitionIndex] =
+                            current + 1;
+                    }
+                }
+            }
+        }
+
+        return usage;
     }
 
 

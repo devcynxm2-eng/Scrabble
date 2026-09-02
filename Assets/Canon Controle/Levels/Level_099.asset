@@ -63,10 +63,38 @@ MonoBehaviour:
     maximumMovementCyclesBeforeRelease: 5
     movementReleaseVelocityMultiplier: 1
     sizeMultiplier: {x: 0.3, y: 1, z: 1}
+  trapPlacements: []
   blockPalette:
-  - {fileID: 11400000, guid: e964b77c447699345a0d239cec0defb1, type: 2}
-  - {fileID: 11400000, guid: 692378ae6e9fc314c9bcf964a4f199ac, type: 2}
-  - {fileID: 11400000, guid: 0b652a129a53c9946a0ea421e8463d3f, type: 2}
+  - {fileID: 11400000, guid: f4fd0d9f41509194a83a7fece1fbf8d2, type: 2}
+  - {fileID: 11400000, guid: c5ebe4270d0896049bf6aafb737601ba, type: 2}
+  - {fileID: 11400000, guid: 7061dfa81caf1394885edbb90cb80bb4, type: 2}
+  - {fileID: 11400000, guid: 5d50b502da8fee147b19b7ed818c6937, type: 2}
+  - {fileID: 11400000, guid: 08544dcec31398b42892875760161190, type: 2}
+  - {fileID: 11400000, guid: 82a74e209bc665c4f9e32b93e9e599fe, type: 2}
+  - {fileID: 11400000, guid: 7241e69f7608e8c4dbf52940341edc6f, type: 2}
+  - {fileID: 11400000, guid: bf1c7dbaf6b6bd54396c7c2973f282c3, type: 2}
+  - {fileID: 11400000, guid: 47e10f40bbe345046b0792f3d2d85fd3, type: 2}
+  - {fileID: 11400000, guid: e2fccfd93bd178d46b1a6e4921b25991, type: 2}
+  - {fileID: 11400000, guid: 87bfb436b8e89a74eb8a26c04996979a, type: 2}
+  - {fileID: 11400000, guid: a9e57037ec8676144acb0703eaf12c34, type: 2}
+  - {fileID: 11400000, guid: 8e4d6384da2618a4bb3f698fb614970a, type: 2}
+  - {fileID: 11400000, guid: 060426bdd46a5114192056221cc51d46, type: 2}
+  - {fileID: 11400000, guid: 11bb40735dc2bea4588491c523dbd549, type: 2}
+  - {fileID: 11400000, guid: 184f4c58febc14f4abdcf5a2111e4623, type: 2}
+  - {fileID: 11400000, guid: 47f52cf1d2e46624999353e3b0255964, type: 2}
+  - {fileID: 11400000, guid: cccfbfd779dbdda4a8952b217dc743ed, type: 2}
+  - {fileID: 11400000, guid: 41935e9242bb78c4dae8ab5f3da790aa, type: 2}
+  - {fileID: 11400000, guid: 2279013986355c04fa63f6af88dfb5e0, type: 2}
+  - {fileID: 11400000, guid: 26750b5999893e6458a3cd92820e8dd7, type: 2}
+  - {fileID: 11400000, guid: 45249c3f1795e404e976702b7e4b7512, type: 2}
+  - {fileID: 11400000, guid: be89ff0cfdf536e4f8d2a7fc52c3ebb8, type: 2}
+  - {fileID: 11400000, guid: 04ad1547b28a7db49b2d8cef83bb6dca, type: 2}
+  - {fileID: 11400000, guid: e77c0cec935e3b04d96bc489a88dda93, type: 2}
+  - {fileID: 11400000, guid: bbf7fef0c78442a4f8950a1cf0ffde07, type: 2}
+  - {fileID: 11400000, guid: a3813ae89ccaab240ace52ddc03a48f2, type: 2}
+  - {fileID: 11400000, guid: 13bc76b810ef2e44087820ab0acce312, type: 2}
+  - {fileID: 11400000, guid: 5d8ccaf07af3efb448a4e5350df95316, type: 2}
+  - {fileID: 11400000, guid: e88273cfe874b7a4997dfb76d1272c36, type: 2}
   cellSize: {x: 0.2, y: 0.2, z: 0.2}
   gridWidth: 10
   gridHeight: 14
@@ -160,7 +188,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 0, g: 0, b: 0, a: 1}
-        definitionIndex: 1
+        definitionIndex: 0
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -341,7 +369,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 0, g: 0, b: 0, a: 1}
-        definitionIndex: 1
+        definitionIndex: 0
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -2623,7 +2651,7 @@ MonoBehaviour:
     - cells:
       - occupied: 1
         color: {r: 0, g: 0, b: 0, a: 1}
-        definitionIndex: 2
+        definitionIndex: 0
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -2641,7 +2669,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 0, g: 0, b: 0, a: 1}
-        definitionIndex: 2
+        definitionIndex: 0
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -2659,7 +2687,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 0, g: 0, b: 0, a: 1}
-        definitionIndex: 2
+        definitionIndex: 0
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -2677,7 +2705,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 0, g: 0, b: 0, a: 1}
-        definitionIndex: 2
+        definitionIndex: 0
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -2695,7 +2723,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 0, g: 0, b: 0, a: 1}
-        definitionIndex: 1
+        definitionIndex: 0
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -2713,7 +2741,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 0, g: 0, b: 0, a: 1}
-        definitionIndex: 2
+        definitionIndex: 0
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -2731,7 +2759,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 0, g: 0, b: 0, a: 1}
-        definitionIndex: 2
+        definitionIndex: 0
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -2749,7 +2777,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 0, g: 0, b: 0, a: 1}
-        definitionIndex: 2
+        definitionIndex: 0
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -2767,7 +2795,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 0, g: 0, b: 0, a: 1}
-        definitionIndex: 2
+        definitionIndex: 0
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -2804,7 +2832,7 @@ MonoBehaviour:
     - cells:
       - occupied: 1
         color: {r: 0, g: 0, b: 0, a: 1}
-        definitionIndex: 2
+        definitionIndex: 0
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -2822,7 +2850,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 0, g: 0, b: 0, a: 1}
-        definitionIndex: 2
+        definitionIndex: 0
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -2840,7 +2868,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 0, g: 0, b: 0, a: 1}
-        definitionIndex: 2
+        definitionIndex: 0
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -2858,7 +2886,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 0, g: 0, b: 0, a: 1}
-        definitionIndex: 2
+        definitionIndex: 0
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -2876,7 +2904,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 0, g: 0, b: 0, a: 1}
-        definitionIndex: 1
+        definitionIndex: 0
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -2894,7 +2922,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 0, g: 0, b: 0, a: 1}
-        definitionIndex: 2
+        definitionIndex: 0
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -2912,7 +2940,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 0, g: 0, b: 0, a: 1}
-        definitionIndex: 2
+        definitionIndex: 0
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -2930,7 +2958,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 0, g: 0, b: 0, a: 1}
-        definitionIndex: 2
+        definitionIndex: 0
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -2948,7 +2976,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 0, g: 0, b: 0, a: 1}
-        definitionIndex: 2
+        definitionIndex: 0
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -2985,7 +3013,7 @@ MonoBehaviour:
     - cells:
       - occupied: 1
         color: {r: 0, g: 0, b: 0, a: 1}
-        definitionIndex: 1
+        definitionIndex: 5
         tableIndex: 0
         spanX: 4
         spanY: 1
@@ -3003,7 +3031,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 0, g: 0, b: 0, a: 1}
-        definitionIndex: 1
+        definitionIndex: 5
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -3021,7 +3049,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 0, g: 0, b: 0, a: 1}
-        definitionIndex: 1
+        definitionIndex: 5
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -3039,7 +3067,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 0, g: 0, b: 0, a: 1}
-        definitionIndex: 1
+        definitionIndex: 5
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -3057,7 +3085,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 1, g: 0.07075471, b: 0.07075471, a: 1}
-        definitionIndex: 2
+        definitionIndex: 5
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -3075,7 +3103,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 0, g: 0, b: 0, a: 1}
-        definitionIndex: 1
+        definitionIndex: 5
         tableIndex: 0
         spanX: 4
         spanY: 1
@@ -3093,7 +3121,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 0, g: 0, b: 0, a: 1}
-        definitionIndex: 1
+        definitionIndex: 5
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -3111,7 +3139,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 0, g: 0, b: 0, a: 1}
-        definitionIndex: 1
+        definitionIndex: 5
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -3129,7 +3157,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 0, g: 0, b: 0, a: 1}
-        definitionIndex: 1
+        definitionIndex: 5
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -3166,7 +3194,7 @@ MonoBehaviour:
     - cells:
       - occupied: 1
         color: {r: 0, g: 0, b: 0, a: 1}
-        definitionIndex: 2
+        definitionIndex: 5
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -3184,7 +3212,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 0, g: 0, b: 0, a: 1}
-        definitionIndex: 2
+        definitionIndex: 5
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -3202,7 +3230,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 0, g: 0, b: 0, a: 1}
-        definitionIndex: 2
+        definitionIndex: 5
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -3220,7 +3248,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 0, g: 0, b: 0, a: 1}
-        definitionIndex: 2
+        definitionIndex: 5
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -3238,7 +3266,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 1, g: 0.07075471, b: 0.07075471, a: 1}
-        definitionIndex: 2
+        definitionIndex: 5
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -3256,7 +3284,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 0, g: 0, b: 0, a: 1}
-        definitionIndex: 2
+        definitionIndex: 5
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -3274,7 +3302,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 0, g: 0, b: 0, a: 1}
-        definitionIndex: 2
+        definitionIndex: 5
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -3292,7 +3320,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 0, g: 0, b: 0, a: 1}
-        definitionIndex: 2
+        definitionIndex: 5
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -3310,7 +3338,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 0, g: 0, b: 0, a: 1}
-        definitionIndex: 2
+        definitionIndex: 5
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -3347,7 +3375,7 @@ MonoBehaviour:
     - cells:
       - occupied: 1
         color: {r: 0, g: 0, b: 0, a: 1}
-        definitionIndex: 2
+        definitionIndex: 10
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -3365,7 +3393,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 0, g: 0, b: 0, a: 1}
-        definitionIndex: 2
+        definitionIndex: 10
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -3383,7 +3411,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 0, g: 0, b: 0, a: 1}
-        definitionIndex: 2
+        definitionIndex: 10
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -3401,7 +3429,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 0, g: 0, b: 0, a: 1}
-        definitionIndex: 2
+        definitionIndex: 10
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -3419,7 +3447,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 1, g: 0.07075471, b: 0.07075471, a: 1}
-        definitionIndex: 2
+        definitionIndex: 10
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -3437,7 +3465,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 0, g: 0, b: 0, a: 1}
-        definitionIndex: 2
+        definitionIndex: 10
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -3455,7 +3483,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 0, g: 0, b: 0, a: 1}
-        definitionIndex: 2
+        definitionIndex: 10
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -3473,7 +3501,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 0, g: 0, b: 0, a: 1}
-        definitionIndex: 2
+        definitionIndex: 10
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -3491,7 +3519,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 0, g: 0, b: 0, a: 1}
-        definitionIndex: 2
+        definitionIndex: 10
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -3564,7 +3592,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 1, g: 0.07075471, b: 0.07075471, a: 1}
-        definitionIndex: 2
+        definitionIndex: 10
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -3582,7 +3610,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 0.11977114, g: 1, b: 0.07058823, a: 1}
-        definitionIndex: 1
+        definitionIndex: 10
         tableIndex: 0
         spanX: 3
         spanY: 1
@@ -3600,7 +3628,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 0.11977114, g: 1, b: 0.07058823, a: 1}
-        definitionIndex: 1
+        definitionIndex: 10
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -3618,7 +3646,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 0.11977114, g: 1, b: 0.07058823, a: 1}
-        definitionIndex: 1
+        definitionIndex: 10
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -3636,7 +3664,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 1, g: 0.07075471, b: 0.07075471, a: 1}
-        definitionIndex: 2
+        definitionIndex: 10
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -3763,7 +3791,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 1, g: 0.07075471, b: 0.07075471, a: 1}
-        definitionIndex: 2
+        definitionIndex: 15
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -3781,7 +3809,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 1, g: 0.07075471, b: 0.07075471, a: 1}
-        definitionIndex: 2
+        definitionIndex: 15
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -3799,7 +3827,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 1, g: 0.07075471, b: 0.07075471, a: 1}
-        definitionIndex: 2
+        definitionIndex: 15
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -3944,7 +3972,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 1, g: 0.07075471, b: 0.07075471, a: 1}
-        definitionIndex: 2
+        definitionIndex: 15
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -3962,7 +3990,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 1, g: 0.07075471, b: 0.07075471, a: 1}
-        definitionIndex: 2
+        definitionIndex: 15
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -3980,7 +4008,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 1, g: 0.07075471, b: 0.07075471, a: 1}
-        definitionIndex: 2
+        definitionIndex: 15
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -5232,7 +5260,7 @@ MonoBehaviour:
           hitsToBreak: 1
         - occupied: 1
           color: {r: 0, g: 0, b: 0, a: 1}
-          definitionIndex: 2
+          definitionIndex: 0
           tableIndex: 1
           spanX: 1
           spanY: 1
@@ -5250,7 +5278,7 @@ MonoBehaviour:
           hitsToBreak: 1
         - occupied: 1
           color: {r: 0, g: 0, b: 0, a: 1}
-          definitionIndex: 1
+          definitionIndex: 0
           tableIndex: 1
           spanX: 1
           spanY: 1
@@ -5268,7 +5296,7 @@ MonoBehaviour:
           hitsToBreak: 1
         - occupied: 1
           color: {r: 0, g: 0, b: 0, a: 1}
-          definitionIndex: 2
+          definitionIndex: 0
           tableIndex: 1
           spanX: 1
           spanY: 1
@@ -5413,7 +5441,7 @@ MonoBehaviour:
           hitsToBreak: 1
         - occupied: 1
           color: {r: 0, g: 0, b: 0, a: 1}
-          definitionIndex: 1
+          definitionIndex: 0
           tableIndex: 1
           spanX: 1
           spanY: 1
@@ -5449,7 +5477,7 @@ MonoBehaviour:
           hitsToBreak: 1
         - occupied: 1
           color: {r: 0, g: 0, b: 0, a: 1}
-          definitionIndex: 1
+          definitionIndex: 0
           tableIndex: 1
           spanX: 1
           spanY: 1
@@ -7767,7 +7795,7 @@ MonoBehaviour:
           hitsToBreak: 1
         - occupied: 1
           color: {r: 0, g: 0, b: 0, a: 1}
-          definitionIndex: 2
+          definitionIndex: 0
           tableIndex: 1
           spanX: 1
           spanY: 1
@@ -7785,7 +7813,7 @@ MonoBehaviour:
           hitsToBreak: 1
         - occupied: 1
           color: {r: 0, g: 0, b: 0, a: 1}
-          definitionIndex: 1
+          definitionIndex: 0
           tableIndex: 1
           spanX: 1
           spanY: 1
@@ -7803,7 +7831,7 @@ MonoBehaviour:
           hitsToBreak: 1
         - occupied: 1
           color: {r: 0, g: 0, b: 0, a: 1}
-          definitionIndex: 2
+          definitionIndex: 0
           tableIndex: 1
           spanX: 1
           spanY: 1
@@ -7948,7 +7976,7 @@ MonoBehaviour:
           hitsToBreak: 1
         - occupied: 1
           color: {r: 0, g: 0, b: 0, a: 1}
-          definitionIndex: 1
+          definitionIndex: 0
           tableIndex: 1
           spanX: 1
           spanY: 1
@@ -7984,7 +8012,7 @@ MonoBehaviour:
           hitsToBreak: 1
         - occupied: 1
           color: {r: 0, g: 0, b: 0, a: 1}
-          definitionIndex: 1
+          definitionIndex: 0
           tableIndex: 1
           spanX: 1
           spanY: 1
@@ -10285,7 +10313,7 @@ MonoBehaviour:
           hitsToBreak: 1
         - occupied: 1
           color: {r: 0, g: 0, b: 0, a: 1}
-          definitionIndex: 2
+          definitionIndex: 0
           tableIndex: 2
           spanX: 1
           spanY: 1
@@ -10303,7 +10331,7 @@ MonoBehaviour:
           hitsToBreak: 1
         - occupied: 1
           color: {r: 0, g: 0, b: 0, a: 1}
-          definitionIndex: 1
+          definitionIndex: 0
           tableIndex: 2
           spanX: 1
           spanY: 1
@@ -10321,7 +10349,7 @@ MonoBehaviour:
           hitsToBreak: 1
         - occupied: 1
           color: {r: 0, g: 0, b: 0, a: 1}
-          definitionIndex: 2
+          definitionIndex: 0
           tableIndex: 2
           spanX: 1
           spanY: 1
@@ -10466,7 +10494,7 @@ MonoBehaviour:
           hitsToBreak: 1
         - occupied: 1
           color: {r: 0, g: 0, b: 0, a: 1}
-          definitionIndex: 1
+          definitionIndex: 0
           tableIndex: 2
           spanX: 1
           spanY: 1
@@ -10502,7 +10530,7 @@ MonoBehaviour:
           hitsToBreak: 1
         - occupied: 1
           color: {r: 0, g: 0, b: 0, a: 1}
-          definitionIndex: 1
+          definitionIndex: 0
           tableIndex: 2
           spanX: 1
           spanY: 1
@@ -12820,7 +12848,7 @@ MonoBehaviour:
           hitsToBreak: 1
         - occupied: 1
           color: {r: 0, g: 0, b: 0, a: 1}
-          definitionIndex: 2
+          definitionIndex: 0
           tableIndex: 2
           spanX: 1
           spanY: 1
@@ -12838,7 +12866,7 @@ MonoBehaviour:
           hitsToBreak: 1
         - occupied: 1
           color: {r: 0, g: 0, b: 0, a: 1}
-          definitionIndex: 1
+          definitionIndex: 0
           tableIndex: 2
           spanX: 1
           spanY: 1
@@ -12856,7 +12884,7 @@ MonoBehaviour:
           hitsToBreak: 1
         - occupied: 1
           color: {r: 0, g: 0, b: 0, a: 1}
-          definitionIndex: 2
+          definitionIndex: 0
           tableIndex: 2
           spanX: 1
           spanY: 1
@@ -13001,7 +13029,7 @@ MonoBehaviour:
           hitsToBreak: 1
         - occupied: 1
           color: {r: 0, g: 0, b: 0, a: 1}
-          definitionIndex: 1
+          definitionIndex: 0
           tableIndex: 2
           spanX: 1
           spanY: 1
@@ -13037,7 +13065,7 @@ MonoBehaviour:
           hitsToBreak: 1
         - occupied: 1
           color: {r: 0, g: 0, b: 0, a: 1}
-          definitionIndex: 1
+          definitionIndex: 0
           tableIndex: 2
           spanX: 1
           spanY: 1

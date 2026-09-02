@@ -1,0 +1,50 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 55fc724be4a339441a4b3657fa5d8a5c, type: 3}
+  m_Name: Column2_1x1_geoDefinition
+  m_EditorClassIdentifier: Assembly-CSharp::PhysicsObjectDefinition
+  prefab: {fileID: 7752726282153205601, guid: 4d3a50c3feb82f7409d7697a7e787d43, type: 3}
+  displayName: Column2_1x1_geo
+  tintWithPaintColor: 0
+  minimumPrewarmCount: 16
+  brokenPiecesPrefab: {fileID: 0}
+  brokenPiecePrefabs:
+  - {fileID: 7361426329281138623, guid: f7269ca806a3cc647bcdbb7bd583ff83, type: 3}
+  - {fileID: 8000654617965887388, guid: 004eb1ab631460843957c1739d1f1422, type: 3}
+  - {fileID: 7794703968246539164, guid: a34f3da81739fb74d91a9a1ad3695340, type: 3}
+  - {fileID: 7635318687035254982, guid: f98b85606f88ef14a9c4188d4f04173d, type: 3}
+  - {fileID: 6375240479975818096, guid: 680665974d1ddce438e8edfd2ccd5a56, type: 3}
+  - {fileID: 2976813061189291977, guid: 78b9c118a13ec2342b10356055b7296d, type: 3}
+  - {fileID: 8463000724302112805, guid: 1aa3ae008684dc546b954f801a90592f, type: 3}
+  - {fileID: 746513636203818186, guid: 9abf1e3cef6569845b3bf4d7fe09735c, type: 3}
+  breakOnCannonBallHit: 0
+  breakOnGroundImpact: 1
+  minimumGroundBreakSpeed: 0.45
+  brokenPiecesImpulse: 1.4
+  brokenPiecesLifetime: 2.5
+  brokenPiecesScaleMultiplier: {x: 1, y: 1, z: 1}
+  useGlassShatterStyle: 0
+  glassCopiesPerPiece: 3
+  glassPieceScaleRange: {x: 0.22, y: 0.38}
+  glassSpawnSpread: 0.16
+  glassUpwardImpulse: 0.35
+  chainReactionEnabled: 0
+  chainReactionRadius: 1.2
+  chainReactionMaxBlocks: 6
+  chainReactionImpulse: 6
+  chainReactionUpwardBias: 0.35
+  chainReactionParticlePrefab: {fileID: 0}
+  chainReactionVfxLifetime: 2
+  chainReactionPropagates: 1
+  chainReactionPropagationDelay: 0.12
+  autoFitToCell: 1
+  manualScaleMultiplier: {x: 1, y: 1, z: 1}

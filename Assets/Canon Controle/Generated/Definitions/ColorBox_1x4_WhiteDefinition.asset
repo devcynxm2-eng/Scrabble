@@ -1,0 +1,53 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 55fc724be4a339441a4b3657fa5d8a5c, type: 3}
+  m_Name: ColorBox_1x4_WhiteDefinition
+  m_EditorClassIdentifier: Assembly-CSharp::PhysicsObjectDefinition
+  prefab: {fileID: 7150034252299039660, guid: eeb1d3d2a4de3574da1695b70409ec6d, type: 3}
+  displayName: ColorBox_1x4_White
+  tintWithPaintColor: 0
+  minimumPrewarmCount: 16
+  brokenPiecesPrefab: {fileID: 0}
+  brokenPiecePrefabs:
+  - {fileID: 3788432979216928238, guid: c53fb5696aacb27489b0cae9dbf3ff19, type: 3}
+  - {fileID: 5097236785021749851, guid: 0b8f305ee84bb3945a44cd6ed18ace4d, type: 3}
+  - {fileID: 8417928671535177556, guid: e70b162955b8ec24bb711ca5402f1fde, type: 3}
+  - {fileID: 996918418928379519, guid: d52a51f71a633ad48a346216b3a63d37, type: 3}
+  - {fileID: 4552151622760945641, guid: ffca8490ecfc9c14481206daac24ea2a, type: 3}
+  - {fileID: 5733369181197086891, guid: e7eebee8e7693d54c9fa71fc289938ae, type: 3}
+  - {fileID: 8111444321892921636, guid: 376416de28cbad840bd8b628b6e5c6ba, type: 3}
+  - {fileID: 6564106792905062431, guid: a96eff63e24527e4eaee6692c141aa64, type: 3}
+  - {fileID: 3350083897358060578, guid: fb0342bd3b6767d48976d6776dd2c969, type: 3}
+  - {fileID: 8069680111093631424, guid: de4f709dea9708844b5e550f3c985b09, type: 3}
+  - {fileID: 7712189793265187212, guid: d7345ee772b2adc42bfa7f85eecae518, type: 3}
+  breakOnCannonBallHit: 0
+  breakOnGroundImpact: 1
+  minimumGroundBreakSpeed: 0.45
+  brokenPiecesImpulse: 1.4
+  brokenPiecesLifetime: 2.5
+  brokenPiecesScaleMultiplier: {x: 1, y: 1, z: 1}
+  useGlassShatterStyle: 0
+  glassCopiesPerPiece: 3
+  glassPieceScaleRange: {x: 0.22, y: 0.38}
+  glassSpawnSpread: 0.16
+  glassUpwardImpulse: 0.35
+  chainReactionEnabled: 0
+  chainReactionRadius: 1.2
+  chainReactionMaxBlocks: 6
+  chainReactionImpulse: 6
+  chainReactionUpwardBias: 0.35
+  chainReactionParticlePrefab: {fileID: 0}
+  chainReactionVfxLifetime: 2
+  chainReactionPropagates: 1
+  chainReactionPropagationDelay: 0.12
+  autoFitToCell: 1
+  manualScaleMultiplier: {x: 1, y: 1, z: 1}

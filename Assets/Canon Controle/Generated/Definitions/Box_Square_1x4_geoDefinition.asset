@@ -1,0 +1,56 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 55fc724be4a339441a4b3657fa5d8a5c, type: 3}
+  m_Name: Box_Square_1x4_geoDefinition
+  m_EditorClassIdentifier: Assembly-CSharp::PhysicsObjectDefinition
+  prefab: {fileID: 2647307050989744148, guid: 6a36e26a5ed96ba4d994aed8b8db784b, type: 3}
+  displayName: Box_Square_1x4_geo
+  tintWithPaintColor: 0
+  minimumPrewarmCount: 16
+  brokenPiecesPrefab: {fileID: 0}
+  brokenPiecePrefabs:
+  - {fileID: 7342791026128260973, guid: 1f36c4cb04f8a6d488c54042206b08e6, type: 3}
+  - {fileID: 7673852830471481007, guid: 25e44b4ef77554144b37a11eb7ffc4ce, type: 3}
+  - {fileID: 2663295987536647037, guid: 3e953063feb7a6d40839c0653fead547, type: 3}
+  - {fileID: 8514006513680851178, guid: f9d1298a53d023244b7fc3a6f0848bde, type: 3}
+  - {fileID: 2520973487397212540, guid: 45e23e7d0972bb346978aaa0dabf9cc0, type: 3}
+  - {fileID: 2194787459979342336, guid: fa605fae51ce4304e900ce6eaf754c03, type: 3}
+  - {fileID: 104637358335906438, guid: 95af899b728442b4a8866b393f5f2144, type: 3}
+  - {fileID: 8162169700066966539, guid: 1475a1086bc55b54a9884b1992465da1, type: 3}
+  - {fileID: 1136146002808516518, guid: ebfea4db33e94be49b0fe1b0138e1ec8, type: 3}
+  - {fileID: 8453879886065392541, guid: f56e214ebd8125a4fb9567d9dc515371, type: 3}
+  - {fileID: 8078588775669538489, guid: 26819ada4161d9d4c85d734b8c71c839, type: 3}
+  - {fileID: 6588142980256102759, guid: 7d48e1d3c9267404ba15a32fdbf3b297, type: 3}
+  - {fileID: 7133417441040736421, guid: ea1a6f640853da946a52ec45f70f7a77, type: 3}
+  - {fileID: 1095401178503775477, guid: dfd5d0e78cfcb624ca126f2d406030d1, type: 3}
+  breakOnCannonBallHit: 0
+  breakOnGroundImpact: 1
+  minimumGroundBreakSpeed: 0.45
+  brokenPiecesImpulse: 1.4
+  brokenPiecesLifetime: 2.5
+  brokenPiecesScaleMultiplier: {x: 1, y: 1, z: 1}
+  useGlassShatterStyle: 0
+  glassCopiesPerPiece: 3
+  glassPieceScaleRange: {x: 0.22, y: 0.38}
+  glassSpawnSpread: 0.16
+  glassUpwardImpulse: 0.35
+  chainReactionEnabled: 0
+  chainReactionRadius: 1.2
+  chainReactionMaxBlocks: 6
+  chainReactionImpulse: 6
+  chainReactionUpwardBias: 0.35
+  chainReactionParticlePrefab: {fileID: 0}
+  chainReactionVfxLifetime: 2
+  chainReactionPropagates: 1
+  chainReactionPropagationDelay: 0.12
+  autoFitToCell: 1
+  manualScaleMultiplier: {x: 1, y: 1, z: 1}

@@ -20618,6 +20618,23 @@ public sealed class LevelRuntimeController : MonoBehaviour
     private float mirroredRandomTorqueMultiplier = 0.035f;
 
 
+    [Header("Level Complete")]
+
+    [Tooltip(
+        "Aakhri target clear hone ke baad itna wait hoga, phir Level " +
+        "Complete fire hogi. " +
+        "Jin blocks par Break On Ground Impact ON hai, wo ground chhute " +
+        "hi usi frame cleared count ho jate hain - jabke unke break " +
+        "fragments ko ghayab hone mein aur waqt lagta hai. Is window ke " +
+        "baghair win usi lamhe aa jati hai aur uska HideGameplay() un " +
+        "fragments ko banne ke sath hi utha deta hai, is liye break " +
+        "animation nazar hi nahi aati. " +
+        "0 rakhne par purana behaviour (foran win) wapas aa jayega."
+    )]
+    [SerializeField, Min(0f)]
+    private float levelCompleteSettleDelay = 0.7f;
+
+
     [Header("Events")]
 
     [SerializeField]
@@ -20757,6 +20774,8 @@ public sealed class LevelRuntimeController : MonoBehaviour
     private bool isLoadingLevel;
 
     private Coroutine levelEntranceRoutine;
+
+    private Coroutine levelCompleteRoutine;
 
     private CannonController cannonController;
 
@@ -23347,7 +23366,7 @@ public sealed class LevelRuntimeController : MonoBehaviour
         if (levelGenerated &&
             remainingTargets == 0)
         {
-            CompleteLevel();
+            BeginLevelCompleteSettle();
         }
     }
 
@@ -23371,6 +23390,69 @@ public sealed class LevelRuntimeController : MonoBehaviour
 
         // Dedicated UI controllers listen to this event.
         LevelCompleted?.Invoke(levelData);
+    }
+
+
+    /// <summary>
+    /// Aakhri target clear hone par win ko ek chhota settle window deta
+    /// hai, taake ground par toote hue block ke break fragments apni
+    /// shrink poori kar sakein.
+    ///
+    /// Iske baghair BreakImmediately() usi frame Cleared fire karta hai
+    /// jis frame block ground ko chhuta hai, aur LevelCompleted ka
+    /// HideGameplay() un naye bane fragments ko foran destroy kar deta
+    /// hai - player ko break animation nazar hi nahi aati.
+    ///
+    /// Yehi pattern CannonController ke Out Of Moves check mein pehle se
+    /// mojood hai (outOfMovesResultDelay).
+    /// </summary>
+    private void BeginLevelCompleteSettle()
+    {
+        if (levelCompleteRoutine != null)
+        {
+            return;
+        }
+
+        if (levelCompleteSettleDelay <= 0f ||
+            !Application.isPlaying ||
+            !isActiveAndEnabled)
+        {
+            CompleteLevel();
+            return;
+        }
+
+        levelCompleteRoutine = StartCoroutine(
+            CompleteLevelAfterSettleRoutine(
+                levelGenerationRevision
+            )
+        );
+    }
+
+
+    private IEnumerator CompleteLevelAfterSettleRoutine(
+        int settleRevision)
+    {
+        /*
+         * Fragments ki shrink Time.deltaTime par chalti hai, is liye ye
+         * wait bhi scaled time par hai - pause hone par dono ek sath
+         * rukte hain aur win pause screen ke peeche fire nahi hoti.
+         */
+        yield return new WaitForSeconds(
+            levelCompleteSettleDelay
+        );
+
+        levelCompleteRoutine = null;
+
+        /*
+         * Settle ke dauran Restart / Next Level ho gaya, to ye win
+         * purane level ki hai - discard kar do.
+         */
+        if (settleRevision != levelGenerationRevision)
+        {
+            yield break;
+        }
+
+        CompleteLevel();
     }
 
 
@@ -24058,6 +24140,18 @@ public sealed class LevelRuntimeController : MonoBehaviour
         {
             StopCoroutine(levelEntranceRoutine);
             levelEntranceRoutine = null;
+        }
+
+        /*
+         * Pending settle ko yahan girana zaroori hai. Warna agle level
+         * mein BeginLevelCompleteSettle() ko levelCompleteRoutine abhi
+         * non-null milta aur wo foran return kar jata - yani us level
+         * ki win kabhi fire hi na hoti.
+         */
+        if (levelCompleteRoutine != null)
+        {
+            StopCoroutine(levelCompleteRoutine);
+            levelCompleteRoutine = null;
         }
 
         levelEntranceAnimationEntries.Clear();

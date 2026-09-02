@@ -1,0 +1,49 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 55fc724be4a339441a4b3657fa5d8a5c, type: 3}
+  m_Name: boxCylinder1x3_geoDefinition
+  m_EditorClassIdentifier: Assembly-CSharp::PhysicsObjectDefinition
+  prefab: {fileID: 5496502028066170578, guid: d9cfc6fd3ae148440952b03750ffaeda, type: 3}
+  displayName: boxCylinder1x3_geo
+  tintWithPaintColor: 0
+  minimumPrewarmCount: 16
+  brokenPiecesPrefab: {fileID: 0}
+  brokenPiecePrefabs:
+  - {fileID: 6012687586874051370, guid: 9cef4a5aacfcebd4a8257e8ad0a8a191, type: 3}
+  - {fileID: 3723495719565202110, guid: 6ce6c6cd881d47c4090f039b0cdcc073, type: 3}
+  - {fileID: 5485212343336615426, guid: edbe6638a305ae744bb3d96f8d4b3b5b, type: 3}
+  - {fileID: 2935080257977087169, guid: bc39c526d67fcd04a97362dac4e95d07, type: 3}
+  - {fileID: 8143073400279528765, guid: a5270a3e2a6de474ca0d1c2925f7746b, type: 3}
+  - {fileID: 8162628757579888572, guid: 5a2be10918595a14baf7377fe52abf6d, type: 3}
+  - {fileID: 129945124514404885, guid: faf8170881f20fa4fad64fb8a3fab99a, type: 3}
+  breakOnCannonBallHit: 0
+  breakOnGroundImpact: 1
+  minimumGroundBreakSpeed: 0.45
+  brokenPiecesImpulse: 1.4
+  brokenPiecesLifetime: 2.5
+  brokenPiecesScaleMultiplier: {x: 1, y: 1, z: 1}
+  useGlassShatterStyle: 0
+  glassCopiesPerPiece: 3
+  glassPieceScaleRange: {x: 0.22, y: 0.38}
+  glassSpawnSpread: 0.16
+  glassUpwardImpulse: 0.35
+  chainReactionEnabled: 0
+  chainReactionRadius: 1.2
+  chainReactionMaxBlocks: 6
+  chainReactionImpulse: 6
+  chainReactionUpwardBias: 0.35
+  chainReactionParticlePrefab: {fileID: 0}
+  chainReactionVfxLifetime: 2
+  chainReactionPropagates: 1
+  chainReactionPropagationDelay: 0.12
+  autoFitToCell: 1
+  manualScaleMultiplier: {x: 1, y: 1, z: 1}

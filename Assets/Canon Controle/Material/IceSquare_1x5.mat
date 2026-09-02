@@ -28,7 +28,7 @@ Material:
     serializedVersion: 3
     m_TexEnvs:
     - _BaseMap:
-        m_Texture: {fileID: 0}
+        m_Texture: {fileID: 2800000, guid: 7c50561b4b0cf7b4fa62eb3bc442a9fe, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _BumpMap:
@@ -80,7 +80,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MainTex:
-        m_Texture: {fileID: 0}
+        m_Texture: {fileID: 2800000, guid: 7c50561b4b0cf7b4fa62eb3bc442a9fe, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MatCapTex:
@@ -300,6 +300,7 @@ Material:
     - _VertexColorsAmount: 1
     - _VertexColorsContrast: 1
     - _WorkflowMode: 1
+    - _XRMotionVectorsPass: 1
     - _ZOffset: 0
     - _ZTest: 4
     - _ZWrite: 1

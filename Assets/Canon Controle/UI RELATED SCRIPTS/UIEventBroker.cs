@@ -25,9 +25,30 @@ public class UIEventBroker
 /// </summary>
 public static class UITransition
 {
-    private const float TransitionDuration = 0.22f;
-    private const float HiddenScale = 0.94f;
-    private const float HiddenVerticalOffset = -24f;
+    /*
+     * Show jaan boojh kar Hide se lamba hai: EaseOutBack ka overshoot
+     * tab hi mehsoos hota hai jab usay saans lene ki jagah mile. Close
+     * chhota rakha hai taake popup band karna sust na lage.
+     */
+    private const float ShowDuration = 0.34f;
+    private const float HideDuration = 0.16f;
+
+    /*
+     * Panel itni chhoti scale se "pop" karta hai. 1 ke jitna qareeb,
+     * effect utna halka. 0.94 par animation itni halki thi ke Level
+     * Complete par nazar hi nahi aati thi.
+     */
+    private const float HiddenScale = 0.80f;
+
+    private const float HiddenVerticalOffset = -46f;
+
+    /*
+     * Alpha show ke sirf itne hisse mein poora ho jata hai. Jab tak
+     * scale settle hoti hai panel already solid dikh raha hota hai -
+     * is se full-screen panels ke kinare chhoti scale par nazar nahi
+     * aate, aur popup dhundhla bhi mehsoos nahi hota.
+     */
+    private const float ShowFadePortion = 0.45f;
 
     private static UITransitionRunner runner;
 
@@ -169,7 +190,22 @@ public static class UITransition
                 return;
             }
 
-            state.CanvasGroup.blocksRaycasts = false;
+            /*
+             * Animation ke dauran panel KHUD raycasts block karta hai,
+             * taake tap uske neeche wali screen tak na pohanche. Home ke
+             * popups (Settings / Daily Reward) khulte waqt Main Menu jaan
+             * boojh kar active rehta hai (UIBaseScreen.IsHomePopup), is
+             * liye pehle in 0.22s mein tap seedha Play button par lag
+             * jata tha.
+             *
+             * Steady state mein bhi shown panel blocksRaycasts = true
+             * hi rehta hai, is liye ye sirf transition window ko usi
+             * state ke sath match karta hai - koi naya behaviour nahi.
+             *
+             * interactable OFF rehta hai, is liye panel ke apne buttons
+             * animation mukammal hone se pehle press nahi ho sakte.
+             */
+            state.CanvasGroup.blocksRaycasts = true;
             state.CanvasGroup.interactable = false;
 
             state.Routine = StartCoroutine(
@@ -208,7 +244,8 @@ public static class UITransition
                     Panel = panel,
                     RectTransform = rectTransform,
                     CanvasGroup = canvasGroup,
-                    ShownScale = panel.transform.localScale,
+                    ShownScale =
+                        SanitizeShownScale(panel.transform.localScale),
                     ShownPosition =
                         rectTransform != null
                             ? rectTransform.anchoredPosition
@@ -221,6 +258,24 @@ public static class UITransition
 
             states[instanceId] = state;
             return state;
+        }
+
+
+        /// <summary>
+        /// Panel ki authored "shown" scale. Jis tarah designers panel ko
+        /// alpha 0 se hide karte hain, usi tarah scale 0 se bhi karte
+        /// hain - aur us soorat mein 0 ko shown pose maan lena panel ko
+        /// hamesha ke liye invisible kar deta. Ye ShownAlpha wale guard
+        /// ka exact mirror hai.
+        /// </summary>
+        private static Vector3 SanitizeShownScale(
+            Vector3 scale)
+        {
+            return new Vector3(
+                Mathf.Approximately(scale.x, 0f) ? 1f : scale.x,
+                Mathf.Approximately(scale.y, 0f) ? 1f : scale.y,
+                Mathf.Approximately(scale.z, 0f) ? 1f : scale.z
+            );
         }
 
 
@@ -268,11 +323,40 @@ public static class UITransition
         }
 
 
+        /// <summary>
+        /// Apni jagah se thora aage nikal kar wapas settle hone wali
+        /// curve - yehi "pop" ka ehsaas deti hai. Wahi formula jo
+        /// LevelRuntimeController blocks ki entrance par use karta hai,
+        /// taake UI aur gameplay ka feel ek jaisa rahe.
+        /// </summary>
+        private static float EaseOutBack(float value)
+        {
+            const float overshoot = 1.70158f;
+
+            float shiftedValue = value - 1f;
+
+            return
+                1f +
+                (overshoot + 1f) *
+                shiftedValue * shiftedValue * shiftedValue +
+                overshoot * shiftedValue * shiftedValue;
+        }
+
+
+        private static float EaseOutCubic(float value)
+        {
+            return 1f - Mathf.Pow(1f - value, 3f);
+        }
+
+
         private IEnumerator AnimateState(
             TransitionState state,
             bool show)
         {
-            float duration = TransitionDuration;
+            float duration =
+                show
+                    ? ShowDuration
+                    : HideDuration;
 
             float startAlpha = state.CanvasGroup.alpha;
             float targetAlpha = show ? state.ShownAlpha : 0f;
@@ -307,27 +391,57 @@ public static class UITransition
                     Mathf.Clamp01(elapsed / duration);
 
                 /*
-                 * Show ka cubic ease-out aur hide ka cubic ease-in
-                 * ek dusre ka exact visual reverse hain.
+                 * Show: teen alag curves, ek sath chalti hui.
+                 *   scale    - EaseOutBack, thora aage ja kar settle (pop)
+                 *   position - cubic ease-out, seedha upar
+                 *   alpha    - sab se pehle poora, taake panel kabhi
+                 *              dhundhla na lage
+                 *
+                 * Hide: teenon ek sath cubic ease-in - tez aur saaf.
                  */
-                float progress = show
-                    ? 1f - Mathf.Pow(1f - normalizedTime, 3f)
-                    : normalizedTime *
-                      normalizedTime *
-                      normalizedTime;
+                float scaleProgress;
+                float positionProgress;
+                float alphaProgress;
+
+                if (show)
+                {
+                    scaleProgress =
+                        EaseOutBack(normalizedTime);
+
+                    positionProgress =
+                        EaseOutCubic(normalizedTime);
+
+                    alphaProgress =
+                        EaseOutCubic(
+                            Mathf.Clamp01(
+                                normalizedTime / ShowFadePortion
+                            )
+                        );
+                }
+                else
+                {
+                    float easeIn =
+                        normalizedTime *
+                        normalizedTime *
+                        normalizedTime;
+
+                    scaleProgress = easeIn;
+                    positionProgress = easeIn;
+                    alphaProgress = easeIn;
+                }
 
                 state.CanvasGroup.alpha =
                     Mathf.LerpUnclamped(
                         startAlpha,
                         targetAlpha,
-                        progress
+                        alphaProgress
                     );
 
                 state.Panel.transform.localScale =
                     Vector3.LerpUnclamped(
                         startScale,
                         targetScale,
-                        progress
+                        scaleProgress
                     );
 
                 if (state.RectTransform != null)
@@ -336,7 +450,7 @@ public static class UITransition
                         Vector2.LerpUnclamped(
                             startPosition,
                             targetPosition,
-                            progress
+                            positionProgress
                         );
                 }
 

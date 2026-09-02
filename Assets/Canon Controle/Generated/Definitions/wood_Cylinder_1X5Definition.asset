@@ -1,0 +1,60 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 55fc724be4a339441a4b3657fa5d8a5c, type: 3}
+  m_Name: wood_Cylinder_1X5Definition
+  m_EditorClassIdentifier: Assembly-CSharp::PhysicsObjectDefinition
+  prefab: {fileID: 8082650149419292439, guid: 620fc798392c65848ad941797b8c1ddb, type: 3}
+  displayName: wood_Cylinder_1X5
+  tintWithPaintColor: 0
+  minimumPrewarmCount: 16
+  brokenPiecesPrefab: {fileID: 0}
+  brokenPiecePrefabs:
+  - {fileID: 542184350312840584, guid: 710dc40df0c95074e87fb14e13e0065b, type: 3}
+  - {fileID: 853596953973904764, guid: b725ee2acc7c4764fa3a0987af4ea2f5, type: 3}
+  - {fileID: 12683361079170055, guid: 8c026bd6f2a5b534e87e6500187e0751, type: 3}
+  - {fileID: 7733548526463635450, guid: f504e28e2e1976847aa70427d1bad06d, type: 3}
+  - {fileID: 4904204661507883174, guid: 5c63c1ad0496dc04788198fadd21b252, type: 3}
+  - {fileID: 4299743259360059854, guid: 9e31d9af1c8a7f64281570ab2eb6e86a, type: 3}
+  - {fileID: 6334718230839923416, guid: d6a61532ab73a354b8d5190b5871b7db, type: 3}
+  - {fileID: 1231427174959171547, guid: ea8dadd862db5d9439e0fbc5482db202, type: 3}
+  - {fileID: 4769787854089769002, guid: 5d1501afb55dc8a4987e27f0807d9044, type: 3}
+  - {fileID: 4252101662643904375, guid: a8677b9b5fc05624a8abd2964197b6a4, type: 3}
+  - {fileID: 7177008908949288876, guid: 4ed613779b9d5df448afb5239a5502d3, type: 3}
+  - {fileID: 6459184183336181760, guid: 9fabbaf970c19504e815ff5f7f11397a, type: 3}
+  - {fileID: 9090774767975715542, guid: 2fa36304e48a4434894ce62c0705c14e, type: 3}
+  - {fileID: 4748721811139061496, guid: 6b12ad6bc85476e4b9f0fd3bdc1ed420, type: 3}
+  - {fileID: 5560816450716840677, guid: 5fb53cc1bb565ac4fa125e8f154102cd, type: 3}
+  - {fileID: 5698960456514593353, guid: c184f46d2f1968d438df00ab32b8eb88, type: 3}
+  - {fileID: 938358296811763683, guid: 77b0a5abdbd017c4f8ee5d3af7707b29, type: 3}
+  - {fileID: 3709701884075093467, guid: 8c34592cf3f90be4d8f15f4123b8f394, type: 3}
+  breakOnCannonBallHit: 0
+  breakOnGroundImpact: 1
+  minimumGroundBreakSpeed: 0.45
+  brokenPiecesImpulse: 1.4
+  brokenPiecesLifetime: 2.5
+  brokenPiecesScaleMultiplier: {x: 1, y: 1, z: 1}
+  useGlassShatterStyle: 0
+  glassCopiesPerPiece: 3
+  glassPieceScaleRange: {x: 0.22, y: 0.38}
+  glassSpawnSpread: 0.16
+  glassUpwardImpulse: 0.35
+  chainReactionEnabled: 0
+  chainReactionRadius: 1.2
+  chainReactionMaxBlocks: 6
+  chainReactionImpulse: 6
+  chainReactionUpwardBias: 0.35
+  chainReactionParticlePrefab: {fileID: 0}
+  chainReactionVfxLifetime: 2
+  chainReactionPropagates: 1
+  chainReactionPropagationDelay: 0.12
+  autoFitToCell: 1
+  manualScaleMultiplier: {x: 1, y: 1, z: 1}
