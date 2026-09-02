@@ -27,10 +27,10 @@ MonoBehaviour:
   brokenPiecesLifetime: 2.5
   brokenPiecesScaleMultiplier: {x: 1, y: 1, z: 1}
   chainReactionEnabled: 1
-  chainReactionRadius: 0.2
-  chainReactionMaxBlocks: 3
-  chainReactionImpulse: 3
-  chainReactionUpwardBias: 0.258
+  chainReactionRadius: 1.2
+  chainReactionMaxBlocks: 6
+  chainReactionImpulse: 6
+  chainReactionUpwardBias: 0.35
   chainReactionParticlePrefab: {fileID: 6100022945525440682, guid: 759bdd92817bad54f9ad1e076714532e, type: 3}
   chainReactionVfxLifetime: 2
   chainReactionPropagates: 1

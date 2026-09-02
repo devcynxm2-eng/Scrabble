@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Level_002
   m_EditorClassIdentifier: 
   levelNumber: 2
-  availableBalls: 14
+  availableBalls: 24
   tablePrefab: {fileID: 3767945316376700881, guid: b7b94326cb608794c97210e1c40ec165, type: 3}
   tablePositionOffset: {x: 0, y: 0, z: 0}
   tableRotationEuler: {x: 0, y: 0, z: 0}
@@ -33,25 +33,7 @@ MonoBehaviour:
     maximumMovementCyclesBeforeRelease: 5
     movementReleaseVelocityMultiplier: 1
     sizeMultiplier: {x: 1, y: 1, z: 1}
-  trapPlacements:
-  - prefab: {fileID: 483244797689177186, guid: 40e4365ae29af6f40a37cf46a56cdcbe, type: 3}
-    displayName: 
-    positionOffset: {x: -0.68, y: 0.55, z: -0.88}
-    rotationEuler: {x: 0, y: 0, z: 0}
-    scaleMultiplier: {x: 1, y: 1, z: 1}
-    enableRotation: 1
-    rotationAxis: {x: 0, y: 90, z: 0}
-    rotationSpeed: 20
-    enableMovement: 1
-    movementMode: 1
-    movementAxis: {x: 0, y: 0, z: 0}
-    movementDistance: 1.5
-    movementSpeed: 0.8
-    movementSteps:
-    - {x: 1.5, y: 0, z: 0}
-    - {x: 0, y: 1.5, z: 0}
-    - {x: -1.5, y: 0, z: 0}
-    - {x: 0, y: -1.5, z: 0}
+  trapPlacements: []
   blockPalette:
   - {fileID: 11400000, guid: 26750b5999893e6458a3cd92820e8dd7, type: 2}
   - {fileID: 11400000, guid: 45249c3f1795e404e976702b7e4b7512, type: 2}
@@ -83,11 +65,12 @@ MonoBehaviour:
   - {fileID: 11400000, guid: b296a34fa2510de4aa468f7533928839, type: 2}
   - {fileID: 11400000, guid: b296a34fa2510de4aa468f7533928839, type: 2}
   - {fileID: 11400000, guid: b296a34fa2510de4aa468f7533928839, type: 2}
+  - {fileID: 11400000, guid: e964b77c447699345a0d239cec0defb1, type: 2}
   cellSize: {x: 0.3, y: 0.3, z: 0.3}
   gridWidth: 8
   gridHeight: 14
   gridDepth: 2
-  mirrorPaintAcrossLayers: 1
+  mirrorPaintAcrossLayers: 0
   gridOffset: {x: 0, y: 0, z: 0}
   horizontalGap: 0
   verticalGap: 0
@@ -102,12 +85,12 @@ MonoBehaviour:
   layers:
   - rows:
     - cells:
-      - occupied: 0
+      - occupied: 1
         color: {r: 1, g: 1, b: 1, a: 1}
         definitionIndex: 0
         tableIndex: 0
         spanX: 1
-        spanY: 1
+        spanY: 5
         spanZ: 1
         isCovered: 0
         anchorX: -1
@@ -140,7 +123,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
+        definitionIndex: 30
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -158,7 +141,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
+        definitionIndex: 30
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -176,7 +159,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
+        definitionIndex: 30
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -228,12 +211,12 @@ MonoBehaviour:
         scaleMultiplier: {x: 1, y: 1, z: 1}
         breakable: 0
         hitsToBreak: 1
-      - occupied: 0
+      - occupied: 1
         color: {r: 1, g: 1, b: 1, a: 1}
         definitionIndex: 0
         tableIndex: 0
         spanX: 1
-        spanY: 1
+        spanY: 5
         spanZ: 1
         isCovered: 0
         anchorX: -1
@@ -247,7 +230,25 @@ MonoBehaviour:
         breakable: 0
         hitsToBreak: 1
     - cells:
-      - occupied: 0
+      - occupied: 1
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        tableIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 1
+        anchorX: 0
+        anchorY: 0
+        anchorZ: 0
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+        rotationEulerOffset: {x: 0, y: 0, z: 0}
+        scaleMultiplier: {x: 1, y: 1, z: 1}
+        breakable: 0
+        hitsToBreak: 1
+      - occupied: 1
         color: {r: 1, g: 1, b: 1, a: 1}
         definitionIndex: 0
         tableIndex: 0
@@ -283,9 +284,9 @@ MonoBehaviour:
         scaleMultiplier: {x: 1, y: 1, z: 1}
         breakable: 0
         hitsToBreak: 1
-      - occupied: 0
+      - occupied: 1
         color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
+        definitionIndex: 30
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -294,7 +295,7 @@ MonoBehaviour:
         anchorX: -1
         anchorY: -1
         anchorZ: -1
-        orientation: 0
+        orientation: 2
         customZRotation: 0
         localOffset: {x: 0, y: 0, z: 0}
         rotationEulerOffset: {x: 0, y: 0, z: 0}
@@ -303,7 +304,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
+        definitionIndex: 30
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -330,24 +331,6 @@ MonoBehaviour:
         anchorX: -1
         anchorY: -1
         anchorZ: -1
-        orientation: 2
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-        rotationEulerOffset: {x: 0, y: 0, z: 0}
-        scaleMultiplier: {x: 1, y: 1, z: 1}
-        breakable: 0
-        hitsToBreak: 1
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        tableIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
         orientation: 0
         customZRotation: 0
         localOffset: {x: 0, y: 0, z: 0}
@@ -373,17 +356,17 @@ MonoBehaviour:
         scaleMultiplier: {x: 1, y: 1, z: 1}
         breakable: 0
         hitsToBreak: 1
-      - occupied: 0
+      - occupied: 1
         color: {r: 1, g: 1, b: 1, a: 1}
         definitionIndex: 0
         tableIndex: 0
         spanX: 1
         spanY: 1
         spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
+        isCovered: 1
+        anchorX: 7
+        anchorY: 0
+        anchorZ: 0
         orientation: 0
         customZRotation: 0
         localOffset: {x: 0, y: 0, z: 0}
@@ -392,8 +375,80 @@ MonoBehaviour:
         breakable: 0
         hitsToBreak: 1
     - cells:
-      - occupied: 0
-        color: {r: 0.1, g: 0.58, b: 1, a: 1}
+      - occupied: 1
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        tableIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 1
+        anchorX: 0
+        anchorY: 0
+        anchorZ: 0
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+        rotationEulerOffset: {x: 0, y: 0, z: 0}
+        scaleMultiplier: {x: 1, y: 1, z: 1}
+        breakable: 0
+        hitsToBreak: 1
+      - occupied: 1
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 5
+        tableIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+        rotationEulerOffset: {x: 0, y: 0, z: 0}
+        scaleMultiplier: {x: 1, y: 1, z: 1}
+        breakable: 0
+        hitsToBreak: 1
+      - occupied: 1
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 5
+        tableIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+        rotationEulerOffset: {x: 0, y: 0, z: 0}
+        scaleMultiplier: {x: 1, y: 1, z: 1}
+        breakable: 0
+        hitsToBreak: 1
+      - occupied: 1
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        tableIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+        rotationEulerOffset: {x: 0, y: 0, z: 0}
+        scaleMultiplier: {x: 1, y: 1, z: 1}
+        breakable: 0
+        hitsToBreak: 1
+      - occupied: 1
+        color: {r: 1, g: 1, b: 1, a: 1}
         definitionIndex: 0
         tableIndex: 0
         spanX: 1
@@ -448,87 +503,15 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 5
-        tableIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 2
-        customZRotation: 0
-        localOffset: {x: 0.5, y: 0, z: 0}
-        rotationEulerOffset: {x: 0, y: 0, z: 0}
-        scaleMultiplier: {x: 1, y: 1, z: 1}
-        breakable: 0
-        hitsToBreak: 1
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
         definitionIndex: 0
         tableIndex: 0
         spanX: 1
         spanY: 1
         spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-        rotationEulerOffset: {x: 0, y: 0, z: 0}
-        scaleMultiplier: {x: 1, y: 1, z: 1}
-        breakable: 0
-        hitsToBreak: 1
-      - occupied: 1
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 5
-        tableIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-        rotationEulerOffset: {x: 0, y: 0, z: 0}
-        scaleMultiplier: {x: 1, y: 1, z: 1}
-        breakable: 0
-        hitsToBreak: 1
-      - occupied: 1
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 5
-        tableIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-        rotationEulerOffset: {x: 0, y: 0, z: 0}
-        scaleMultiplier: {x: 1, y: 1, z: 1}
-        breakable: 0
-        hitsToBreak: 1
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        tableIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
+        isCovered: 1
+        anchorX: 7
+        anchorY: 0
+        anchorZ: 0
         orientation: 0
         customZRotation: 0
         localOffset: {x: 0, y: 0, z: 0}
@@ -537,143 +520,143 @@ MonoBehaviour:
         breakable: 0
         hitsToBreak: 1
     - cells:
-      - occupied: 0
-        color: {r: 0.1, g: 0.58, b: 1, a: 1}
-        definitionIndex: 0
-        tableIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-        rotationEulerOffset: {x: 0, y: 0, z: 0}
-        scaleMultiplier: {x: 1, y: 1, z: 1}
-        breakable: 0
-        hitsToBreak: 1
       - occupied: 1
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 5
-        tableIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-        rotationEulerOffset: {x: 0, y: 0, z: 0}
-        scaleMultiplier: {x: 1, y: 1, z: 1}
-        breakable: 0
-        hitsToBreak: 1
-      - occupied: 1
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 5
-        tableIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-        rotationEulerOffset: {x: 0, y: 0, z: 0}
-        scaleMultiplier: {x: 1, y: 1, z: 1}
-        breakable: 0
-        hitsToBreak: 1
-      - occupied: 1
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 5
-        tableIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-        rotationEulerOffset: {x: 0, y: 0, z: 0}
-        scaleMultiplier: {x: 1, y: 1, z: 1}
-        breakable: 0
-        hitsToBreak: 1
-      - occupied: 1
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 5
-        tableIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-        rotationEulerOffset: {x: 0, y: 0, z: 0}
-        scaleMultiplier: {x: 1, y: 1, z: 1}
-        breakable: 0
-        hitsToBreak: 1
-      - occupied: 1
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 5
-        tableIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-        rotationEulerOffset: {x: 0, y: 0, z: 0}
-        scaleMultiplier: {x: 1, y: 1, z: 1}
-        breakable: 0
-        hitsToBreak: 1
-      - occupied: 1
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 5
-        tableIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-        rotationEulerOffset: {x: 0, y: 0, z: 0}
-        scaleMultiplier: {x: 1, y: 1, z: 1}
-        breakable: 0
-        hitsToBreak: 1
-      - occupied: 0
         color: {r: 1, g: 1, b: 1, a: 1}
         definitionIndex: 0
         tableIndex: 0
         spanX: 1
         spanY: 1
         spanZ: 1
+        isCovered: 1
+        anchorX: 0
+        anchorY: 0
+        anchorZ: 0
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+        rotationEulerOffset: {x: 0, y: 0, z: 0}
+        scaleMultiplier: {x: 1, y: 1, z: 1}
+        breakable: 0
+        hitsToBreak: 1
+      - occupied: 1
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 5
+        tableIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
         isCovered: 0
         anchorX: -1
         anchorY: -1
         anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+        rotationEulerOffset: {x: 0, y: 0, z: 0}
+        scaleMultiplier: {x: 1, y: 1, z: 1}
+        breakable: 0
+        hitsToBreak: 1
+      - occupied: 1
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 5
+        tableIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+        rotationEulerOffset: {x: 0, y: 0, z: 0}
+        scaleMultiplier: {x: 1, y: 1, z: 1}
+        breakable: 0
+        hitsToBreak: 1
+      - occupied: 1
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 5
+        tableIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+        rotationEulerOffset: {x: 0, y: 0, z: 0}
+        scaleMultiplier: {x: 1, y: 1, z: 1}
+        breakable: 0
+        hitsToBreak: 1
+      - occupied: 1
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 5
+        tableIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+        rotationEulerOffset: {x: 0, y: 0, z: 0}
+        scaleMultiplier: {x: 1, y: 1, z: 1}
+        breakable: 0
+        hitsToBreak: 1
+      - occupied: 1
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 5
+        tableIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+        rotationEulerOffset: {x: 0, y: 0, z: 0}
+        scaleMultiplier: {x: 1, y: 1, z: 1}
+        breakable: 0
+        hitsToBreak: 1
+      - occupied: 1
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 5
+        tableIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+        rotationEulerOffset: {x: 0, y: 0, z: 0}
+        scaleMultiplier: {x: 1, y: 1, z: 1}
+        breakable: 0
+        hitsToBreak: 1
+      - occupied: 1
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        tableIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 1
+        anchorX: 7
+        anchorY: 0
+        anchorZ: 0
         orientation: 0
         customZRotation: 0
         localOffset: {x: 0, y: 0, z: 0}
@@ -682,143 +665,143 @@ MonoBehaviour:
         breakable: 0
         hitsToBreak: 1
     - cells:
-      - occupied: 0
-        color: {r: 0.1, g: 0.58, b: 1, a: 1}
-        definitionIndex: 0
-        tableIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-        rotationEulerOffset: {x: 0, y: 0, z: 0}
-        scaleMultiplier: {x: 1, y: 1, z: 1}
-        breakable: 0
-        hitsToBreak: 1
       - occupied: 1
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 10
-        tableIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-        rotationEulerOffset: {x: 0, y: 0, z: 0}
-        scaleMultiplier: {x: 1, y: 1, z: 1}
-        breakable: 0
-        hitsToBreak: 1
-      - occupied: 1
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 10
-        tableIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-        rotationEulerOffset: {x: 0, y: 0, z: 0}
-        scaleMultiplier: {x: 1, y: 1, z: 1}
-        breakable: 0
-        hitsToBreak: 1
-      - occupied: 1
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 10
-        tableIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-        rotationEulerOffset: {x: 0, y: 0, z: 0}
-        scaleMultiplier: {x: 1, y: 1, z: 1}
-        breakable: 0
-        hitsToBreak: 1
-      - occupied: 1
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 10
-        tableIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-        rotationEulerOffset: {x: 0, y: 0, z: 0}
-        scaleMultiplier: {x: 1, y: 1, z: 1}
-        breakable: 0
-        hitsToBreak: 1
-      - occupied: 1
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 10
-        tableIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-        rotationEulerOffset: {x: 0, y: 0, z: 0}
-        scaleMultiplier: {x: 1, y: 1, z: 1}
-        breakable: 0
-        hitsToBreak: 1
-      - occupied: 1
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 10
-        tableIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-        rotationEulerOffset: {x: 0, y: 0, z: 0}
-        scaleMultiplier: {x: 1, y: 1, z: 1}
-        breakable: 0
-        hitsToBreak: 1
-      - occupied: 0
         color: {r: 1, g: 1, b: 1, a: 1}
         definitionIndex: 0
         tableIndex: 0
         spanX: 1
         spanY: 1
         spanZ: 1
+        isCovered: 1
+        anchorX: 0
+        anchorY: 0
+        anchorZ: 0
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+        rotationEulerOffset: {x: 0, y: 0, z: 0}
+        scaleMultiplier: {x: 1, y: 1, z: 1}
+        breakable: 0
+        hitsToBreak: 1
+      - occupied: 1
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 10
+        tableIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
         isCovered: 0
         anchorX: -1
         anchorY: -1
         anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+        rotationEulerOffset: {x: 0, y: 0, z: 0}
+        scaleMultiplier: {x: 1, y: 1, z: 1}
+        breakable: 0
+        hitsToBreak: 1
+      - occupied: 1
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 10
+        tableIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+        rotationEulerOffset: {x: 0, y: 0, z: 0}
+        scaleMultiplier: {x: 1, y: 1, z: 1}
+        breakable: 0
+        hitsToBreak: 1
+      - occupied: 1
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 10
+        tableIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+        rotationEulerOffset: {x: 0, y: 0, z: 0}
+        scaleMultiplier: {x: 1, y: 1, z: 1}
+        breakable: 0
+        hitsToBreak: 1
+      - occupied: 1
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 10
+        tableIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+        rotationEulerOffset: {x: 0, y: 0, z: 0}
+        scaleMultiplier: {x: 1, y: 1, z: 1}
+        breakable: 0
+        hitsToBreak: 1
+      - occupied: 1
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 10
+        tableIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+        rotationEulerOffset: {x: 0, y: 0, z: 0}
+        scaleMultiplier: {x: 1, y: 1, z: 1}
+        breakable: 0
+        hitsToBreak: 1
+      - occupied: 1
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 10
+        tableIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+        rotationEulerOffset: {x: 0, y: 0, z: 0}
+        scaleMultiplier: {x: 1, y: 1, z: 1}
+        breakable: 0
+        hitsToBreak: 1
+      - occupied: 1
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        tableIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 1
+        anchorX: 7
+        anchorY: 0
+        anchorZ: 0
         orientation: 0
         customZRotation: 0
         localOffset: {x: 0, y: 0, z: 0}
@@ -1734,7 +1717,7 @@ MonoBehaviour:
         breakable: 0
         hitsToBreak: 1
       - occupied: 0
-        color: {r: 0.1, g: 0.58, b: 1, a: 1}
+        color: {r: 1, g: 1, b: 1, a: 1}
         definitionIndex: 0
         tableIndex: 0
         spanX: 1
@@ -2133,12 +2116,30 @@ MonoBehaviour:
         hitsToBreak: 1
   - rows:
     - cells:
-      - occupied: 0
+      - occupied: 1
         color: {r: 1, g: 1, b: 1, a: 1}
         definitionIndex: 0
         tableIndex: 0
         spanX: 1
-        spanY: 1
+        spanY: 5
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+        rotationEulerOffset: {x: 0, y: 0, z: 0}
+        scaleMultiplier: {x: 1, y: 1, z: 1}
+        breakable: 0
+        hitsToBreak: 1
+      - occupied: 1
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        tableIndex: 0
+        spanX: 1
+        spanY: 6
         spanZ: 1
         isCovered: 0
         anchorX: -1
@@ -2171,7 +2172,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
+        definitionIndex: 30
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -2189,43 +2190,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        tableIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 2
-        customZRotation: 0
-        localOffset: {x: 0.5, y: 0, z: 0}
-        rotationEulerOffset: {x: 0, y: 0, z: 0}
-        scaleMultiplier: {x: 1, y: 1, z: 1}
-        breakable: 0
-        hitsToBreak: 1
-      - occupied: 1
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        tableIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 2
-        customZRotation: 0
-        localOffset: {x: 0.5, y: 0, z: 0}
-        rotationEulerOffset: {x: 0, y: 0, z: 0}
-        scaleMultiplier: {x: 1, y: 1, z: 1}
-        breakable: 0
-        hitsToBreak: 1
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 1
+        definitionIndex: 2
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -2259,12 +2224,30 @@ MonoBehaviour:
         scaleMultiplier: {x: 1, y: 1, z: 1}
         breakable: 0
         hitsToBreak: 1
-      - occupied: 0
+      - occupied: 1
         color: {r: 1, g: 1, b: 1, a: 1}
         definitionIndex: 0
         tableIndex: 0
         spanX: 1
-        spanY: 1
+        spanY: 6
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+        rotationEulerOffset: {x: 0, y: 0, z: 0}
+        scaleMultiplier: {x: 1, y: 1, z: 1}
+        breakable: 0
+        hitsToBreak: 1
+      - occupied: 1
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        tableIndex: 0
+        spanX: 1
+        spanY: 5
         spanZ: 1
         isCovered: 0
         anchorX: -1
@@ -2278,17 +2261,35 @@ MonoBehaviour:
         breakable: 0
         hitsToBreak: 1
     - cells:
-      - occupied: 0
+      - occupied: 1
         color: {r: 1, g: 1, b: 1, a: 1}
         definitionIndex: 0
         tableIndex: 0
         spanX: 1
         spanY: 1
         spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
+        isCovered: 1
+        anchorX: 0
+        anchorY: 0
+        anchorZ: 1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+        rotationEulerOffset: {x: 0, y: 0, z: 0}
+        scaleMultiplier: {x: 1, y: 1, z: 1}
+        breakable: 0
+        hitsToBreak: 1
+      - occupied: 1
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        tableIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 1
+        anchorX: 1
+        anchorY: 0
+        anchorZ: 1
         orientation: 0
         customZRotation: 0
         localOffset: {x: 0, y: 0, z: 0}
@@ -2314,9 +2315,9 @@ MonoBehaviour:
         scaleMultiplier: {x: 1, y: 1, z: 1}
         breakable: 0
         hitsToBreak: 1
-      - occupied: 0
+      - occupied: 1
         color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
+        definitionIndex: 30
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -2325,7 +2326,7 @@ MonoBehaviour:
         anchorX: -1
         anchorY: -1
         anchorZ: -1
-        orientation: 0
+        orientation: 2
         customZRotation: 0
         localOffset: {x: 0, y: 0, z: 0}
         rotationEulerOffset: {x: 0, y: 0, z: 0}
@@ -2334,7 +2335,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
+        definitionIndex: 30
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -2361,14 +2362,105 @@ MonoBehaviour:
         anchorX: -1
         anchorY: -1
         anchorZ: -1
-        orientation: 2
+        orientation: 0
         customZRotation: 0
         localOffset: {x: 0, y: 0, z: 0}
         rotationEulerOffset: {x: 0, y: 0, z: 0}
         scaleMultiplier: {x: 1, y: 1, z: 1}
         breakable: 0
         hitsToBreak: 1
-      - occupied: 0
+      - occupied: 1
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        tableIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 1
+        anchorX: 6
+        anchorY: 0
+        anchorZ: 1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+        rotationEulerOffset: {x: 0, y: 0, z: 0}
+        scaleMultiplier: {x: 1, y: 1, z: 1}
+        breakable: 0
+        hitsToBreak: 1
+      - occupied: 1
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        tableIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 1
+        anchorX: 7
+        anchorY: 0
+        anchorZ: 1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+        rotationEulerOffset: {x: 0, y: 0, z: 0}
+        scaleMultiplier: {x: 1, y: 1, z: 1}
+        breakable: 0
+        hitsToBreak: 1
+    - cells:
+      - occupied: 1
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        tableIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 1
+        anchorX: 0
+        anchorY: 0
+        anchorZ: 1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+        rotationEulerOffset: {x: 0, y: 0, z: 0}
+        scaleMultiplier: {x: 1, y: 1, z: 1}
+        breakable: 0
+        hitsToBreak: 1
+      - occupied: 1
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        tableIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 1
+        anchorX: 1
+        anchorY: 0
+        anchorZ: 1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+        rotationEulerOffset: {x: 0, y: 0, z: 0}
+        scaleMultiplier: {x: 1, y: 1, z: 1}
+        breakable: 0
+        hitsToBreak: 1
+      - occupied: 1
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 5
+        tableIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+        rotationEulerOffset: {x: 0, y: 0, z: 0}
+        scaleMultiplier: {x: 1, y: 1, z: 1}
+        breakable: 0
+        hitsToBreak: 1
+      - occupied: 1
         color: {r: 1, g: 1, b: 1, a: 1}
         definitionIndex: 0
         tableIndex: 0
@@ -2404,9 +2496,9 @@ MonoBehaviour:
         scaleMultiplier: {x: 1, y: 1, z: 1}
         breakable: 0
         hitsToBreak: 1
-      - occupied: 0
+      - occupied: 1
         color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
+        definitionIndex: 5
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -2415,6 +2507,332 @@ MonoBehaviour:
         anchorX: -1
         anchorY: -1
         anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+        rotationEulerOffset: {x: 0, y: 0, z: 0}
+        scaleMultiplier: {x: 1, y: 1, z: 1}
+        breakable: 0
+        hitsToBreak: 1
+      - occupied: 1
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        tableIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 1
+        anchorX: 6
+        anchorY: 0
+        anchorZ: 1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+        rotationEulerOffset: {x: 0, y: 0, z: 0}
+        scaleMultiplier: {x: 1, y: 1, z: 1}
+        breakable: 0
+        hitsToBreak: 1
+      - occupied: 1
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        tableIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 1
+        anchorX: 7
+        anchorY: 0
+        anchorZ: 1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+        rotationEulerOffset: {x: 0, y: 0, z: 0}
+        scaleMultiplier: {x: 1, y: 1, z: 1}
+        breakable: 0
+        hitsToBreak: 1
+    - cells:
+      - occupied: 1
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        tableIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 1
+        anchorX: 0
+        anchorY: 0
+        anchorZ: 1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+        rotationEulerOffset: {x: 0, y: 0, z: 0}
+        scaleMultiplier: {x: 1, y: 1, z: 1}
+        breakable: 0
+        hitsToBreak: 1
+      - occupied: 1
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        tableIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 1
+        anchorX: 1
+        anchorY: 0
+        anchorZ: 1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+        rotationEulerOffset: {x: 0, y: 0, z: 0}
+        scaleMultiplier: {x: 1, y: 1, z: 1}
+        breakable: 0
+        hitsToBreak: 1
+      - occupied: 1
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 5
+        tableIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+        rotationEulerOffset: {x: 0, y: 0, z: 0}
+        scaleMultiplier: {x: 1, y: 1, z: 1}
+        breakable: 0
+        hitsToBreak: 1
+      - occupied: 1
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 5
+        tableIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+        rotationEulerOffset: {x: 0, y: 0, z: 0}
+        scaleMultiplier: {x: 1, y: 1, z: 1}
+        breakable: 0
+        hitsToBreak: 1
+      - occupied: 1
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 5
+        tableIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+        rotationEulerOffset: {x: 0, y: 0, z: 0}
+        scaleMultiplier: {x: 1, y: 1, z: 1}
+        breakable: 0
+        hitsToBreak: 1
+      - occupied: 1
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 5
+        tableIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+        rotationEulerOffset: {x: 0, y: 0, z: 0}
+        scaleMultiplier: {x: 1, y: 1, z: 1}
+        breakable: 0
+        hitsToBreak: 1
+      - occupied: 1
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        tableIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 1
+        anchorX: 6
+        anchorY: 0
+        anchorZ: 1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+        rotationEulerOffset: {x: 0, y: 0, z: 0}
+        scaleMultiplier: {x: 1, y: 1, z: 1}
+        breakable: 0
+        hitsToBreak: 1
+      - occupied: 1
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        tableIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 1
+        anchorX: 7
+        anchorY: 0
+        anchorZ: 1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+        rotationEulerOffset: {x: 0, y: 0, z: 0}
+        scaleMultiplier: {x: 1, y: 1, z: 1}
+        breakable: 0
+        hitsToBreak: 1
+    - cells:
+      - occupied: 1
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        tableIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 1
+        anchorX: 0
+        anchorY: 0
+        anchorZ: 1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+        rotationEulerOffset: {x: 0, y: 0, z: 0}
+        scaleMultiplier: {x: 1, y: 1, z: 1}
+        breakable: 0
+        hitsToBreak: 1
+      - occupied: 1
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        tableIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 1
+        anchorX: 1
+        anchorY: 0
+        anchorZ: 1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+        rotationEulerOffset: {x: 0, y: 0, z: 0}
+        scaleMultiplier: {x: 1, y: 1, z: 1}
+        breakable: 0
+        hitsToBreak: 1
+      - occupied: 1
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 10
+        tableIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+        rotationEulerOffset: {x: 0, y: 0, z: 0}
+        scaleMultiplier: {x: 1, y: 1, z: 1}
+        breakable: 0
+        hitsToBreak: 1
+      - occupied: 1
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 10
+        tableIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+        rotationEulerOffset: {x: 0, y: 0, z: 0}
+        scaleMultiplier: {x: 1, y: 1, z: 1}
+        breakable: 0
+        hitsToBreak: 1
+      - occupied: 1
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 10
+        tableIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+        rotationEulerOffset: {x: 0, y: 0, z: 0}
+        scaleMultiplier: {x: 1, y: 1, z: 1}
+        breakable: 0
+        hitsToBreak: 1
+      - occupied: 1
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 10
+        tableIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+        rotationEulerOffset: {x: 0, y: 0, z: 0}
+        scaleMultiplier: {x: 1, y: 1, z: 1}
+        breakable: 0
+        hitsToBreak: 1
+      - occupied: 1
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        tableIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 1
+        anchorX: 6
+        anchorY: 0
+        anchorZ: 1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+        rotationEulerOffset: {x: 0, y: 0, z: 0}
+        scaleMultiplier: {x: 1, y: 1, z: 1}
+        breakable: 0
+        hitsToBreak: 1
+      - occupied: 1
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 0
+        tableIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 1
+        anchorX: 7
+        anchorY: 0
+        anchorZ: 1
         orientation: 0
         customZRotation: 0
         localOffset: {x: 0, y: 0, z: 0}
@@ -2443,7 +2861,25 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 5
+        definitionIndex: 0
+        tableIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 1
+        anchorX: 1
+        anchorY: 0
+        anchorZ: 1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+        rotationEulerOffset: {x: 0, y: 0, z: 0}
+        scaleMultiplier: {x: 1, y: 1, z: 1}
+        breakable: 0
+        hitsToBreak: 1
+      - occupied: 1
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 10
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -2461,7 +2897,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 5
+        definitionIndex: 10
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -2479,7 +2915,7 @@ MonoBehaviour:
         hitsToBreak: 1
       - occupied: 1
         color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 5
+        definitionIndex: 10
         tableIndex: 0
         spanX: 1
         spanY: 1
@@ -2488,495 +2924,42 @@ MonoBehaviour:
         anchorX: -1
         anchorY: -1
         anchorZ: -1
-        orientation: 2
+        orientation: 0
         customZRotation: 0
-        localOffset: {x: 0.5, y: 0, z: 0}
+        localOffset: {x: 0, y: 0, z: 0}
         rotationEulerOffset: {x: 0, y: 0, z: 0}
         scaleMultiplier: {x: 1, y: 1, z: 1}
         breakable: 0
         hitsToBreak: 1
-      - occupied: 0
+      - occupied: 1
+        color: {r: 1, g: 1, b: 1, a: 1}
+        definitionIndex: 10
+        tableIndex: 0
+        spanX: 1
+        spanY: 1
+        spanZ: 1
+        isCovered: 0
+        anchorX: -1
+        anchorY: -1
+        anchorZ: -1
+        orientation: 0
+        customZRotation: 0
+        localOffset: {x: 0, y: 0, z: 0}
+        rotationEulerOffset: {x: 0, y: 0, z: 0}
+        scaleMultiplier: {x: 1, y: 1, z: 1}
+        breakable: 0
+        hitsToBreak: 1
+      - occupied: 1
         color: {r: 1, g: 1, b: 1, a: 1}
         definitionIndex: 0
         tableIndex: 0
         spanX: 1
         spanY: 1
         spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-        rotationEulerOffset: {x: 0, y: 0, z: 0}
-        scaleMultiplier: {x: 1, y: 1, z: 1}
-        breakable: 0
-        hitsToBreak: 1
-      - occupied: 1
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 5
-        tableIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-        rotationEulerOffset: {x: 0, y: 0, z: 0}
-        scaleMultiplier: {x: 1, y: 1, z: 1}
-        breakable: 0
-        hitsToBreak: 1
-      - occupied: 1
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 5
-        tableIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-        rotationEulerOffset: {x: 0, y: 0, z: 0}
-        scaleMultiplier: {x: 1, y: 1, z: 1}
-        breakable: 0
-        hitsToBreak: 1
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        tableIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-        rotationEulerOffset: {x: 0, y: 0, z: 0}
-        scaleMultiplier: {x: 1, y: 1, z: 1}
-        breakable: 0
-        hitsToBreak: 1
-    - cells:
-      - occupied: 0
-        color: {r: 0.1, g: 0.58, b: 1, a: 1}
-        definitionIndex: 0
-        tableIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-        rotationEulerOffset: {x: 0, y: 0, z: 0}
-        scaleMultiplier: {x: 1, y: 1, z: 1}
-        breakable: 0
-        hitsToBreak: 1
-      - occupied: 1
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 5
-        tableIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-        rotationEulerOffset: {x: 0, y: 0, z: 0}
-        scaleMultiplier: {x: 1, y: 1, z: 1}
-        breakable: 0
-        hitsToBreak: 1
-      - occupied: 1
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 5
-        tableIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-        rotationEulerOffset: {x: 0, y: 0, z: 0}
-        scaleMultiplier: {x: 1, y: 1, z: 1}
-        breakable: 0
-        hitsToBreak: 1
-      - occupied: 1
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 5
-        tableIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-        rotationEulerOffset: {x: 0, y: 0, z: 0}
-        scaleMultiplier: {x: 1, y: 1, z: 1}
-        breakable: 0
-        hitsToBreak: 1
-      - occupied: 1
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 5
-        tableIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-        rotationEulerOffset: {x: 0, y: 0, z: 0}
-        scaleMultiplier: {x: 1, y: 1, z: 1}
-        breakable: 0
-        hitsToBreak: 1
-      - occupied: 1
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 5
-        tableIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-        rotationEulerOffset: {x: 0, y: 0, z: 0}
-        scaleMultiplier: {x: 1, y: 1, z: 1}
-        breakable: 0
-        hitsToBreak: 1
-      - occupied: 1
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 5
-        tableIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-        rotationEulerOffset: {x: 0, y: 0, z: 0}
-        scaleMultiplier: {x: 1, y: 1, z: 1}
-        breakable: 0
-        hitsToBreak: 1
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        tableIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-        rotationEulerOffset: {x: 0, y: 0, z: 0}
-        scaleMultiplier: {x: 1, y: 1, z: 1}
-        breakable: 0
-        hitsToBreak: 1
-    - cells:
-      - occupied: 0
-        color: {r: 0.1, g: 0.58, b: 1, a: 1}
-        definitionIndex: 0
-        tableIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-        rotationEulerOffset: {x: 0, y: 0, z: 0}
-        scaleMultiplier: {x: 1, y: 1, z: 1}
-        breakable: 0
-        hitsToBreak: 1
-      - occupied: 1
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 10
-        tableIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-        rotationEulerOffset: {x: 0, y: 0, z: 0}
-        scaleMultiplier: {x: 1, y: 1, z: 1}
-        breakable: 0
-        hitsToBreak: 1
-      - occupied: 1
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 10
-        tableIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-        rotationEulerOffset: {x: 0, y: 0, z: 0}
-        scaleMultiplier: {x: 1, y: 1, z: 1}
-        breakable: 0
-        hitsToBreak: 1
-      - occupied: 1
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 10
-        tableIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-        rotationEulerOffset: {x: 0, y: 0, z: 0}
-        scaleMultiplier: {x: 1, y: 1, z: 1}
-        breakable: 0
-        hitsToBreak: 1
-      - occupied: 1
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 10
-        tableIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-        rotationEulerOffset: {x: 0, y: 0, z: 0}
-        scaleMultiplier: {x: 1, y: 1, z: 1}
-        breakable: 0
-        hitsToBreak: 1
-      - occupied: 1
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 10
-        tableIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-        rotationEulerOffset: {x: 0, y: 0, z: 0}
-        scaleMultiplier: {x: 1, y: 1, z: 1}
-        breakable: 0
-        hitsToBreak: 1
-      - occupied: 1
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 10
-        tableIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-        rotationEulerOffset: {x: 0, y: 0, z: 0}
-        scaleMultiplier: {x: 1, y: 1, z: 1}
-        breakable: 0
-        hitsToBreak: 1
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        tableIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-        rotationEulerOffset: {x: 0, y: 0, z: 0}
-        scaleMultiplier: {x: 1, y: 1, z: 1}
-        breakable: 0
-        hitsToBreak: 1
-    - cells:
-      - occupied: 0
-        color: {r: 0.1, g: 0.58, b: 1, a: 1}
-        definitionIndex: 0
-        tableIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-        rotationEulerOffset: {x: 0, y: 0, z: 0}
-        scaleMultiplier: {x: 1, y: 1, z: 1}
-        breakable: 0
-        hitsToBreak: 1
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        tableIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-        rotationEulerOffset: {x: 0, y: 0, z: 0}
-        scaleMultiplier: {x: 1, y: 1, z: 1}
-        breakable: 0
-        hitsToBreak: 1
-      - occupied: 1
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 10
-        tableIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-        rotationEulerOffset: {x: 0, y: 0, z: 0}
-        scaleMultiplier: {x: 1, y: 1, z: 1}
-        breakable: 0
-        hitsToBreak: 1
-      - occupied: 1
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 10
-        tableIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-        rotationEulerOffset: {x: 0, y: 0, z: 0}
-        scaleMultiplier: {x: 1, y: 1, z: 1}
-        breakable: 0
-        hitsToBreak: 1
-      - occupied: 1
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 10
-        tableIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-        rotationEulerOffset: {x: 0, y: 0, z: 0}
-        scaleMultiplier: {x: 1, y: 1, z: 1}
-        breakable: 0
-        hitsToBreak: 1
-      - occupied: 1
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 10
-        tableIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
-        orientation: 0
-        customZRotation: 0
-        localOffset: {x: 0, y: 0, z: 0}
-        rotationEulerOffset: {x: 0, y: 0, z: 0}
-        scaleMultiplier: {x: 1, y: 1, z: 1}
-        breakable: 0
-        hitsToBreak: 1
-      - occupied: 0
-        color: {r: 1, g: 1, b: 1, a: 1}
-        definitionIndex: 0
-        tableIndex: 0
-        spanX: 1
-        spanY: 1
-        spanZ: 1
-        isCovered: 0
-        anchorX: -1
-        anchorY: -1
-        anchorZ: -1
+        isCovered: 1
+        anchorX: 6
+        anchorY: 0
+        anchorZ: 1
         orientation: 0
         customZRotation: 0
         localOffset: {x: 0, y: 0, z: 0}
@@ -3765,7 +3748,7 @@ MonoBehaviour:
         breakable: 0
         hitsToBreak: 1
       - occupied: 0
-        color: {r: 0.1, g: 0.58, b: 1, a: 1}
+        color: {r: 1, g: 1, b: 1, a: 1}
         definitionIndex: 0
         tableIndex: 0
         spanX: 1
@@ -4163,6 +4146,6 @@ MonoBehaviour:
         breakable: 0
         hitsToBreak: 1
   additionalTableGrids: []
-  occupiedCellCount: 64
-  occupiedMin: {x: 1, y: 0, z: 0}
-  occupiedMax: {x: 6, y: 6, z: 1}
+  occupiedCellCount: 93
+  occupiedMin: {x: 0, y: 0, z: 0}
+  occupiedMax: {x: 7, y: 6, z: 1}

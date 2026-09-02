@@ -32,12 +32,12 @@ MonoBehaviour:
   glassPieceScaleRange: {x: 0.22, y: 0.38}
   glassSpawnSpread: 0.16
   glassUpwardImpulse: 0.35
-  chainReactionEnabled: 0
+  chainReactionEnabled: 1
   chainReactionRadius: 1.2
   chainReactionMaxBlocks: 6
   chainReactionImpulse: 6
   chainReactionUpwardBias: 0.35
-  chainReactionParticlePrefab: {fileID: 0}
+  chainReactionParticlePrefab: {fileID: 6100022945525440682, guid: 759bdd92817bad54f9ad1e076714532e, type: 3}
   chainReactionVfxLifetime: 2
   chainReactionPropagates: 1
   chainReactionPropagationDelay: 0.12

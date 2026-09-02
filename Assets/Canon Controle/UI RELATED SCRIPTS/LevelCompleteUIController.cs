@@ -1904,7 +1904,12 @@ public sealed class LevelCompleteUIController : MonoBehaviour
     private void OnDisable()
     {
         Unsubscribe();
-        levelCompleteSequenceController?.StopSequence();
+
+        if (levelCompleteSequenceController != null)
+        {
+            levelCompleteSequenceController.StopSequence();
+        }
+
         StopStatsImpactAnimation(true);
         StopStarRevealAnimation(true);
 
@@ -3262,7 +3267,10 @@ public sealed class LevelCompleteUIController : MonoBehaviour
         returnToMainMenuAfterContinue = false;
         pendingStars = 0;
 
-        levelCompleteSequenceController?.StopSequence();
+        if (levelCompleteSequenceController != null)
+        {
+            levelCompleteSequenceController.StopSequence();
+        }
 
         StopStatsImpactAnimation(true);
         StopStarRevealAnimation(true);
@@ -3354,7 +3362,10 @@ private void HandleScoreAdded(
         returnToMainMenuAfterContinue = false;
         pendingStars = 0;
 
-        levelCompleteSequenceController?.StopSequence();
+        if (levelCompleteSequenceController != null)
+        {
+            levelCompleteSequenceController.StopSequence();
+        }
 
         StopStatsImpactAnimation(true);
         StopStarRevealAnimation(true);
