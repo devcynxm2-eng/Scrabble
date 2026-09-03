@@ -290,6 +290,7 @@ public sealed class PopupGameplayVisibilityController : MonoBehaviour
          * hone se pehle bhi ball screen par nazar na aaye.
          */
         DestroyActiveShotBalls();
+        DestroyActiveChainReactionVfx();
 
         HideCannon();
         HideTables();
@@ -386,6 +387,59 @@ public sealed class PopupGameplayVisibilityController : MonoBehaviour
 
             shotObject.SetActive(false);
             Destroy(shotObject);
+        }
+    }
+
+
+    /// <summary>
+    /// Chain-reaction blast ka VFX popup ke saath screen par nahi rehna
+    /// chahiye.
+    ///
+    /// Fired balls aur break fragments par Rigidbody +
+    /// LowerGroundDisappearEffect hota hai, is liye DestroyActiveShotBalls()
+    /// unhein pehle se pakad leta hai. Blast VFX sirf ek ParticleSystem
+    /// hai (na Rigidbody, na wo effect), is liye usay
+    /// ChainReactionVfxMarker se alag se dhoondte hain.
+    ///
+    /// Balls ki tarah isay bhi destroy karte hain, chhupa kar wapas nahi
+    /// laate - warna resume par ek adhoora, jama hua dhamaka phir se
+    /// nazar aata.
+    /// </summary>
+    private void DestroyActiveChainReactionVfx()
+    {
+        ChainReactionVfxMarker[] activeVfx =
+            FindObjectsByType<ChainReactionVfxMarker>(
+                FindObjectsInactive.Include,
+                FindObjectsSortMode.None
+            );
+
+        for (int i = 0;
+             i < activeVfx.Length;
+             i++)
+        {
+            ChainReactionVfxMarker vfx =
+                activeVfx[i];
+
+            if (vfx == null)
+            {
+                continue;
+            }
+
+            GameObject vfxObject =
+                vfx.gameObject;
+
+            if (vfxObject == null)
+            {
+                continue;
+            }
+
+            /*
+             * SetActive(false) pehle, taake end-of-frame Destroy se
+             * pehle bhi ye frame par nazar na aaye - wahi tarteeb jo
+             * DestroyActiveShotBalls() use karta hai.
+             */
+            vfxObject.SetActive(false);
+            Destroy(vfxObject);
         }
     }
 

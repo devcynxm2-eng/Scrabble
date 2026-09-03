@@ -735,6 +735,17 @@ public sealed class PhysicsTowerObject : MonoBehaviour
         );
 
         /*
+         * Marker lagate hain taake popup khulne par
+         * PopupGameplayVisibilityController is urte hue blast ko bhi
+         * saaf kar sake - warna ye VFX popup ke saath screen par
+         * chalta rehta tha.
+         */
+        if (particleSystem.GetComponent<ChainReactionVfxMarker>() == null)
+        {
+            particleSystem.gameObject.AddComponent<ChainReactionVfxMarker>();
+        }
+
+        /*
          * Direct ParticleSystem reference use hota hai. withChildren=true
          * ki wajah se prefab ke child particle systems bhi play honge.
          */

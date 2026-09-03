@@ -1035,6 +1035,22 @@ public sealed class LevelCompleteSequenceController : MonoBehaviour
     [SerializeField, Min(0f)]
     private float celebrationDuration = 1.5f;
 
+    [Tooltip(
+        "ON: celebrationDuration ke baad confetti foran clear nahi hota. " +
+        "Emission band hoti hai aur pehle se hawa mein maujood particles " +
+        "apni baqi zindagi tak girte rehte hain. OFF karne par purana " +
+        "behaviour (foran clear) wapas aa jayega."
+    )]
+    [SerializeField]
+    private bool letConfettiSettle = true;
+
+    [Tooltip(
+        "Confetti ki tail ke liye maximum extra wait. Particle ki apni " +
+        "lifetime is se lambi ho to bhi popup itna hi rukega."
+    )]
+    [SerializeField, Min(0f)]
+    private float confettiSettleMaximumWait = 1.2f;
+
     [SerializeField]
     private float popupDelay = 0.2f;
 
@@ -1062,6 +1078,8 @@ public sealed class LevelCompleteSequenceController : MonoBehaviour
     private Vector2 baseAnchoredThree;
     private Vector2 baseAnchoredFour;
 
+    private Vector3 baseScaleOne;
+    private Vector3 baseScaleTwo;
     private Vector3 baseScaleThree;
     private Vector3 baseScaleFour;
 
@@ -1136,6 +1154,16 @@ public sealed class LevelCompleteSequenceController : MonoBehaviour
             particleParent.SetActive(true);
         }
 
+        /*
+         * particleParent on kar dena kaafi nahi. Confetti cannons apne
+         * alag GameObjects par baithi hain aur un mein se koi scene
+         * mein disabled ho to uska poora burst khamosh reh jata hai -
+         * player ko sirf ek taraf ka confetti nazar aata hai. Yahan
+         * particle se le kar particleParent tak har inactive parent
+         * on kar dete hain.
+         */
+        EnsureConfettiHierarchyActive();
+
         ResolveScreenRoot();
         ResolveRoots();
 
@@ -1155,12 +1183,25 @@ public sealed class LevelCompleteSequenceController : MonoBehaviour
         // ussi jagah par fade in hota hai.
         yield return FadeInYouWinTextRoutine();
 
-        // Pehle group ke cannons left/right se slide ho kar aate hain,
-        // aur apni jagah pohanchne ke BAAD hi particles play hote hain.
-        // Dono confetti cannons ek hi waqt sirf ek burst chalati hain.
+        /*
+         * Har confetti cannon ka recoil apne particles ke sath hi chalta
+         * hai, taake shot cannon se nikalta hua lage.
+         *
+         * Pehle sirf three/four play hote thay - one/two par sirf Stop
+         * call hota tha, is liye woh kabhi fire hi nahi karte thay.
+         */
+        PlayCannonShoot(
+            resolvedRootOne,
+            baseAnchoredOne,
+            baseScaleOne
+        );
 
-        // Second 2 particles — cannon recoil particles ke sath hi
-        // chalta hai, taake shot cannon se nikalta hua lage.
+        PlayCannonShoot(
+            resolvedRootTwo,
+            baseAnchoredTwo,
+            baseScaleTwo
+        );
+
         PlayCannonShoot(
             resolvedRootThree,
             baseAnchoredThree,
@@ -1174,6 +1215,14 @@ public sealed class LevelCompleteSequenceController : MonoBehaviour
         );
 
         PlayParticle(
+            particleOne
+        );
+
+        PlayParticle(
+            particleTwo
+        );
+
+        PlayParticle(
             particleThree
         );
 
@@ -1184,6 +1233,14 @@ public sealed class LevelCompleteSequenceController : MonoBehaviour
         yield return WaitForUnscaledSeconds(
             celebrationDuration
         );
+
+        /*
+         * Confetti ki apni lifetime celebrationDuration se lambi hoti
+         * hai, is liye seedha Clear karne par woh hawa mein urte hue hi
+         * ghayab ho jata tha. Ab pehle sirf emission band karte hain
+         * aur maujood particles ko girne ka waqt dete hain.
+         */
+        yield return SettleConfettiRoutine();
 
         StopParticle(particleOne);
         StopParticle(particleTwo);
@@ -1346,11 +1403,13 @@ public sealed class LevelCompleteSequenceController : MonoBehaviour
         if (resolvedRootOne != null)
         {
             baseAnchoredOne = resolvedRootOne.anchoredPosition;
+            baseScaleOne = resolvedRootOne.localScale;
         }
 
         if (resolvedRootTwo != null)
         {
             baseAnchoredTwo = resolvedRootTwo.anchoredPosition;
+            baseScaleTwo = resolvedRootTwo.localScale;
         }
 
         if (resolvedRootThree != null)
@@ -1375,8 +1434,22 @@ public sealed class LevelCompleteSequenceController : MonoBehaviour
     /// </summary>
     private void ResolveConfettiParticles()
     {
-        if (particleParent == null ||
-            (particleThree != null && particleFour != null))
+        if (particleParent == null)
+        {
+            return;
+        }
+
+        /*
+         * Pehle ye check hota tha ke three aur four dono bhare hain ya
+         * nahi, aur bas wahin ruk jata tha - is liye scene mein padi
+         * baqi confetti kabhi assign hi nahi hoti thi aur khamosh reh
+         * jati thi. Ab chaaron slots bharte hain, aur jo pehle se
+         * inspector mein assigned hai usay dobara add nahi karte.
+         */
+        if (particleOne != null &&
+            particleTwo != null &&
+            particleThree != null &&
+            particleFour != null)
         {
             return;
         }
@@ -1388,31 +1461,37 @@ public sealed class LevelCompleteSequenceController : MonoBehaviour
 
         foreach (ParticleSystem candidate in particles)
         {
-            if (candidate == null)
+            if (candidate == null ||
+                candidate == particleOne ||
+                candidate == particleTwo ||
+                candidate == particleThree ||
+                candidate == particleFour)
             {
                 continue;
             }
 
-            if (particleThree == null &&
-                candidate != particleFour)
+            if (particleThree == null)
             {
                 particleThree = candidate;
-                referencesChanged = true;
-                continue;
             }
-
-            if (particleFour == null &&
-                candidate != particleThree)
+            else if (particleFour == null)
             {
                 particleFour = candidate;
-                referencesChanged = true;
             }
-
-            if (particleThree != null &&
-                particleFour != null)
+            else if (particleOne == null)
+            {
+                particleOne = candidate;
+            }
+            else if (particleTwo == null)
+            {
+                particleTwo = candidate;
+            }
+            else
             {
                 break;
             }
+
+            referencesChanged = true;
         }
 
         if (referencesChanged)
@@ -1687,6 +1766,122 @@ public sealed class LevelCompleteSequenceController : MonoBehaviour
             resolvedRootFour.anchoredPosition = baseAnchoredFour;
             resolvedRootFour.localScale = baseScaleFour;
         }
+    }
+
+
+    /// <summary>
+    /// Har assigned confetti ke apne GameObject se le kar particleParent
+    /// tak, raaste mein jo bhi parent disabled ho usay on kar deta hai.
+    ///
+    /// Scene mein ek cannon ka root GameObject off reh gaya tha, is liye
+    /// uska burst kabhi nazar hi nahi aata tha aur celebration sirf ek
+    /// taraf se chalti thi. Ye check har sequence par chalta hai, is
+    /// liye woh dobara off ho jaye to bhi celebration poori rahegi.
+    /// </summary>
+    private void EnsureConfettiHierarchyActive()
+    {
+        ActivateUpToParticleParent(particleOne);
+        ActivateUpToParticleParent(particleTwo);
+        ActivateUpToParticleParent(particleThree);
+        ActivateUpToParticleParent(particleFour);
+    }
+
+
+    private void ActivateUpToParticleParent(
+        ParticleSystem particle)
+    {
+        if (particle == null ||
+            particleParent == null)
+        {
+            return;
+        }
+
+        /*
+         * particleParent khud upar SetActive(true) ho chuka hai, is liye
+         * us se ooper jane ki zaroorat nahi - warna hum ghalti se poora
+         * Canvas ya koi doosri screen on kar sakte hain.
+         */
+        Transform stopAt =
+            particleParent.transform.parent;
+
+        Transform current =
+            particle.transform;
+
+        while (current != null &&
+               current != stopAt)
+        {
+            if (!current.gameObject.activeSelf)
+            {
+                current.gameObject.SetActive(true);
+            }
+
+            current = current.parent;
+        }
+    }
+
+
+    /// <summary>
+    /// Emission band kar ke pehle se hawa mein maujood confetti ko girne
+    /// ka waqt deta hai. Sab particles khatam hote hi foran wapas aa
+    /// jata hai, warna confettiSettleMaximumWait par - taake Level
+    /// Complete popup kisi lambi lifetime ki wajah se der se na khule.
+    /// </summary>
+    private IEnumerator SettleConfettiRoutine()
+    {
+        if (!letConfettiSettle)
+        {
+            yield break;
+        }
+
+        StopParticleEmission(particleOne);
+        StopParticleEmission(particleTwo);
+        StopParticleEmission(particleThree);
+        StopParticleEmission(particleFour);
+
+        float maximumWait =
+            Mathf.Max(0f, confettiSettleMaximumWait);
+
+        float elapsed = 0f;
+
+        while (elapsed < maximumWait &&
+               HasAliveConfetti())
+        {
+            elapsed += Time.unscaledDeltaTime;
+
+            yield return null;
+        }
+    }
+
+
+    private bool HasAliveConfetti()
+    {
+        return IsParticleAlive(particleOne) ||
+               IsParticleAlive(particleTwo) ||
+               IsParticleAlive(particleThree) ||
+               IsParticleAlive(particleFour);
+    }
+
+
+    private static bool IsParticleAlive(
+        ParticleSystem particle)
+    {
+        return particle != null &&
+               particle.IsAlive(true);
+    }
+
+
+    private static void StopParticleEmission(
+        ParticleSystem particle)
+    {
+        if (particle == null)
+        {
+            return;
+        }
+
+        particle.Stop(
+            true,
+            ParticleSystemStopBehavior.StopEmitting
+        );
     }
 
 
