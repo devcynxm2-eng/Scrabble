@@ -252,7 +252,7 @@ public sealed class LowerGroundDisappearEffect : MonoBehaviour
 
         if (VibrationManager.Instance != null)
 {
-    VibrationManager.Instance.PlayFallVibration();
+    // VibrationManager.Instance.PlayFallVibration();
 }
 
         if (body == null)

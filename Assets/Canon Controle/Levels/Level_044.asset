@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Level_044
   m_EditorClassIdentifier: 
   levelNumber: 44
-  availableBalls: 14
+  availableBalls: 26
   tablePrefab: {fileID: 3767945316376700881, guid: b7b94326cb608794c97210e1c40ec165, type: 3}
   tablePositionOffset: {x: 0, y: 0, z: 0}
   tableRotationEuler: {x: 0, y: 0, z: 0}

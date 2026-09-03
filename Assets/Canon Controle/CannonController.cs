@@ -9770,6 +9770,26 @@ public sealed class CannonController : MonoBehaviour
         );
     }
 
+private sealed class CannonBallVibrationTrigger : MonoBehaviour
+{
+    private void OnCollisionEnter(Collision collision)
+    {
+        if (collision == null || collision.collider == null)
+        {
+            return;
+        }
+
+        PhysicsTowerObject towerObject =
+            collision.collider.GetComponentInParent<PhysicsTowerObject>();
+
+        if (towerObject == null)
+        {
+            return;
+        }
+
+        VibrationManager.Instance?.PlayImpactVibration();
+    }
+}
 
     public void Shoot()
     {
@@ -9967,6 +9987,20 @@ public sealed class CannonController : MonoBehaviour
         {
             cannonBall.AddComponent<CannonBallMarker>();
         }
+
+
+
+
+if (cannonBall.GetComponent<CannonBallVibrationTrigger>() == null)
+{
+    cannonBall.AddComponent<CannonBallVibrationTrigger>();
+}
+
+
+
+
+
+
 
 
         if (!Mathf.Approximately(

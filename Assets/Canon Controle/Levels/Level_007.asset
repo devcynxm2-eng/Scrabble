@@ -13,11 +13,26 @@ MonoBehaviour:
   m_Name: Level_007
   m_EditorClassIdentifier: 
   levelNumber: 7
-  availableBalls: 14
+  availableBalls: 26
   tablePrefab: {fileID: 3767945316376700881, guid: b7b94326cb608794c97210e1c40ec165, type: 3}
   tablePositionOffset: {x: 0, y: 0, z: 0}
   tableRotationEuler: {x: 0, y: 0, z: 0}
-  tablePlacements: []
+  tablePlacements:
+  - prefab: {fileID: 3767945316376700881, guid: b7b94326cb608794c97210e1c40ec165, type: 3}
+    positionOffset: {x: 0, y: 0, z: 0}
+    rotationEuler: {x: 0, y: 0, z: 0}
+    enableRuntimeRotation: 0
+    runtimeRotationAxis: {x: 0, y: 1, z: 0}
+    runtimeRotationSpeed: 20
+    enableRuntimeHorizontalMovement: 0
+    runtimeMovementAxis: {x: 1, y: 0, z: 0}
+    runtimeMovementDistance: 0.75
+    runtimeMovementSpeed: 0.2
+    releaseBlocksAfterMovementCycles: 1
+    minimumMovementCyclesBeforeRelease: 3
+    maximumMovementCyclesBeforeRelease: 5
+    movementReleaseVelocityMultiplier: 1
+    sizeMultiplier: {x: 1, y: 1, z: 1}
   trapPlacements: []
   blockPalette:
   - {fileID: 11400000, guid: 184f4c58febc14f4abdcf5a2111e4623, type: 2}
