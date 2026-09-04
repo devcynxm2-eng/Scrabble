@@ -7690,8 +7690,11 @@ public sealed class SettingsUIController : MonoBehaviour
 
         RefreshSoundUI();
 
-        // Button click par sound animation dobara play hogi.
-        PlaySoundAnimation();
+        // Animation sirf ON karne par chalegi, OFF par nahi.
+        if (newState)
+        {
+            PlaySoundAnimation();
+        }
     }
 
 
@@ -7726,8 +7729,11 @@ public sealed class SettingsUIController : MonoBehaviour
 
         RefreshMusicUI();
 
-        // Button click par music animation dobara play hogi.
-        PlayMusicAnimation();
+        // Animation sirf ON karne par chalegi, OFF par nahi.
+        if (newState)
+        {
+            PlayMusicAnimation();
+        }
     }
 
 
@@ -7762,8 +7768,11 @@ public sealed class SettingsUIController : MonoBehaviour
 
         RefreshVibrationUI();
 
-        // Button click par vibration animation dobara play hogi.
-        PlayVibrationAnimation();
+        // Animation sirf ON karne par chalegi, OFF par nahi.
+        if (newState)
+        {
+            PlayVibrationAnimation();
+        }
     }
 
 
@@ -9075,7 +9084,6 @@ public sealed class SettingsUIController : MonoBehaviour
         );
     }
 }
-
 
 
 
