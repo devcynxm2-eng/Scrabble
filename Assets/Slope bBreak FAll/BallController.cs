@@ -1,51 +1,140 @@
 using UnityEngine;
 using UnityEngine.UI;
+using System.Collections.Generic;
 
-public class BallController : MonoBehaviour
+public class BallDropController : MonoBehaviour
 {
-    public Rigidbody rb;
+    [Header("Control Object")]
+    public Transform controlObject;
 
 
-    [Header("Drag Movement")]
-    public float dragSpeed = 0.03f;
+    [Header("Ball")]
+    public GameObject ballPrefab;
+    public Transform ballSpawnPoint;
+
+
+    [Header("Precise Left / Right Movement")]
+    public float minXPosition = -5f;
     public float maxXPosition = 5f;
-    public float smoothMove = 12f;
 
 
-
-    [Header("Release Roll")]
-    public float rollSpeed = 5f;
-
-
+    [Header("Power Meter")]
     public Slider powerSlider;
 
+    public float powerChargeSpeed = 0.5f;
+
+    public float minimumPower = 0.2f;
+    public float maximumPower = 1f;
 
 
-    [Header("Slope Direction")]
-    public Transform releaseDirection;
-
+    [Header("Ball Fall")]
+    public float minimumFallSpeed = 0f;
+    public float maximumFallSpeed = 5f;
 
 
     [Header("Input Zone")]
     public RectTransform inputZone;
 
 
+    [Header("Camera")]
+    public Camera gameplayCamera;
 
-    private bool dragging;
 
-    private Vector2 lastInputPosition;
+    [Header("Power Charge")]
+    public float stopDelay = 0.15f;
+    public float movementThreshold = 0.5f;
+
+
+    [Header("Aim Dotted Trail")]
+    public Transform aimOrigin;
+
+    public Transform releaseDirection;
+
+    public float minimumAimLength = 2f;
+    public float maximumAimLength = 8f;
+
+    public float dotSpacing = 0.35f;
+    public float dotSize = 0.08f;
+
+
+    [Header("Aim Dot Appearance")]
+    public Material aimDotMaterial;
+
+
+    [Header("Aim Physics")]
+    public LayerMask aimCollisionMask = ~0;
+
+    public int maximumAimReflections = 3;
+
+    public float aimBallRadius = 0.1f;
+
+    public float reflectionSurfaceOffset = 0.02f;
+
+
+    [Header("Slope Detection")]
+    public float slopeDetectionDistance = 20f;
+
+    public float slopeSurfaceOffset = 0.03f;
+
+
+
+    private bool controlling;
+    private bool charging;
 
     private Vector3 targetPosition;
 
+    private float xOffset;
+
+    private float stopTimer;
+
+    private Plane movementPlane;
+
+
+    private List<GameObject> aimDots =
+        new List<GameObject>();
+
+
+    private List<Vector3> aimPathPoints =
+        new List<Vector3>();
+
+
+    private readonly RaycastHit[] aimHitBuffer =
+        new RaycastHit[64];
 
 
 
     void Start()
     {
-        targetPosition = transform.position;
+        if (gameplayCamera == null)
+        {
+            gameplayCamera = Camera.main;
+        }
+
+
+        if (controlObject != null)
+        {
+            targetPosition =
+                controlObject.position;
+
+
+            movementPlane =
+                new Plane(
+                    Vector3.up,
+                    controlObject.position
+                );
+        }
+
+
+        if (powerSlider != null)
+        {
+            powerSlider.minValue = 0f;
+            powerSlider.maxValue = 1f;
+            powerSlider.value = 0f;
+        }
+
+
+        HideAimGuide();
     }
-
-
 
 
 
@@ -53,307 +142,1082 @@ public class BallController : MonoBehaviour
     {
         HandleInput();
 
+        SmoothControlObject();
 
-        if(dragging)
-        {
-            transform.position = Vector3.Lerp(
-                transform.position,
-                targetPosition,
-                smoothMove * Time.deltaTime
-            );
-        }
+        HandlePowerMeter();
+
+        UpdateAimGuide();
     }
 
 
 
-
-
+    // =========================================================
+    // INPUT
+    // =========================================================
 
     void HandleInput()
     {
-
-
-        // Mouse Down
-
-        if(Input.GetMouseButtonDown(0))
+        // MOUSE DOWN
+        if (Input.GetMouseButtonDown(0))
         {
-            if(IsInsideZone(Input.mousePosition))
-            {
-                StartDrag();
+            Vector2 mousePosition =
+                Input.mousePosition;
 
-                lastInputPosition = Input.mousePosition;
+
+            if (IsInsideZone(mousePosition))
+            {
+                StartControl(mousePosition);
             }
         }
 
 
-
-
-
-        // Mouse Drag
-
-        if(Input.GetMouseButton(0) && dragging)
+        // MOUSE DRAG
+        if (Input.GetMouseButton(0) && controlling)
         {
-
-            Vector2 currentPosition = Input.mousePosition;
-
-
-            Vector2 delta = currentPosition - lastInputPosition;
-
-
-            MoveBall(delta.x);
-
-
-            lastInputPosition = currentPosition;
-
+            UpdateControlPosition(
+                Input.mousePosition
+            );
         }
 
 
-
-
-
-        // Mouse Release
-
-        if(Input.GetMouseButtonUp(0))
+        // MOUSE RELEASE
+        if (Input.GetMouseButtonUp(0))
         {
-            if(dragging)
+            if (controlling)
             {
                 ReleaseBall();
             }
         }
 
 
-
-
-
-
-        // Touch
-
-        if(Input.touchCount > 0)
+        // TOUCH
+        if (Input.touchCount > 0)
         {
+            Touch touch =
+                Input.GetTouch(0);
 
-            Touch touch = Input.GetTouch(0);
 
-
-
-            if(touch.phase == TouchPhase.Began)
+            if (touch.phase ==
+                TouchPhase.Began)
             {
-                if(IsInsideZone(touch.position))
+                if (IsInsideZone(
+                    touch.position))
                 {
-                    StartDrag();
-
-                    lastInputPosition = touch.position;
+                    StartControl(
+                        touch.position
+                    );
                 }
             }
 
 
-
-
-
-            if(touch.phase == TouchPhase.Moved && dragging)
+            if (touch.phase ==
+                TouchPhase.Moved &&
+                controlling)
             {
-
-                Vector2 delta = touch.position - lastInputPosition;
-
-
-                MoveBall(delta.x);
-
-
-                lastInputPosition = touch.position;
-
+                UpdateControlPosition(
+                    touch.position
+                );
             }
 
 
-
-
-
-
-            if(touch.phase == TouchPhase.Ended)
+            if (touch.phase ==
+                    TouchPhase.Ended ||
+                touch.phase ==
+                    TouchPhase.Canceled)
             {
-
-                if(dragging)
+                if (controlling)
                 {
                     ReleaseBall();
                 }
-
             }
+        }
+    }
 
+
+
+    // =========================================================
+    // START CONTROL
+    // =========================================================
+
+    void StartControl(
+        Vector2 screenPosition)
+    {
+        if (controlObject == null)
+            return;
+
+
+        controlling = true;
+
+        charging = false;
+
+        stopTimer = 0f;
+
+
+        movementPlane =
+            new Plane(
+                Vector3.up,
+                controlObject.position
+            );
+
+
+        Vector3 worldPosition;
+
+
+        if (TryGetWorldPosition(
+            screenPosition,
+            out worldPosition))
+        {
+            xOffset =
+                controlObject.position.x -
+                worldPosition.x;
         }
 
+
+        targetPosition =
+            controlObject.position;
+
+
+        ResetPower();
+
+        ShowAimGuide();
     }
 
 
 
+    // =========================================================
+    // PRECISE MOVEMENT
+    // =========================================================
 
-
-
-
-
-    void StartDrag()
+    void UpdateControlPosition(
+        Vector2 screenPosition)
     {
-
-        dragging = true;
-
-
-        // Disable physics while controlling
-        rb.isKinematic = true;
+        if (controlObject == null)
+            return;
 
 
-        targetPosition = transform.position;
+        Vector3 worldPosition;
 
+
+        if (!TryGetWorldPosition(
+            screenPosition,
+            out worldPosition))
+        {
+            return;
+        }
+
+
+        float targetX =
+            worldPosition.x + xOffset;
+
+
+        targetX =
+            Mathf.Clamp(
+                targetX,
+                minXPosition,
+                maxXPosition
+            );
+
+
+        float oldX =
+            targetPosition.x;
+
+
+        targetPosition =
+            controlObject.position;
+
+
+        targetPosition.x =
+            targetX;
+
+
+        float movement =
+            Mathf.Abs(
+                targetX - oldX
+            );
+
+
+        if (movement > 0.001f)
+        {
+            stopTimer = 0f;
+
+            charging = false;
+
+            ResetPower();
+        }
+        else
+        {
+            stopTimer +=
+                Time.deltaTime;
+        }
     }
 
 
 
+    // =========================================================
+    // SMOOTH CONTROL
+    // =========================================================
 
-
-
-
-    void MoveBall(float input)
+    void SmoothControlObject()
     {
+        if (!controlling)
+            return;
 
-        targetPosition.x += input * dragSpeed;
+
+        if (controlObject == null)
+            return;
+
+
+        controlObject.position =
+            Vector3.Lerp(
+                controlObject.position,
+                targetPosition,
+                25f *
+                Time.deltaTime
+            );
+    }
 
 
 
-        targetPosition.x = Mathf.Clamp(
-            targetPosition.x,
-            -maxXPosition,
-            maxXPosition
+    // =========================================================
+    // POWER
+    // =========================================================
+
+    void HandlePowerMeter()
+    {
+        if (!controlling)
+            return;
+
+
+        if (stopTimer >= stopDelay)
+        {
+            charging = true;
+        }
+
+
+        if (charging &&
+            powerSlider != null)
+        {
+            powerSlider.value +=
+                powerChargeSpeed *
+                Time.deltaTime;
+
+
+            powerSlider.value =
+                Mathf.Clamp(
+                    powerSlider.value,
+                    0f,
+                    maximumPower
+                );
+        }
+    }
+
+
+
+    // =========================================================
+    // AIM GUIDE
+    // =========================================================
+
+    void UpdateAimGuide()
+    {
+        if (!controlling)
+        {
+            HideAimGuide();
+            return;
+        }
+
+
+        if (aimOrigin == null)
+            return;
+
+
+        float power = 0f;
+
+
+        if (powerSlider != null)
+        {
+            power =
+                powerSlider.value;
+        }
+
+
+        float aimLength =
+            Mathf.Lerp(
+                minimumAimLength,
+                maximumAimLength,
+                power
+            );
+
+
+        /*
+         * IMPORTANT:
+         *
+         * Ball does NOT use releaseDirection
+         * for its initial movement.
+         *
+         * Ball first FALLS DOWN.
+         *
+         * After hitting the slope:
+         *
+         * Gravity is projected onto the slope.
+         *
+         * This gives the actual downhill
+         * direction the ball will naturally take.
+         */
+
+
+        Vector3 origin =
+            aimOrigin.position;
+
+
+        Vector3 fallDirection =
+            Vector3.down;
+
+
+        BuildPhysicsAimPath(
+            origin,
+            fallDirection,
+            aimLength
         );
 
+
+        int dotCount =
+            Mathf.FloorToInt(
+                aimLength /
+                Mathf.Max(
+                    0.01f,
+                    dotSpacing
+                )
+            );
+
+
+        CreateDots(dotCount);
+
+
+        int visibleDots =
+            PlaceDotsAlongAimPath(
+                dotCount,
+                Mathf.Max(
+                    0.01f,
+                    dotSpacing
+                )
+            );
+
+
+        for (int i = visibleDots;
+             i < aimDots.Count;
+             i++)
+        {
+            aimDots[i].SetActive(false);
+        }
     }
 
 
 
+    // =========================================================
+    // BUILD ACTUAL PHYSICS PATH
+    // =========================================================
+
+    void BuildPhysicsAimPath(
+        Vector3 origin,
+        Vector3 direction,
+        float totalLength)
+    {
+        aimPathPoints.Clear();
+
+        aimPathPoints.Add(origin);
+
+
+        float remainingLength =
+            Mathf.Max(
+                0f,
+                totalLength
+            );
+
+
+        int reflectionCount = 0;
+
+
+        Vector3 currentOrigin =
+            origin;
+
+
+        Vector3 currentDirection =
+            direction.normalized;
+
+
+        bool hasHitSlope = false;
 
 
 
+        while (remainingLength > 0.001f)
+        {
+            RaycastHit hit;
 
 
+            bool hitSomething =
+                TryGetClosestAimHit(
+                    currentOrigin,
+                    currentDirection,
+                    Mathf.Max(
+                        0.001f,
+                        aimBallRadius
+                    ),
+                    Mathf.Min(
+                        slopeDetectionDistance,
+                        remainingLength
+                    ),
+                    out hit
+                );
+
+
+            // =================================================
+            // NOTHING HIT
+            // =================================================
+
+            if (!hitSomething)
+            {
+                aimPathPoints.Add(
+                    currentOrigin +
+                    currentDirection *
+                    remainingLength
+                );
+
+                break;
+            }
+
+
+
+            // =================================================
+            // HIT POINT
+            // =================================================
+
+            float distance =
+                Mathf.Max(
+                    0f,
+                    hit.distance
+                );
+
+
+            Vector3 hitPoint =
+                currentOrigin +
+                currentDirection *
+                distance;
+
+
+            aimPathPoints.Add(
+                hitPoint
+            );
+
+
+            remainingLength -=
+                distance;
+
+
+
+            // =================================================
+            // FIRST SURFACE = SLOPE
+            // =================================================
+
+            if (!hasHitSlope)
+            {
+                hasHitSlope = true;
+
+
+                /*
+                 * Gravity projected onto the
+                 * surface gives the direction
+                 * the ball naturally rolls/falls.
+                 */
+
+                Vector3 downhillDirection =
+                    Vector3.ProjectOnPlane(
+                        Physics.gravity,
+                        hit.normal
+                    );
+
+
+                if (downhillDirection.sqrMagnitude >
+                    0.0001f)
+                {
+                    downhillDirection.Normalize();
+
+
+                    currentDirection =
+                        downhillDirection;
+
+
+                    currentOrigin =
+                        hitPoint +
+                        currentDirection *
+                        slopeSurfaceOffset;
+
+
+                    remainingLength -=
+                        slopeSurfaceOffset;
+
+
+                    continue;
+                }
+
+
+                break;
+            }
+
+
+
+            // =================================================
+            // AFTER SLOPE: PHYSICAL COLLISION
+            // =================================================
+
+            if (reflectionCount >=
+                maximumAimReflections)
+            {
+                break;
+            }
+
+
+            Vector3 reflectedDirection =
+                Vector3.Reflect(
+                    currentDirection,
+                    hit.normal
+                ).normalized;
+
+
+            if (reflectedDirection.sqrMagnitude <
+                0.0001f)
+            {
+                break;
+            }
+
+
+            currentDirection =
+                reflectedDirection;
+
+
+            currentOrigin =
+                hitPoint +
+                currentDirection *
+                reflectionSurfaceOffset;
+
+
+            remainingLength -=
+                reflectionSurfaceOffset;
+
+
+            reflectionCount++;
+        }
+    }
+
+
+
+    // =========================================================
+    // SPHERE CAST
+    // =========================================================
+
+    bool TryGetClosestAimHit(
+        Vector3 origin,
+        Vector3 direction,
+        float radius,
+        float distance,
+        out RaycastHit closestHit)
+    {
+        int hitCount =
+            Physics.SphereCastNonAlloc(
+                origin,
+                radius,
+                direction,
+                aimHitBuffer,
+                distance,
+                aimCollisionMask,
+                QueryTriggerInteraction.Ignore
+            );
+
+
+        closestHit = default;
+
+
+        float closestDistance =
+            float.PositiveInfinity;
+
+
+        for (int i = 0;
+             i < hitCount;
+             i++)
+        {
+            RaycastHit candidate =
+                aimHitBuffer[i];
+
+
+            if (candidate.collider == null)
+                continue;
+
+
+            if (ShouldIgnoreAimCollider(
+                candidate.collider))
+            {
+                continue;
+            }
+
+
+            if (candidate.distance >=
+                closestDistance)
+            {
+                continue;
+            }
+
+
+            closestHit =
+                candidate;
+
+
+            closestDistance =
+                candidate.distance;
+        }
+
+
+        return closestDistance <
+               float.PositiveInfinity;
+    }
+
+
+
+    // =========================================================
+    // IGNORE OWN OBJECTS
+    // =========================================================
+
+    bool ShouldIgnoreAimCollider(
+        Collider collider)
+    {
+        Transform t =
+            collider.transform;
+
+
+        if (controlObject != null)
+        {
+            if (t == controlObject ||
+                t.IsChildOf(controlObject))
+            {
+                return true;
+            }
+        }
+
+
+        if (transform == t ||
+            t.IsChildOf(transform))
+        {
+            return true;
+        }
+
+
+        return false;
+    }
+
+
+
+    // =========================================================
+    // PLACE DOTS
+    // =========================================================
+
+    int PlaceDotsAlongAimPath(
+        int maximumDotCount,
+        float spacing)
+    {
+        if (maximumDotCount <= 0)
+            return 0;
+
+
+        if (aimPathPoints.Count < 2)
+            return 0;
+
+
+        int dotIndex = 0;
+
+
+        float distanceToNextDot =
+            spacing;
+
+
+        for (int segmentIndex = 0;
+             segmentIndex <
+                 aimPathPoints.Count - 1 &&
+             dotIndex <
+                 maximumDotCount;
+             segmentIndex++)
+        {
+            Vector3 start =
+                aimPathPoints[
+                    segmentIndex
+                ];
+
+
+            Vector3 segment =
+                aimPathPoints[
+                    segmentIndex + 1
+                ] - start;
+
+
+            float segmentLength =
+                segment.magnitude;
+
+
+            if (segmentLength <= 0.001f)
+                continue;
+
+
+            Vector3 segmentDirection =
+                segment /
+                segmentLength;
+
+
+            while (
+                distanceToNextDot <=
+                segmentLength +
+                0.0001f &&
+                dotIndex <
+                maximumDotCount)
+            {
+                GameObject dot =
+                    aimDots[dotIndex];
+
+
+                dot.transform.position =
+                    start +
+                    segmentDirection *
+                    distanceToNextDot;
+
+
+                dot.SetActive(true);
+
+
+                dotIndex++;
+
+
+                distanceToNextDot +=
+                    spacing;
+            }
+
+
+            distanceToNextDot -=
+                segmentLength;
+        }
+
+
+        return dotIndex;
+    }
+
+
+
+    // =========================================================
+    // CREATE DOTS
+    // =========================================================
+
+    void CreateDots(int count)
+    {
+        while (aimDots.Count < count)
+        {
+            GameObject dot =
+                GameObject.CreatePrimitive(
+                    PrimitiveType.Sphere
+                );
+
+
+            dot.name =
+                "AimDot";
+
+
+            dot.transform.SetParent(
+                transform
+            );
+
+
+            dot.transform.localScale =
+                Vector3.one *
+                dotSize;
+
+
+            Collider collider =
+                dot.GetComponent<Collider>();
+
+
+            if (collider != null)
+            {
+                Destroy(collider);
+            }
+
+
+            Renderer renderer =
+                dot.GetComponent<Renderer>();
+
+
+            if (renderer != null)
+            {
+                if (aimDotMaterial != null)
+                {
+                    renderer.material =
+                        aimDotMaterial;
+                }
+                else
+                {
+                    Material material =
+                        new Material(
+                            Shader.Find(
+                                "Universal Render Pipeline/Lit"
+                            )
+                        );
+
+
+                    material.color =
+                        Color.white;
+
+
+                    renderer.material =
+                        material;
+                }
+            }
+
+
+            dot.SetActive(false);
+
+
+            aimDots.Add(dot);
+        }
+    }
+
+
+
+    // =========================================================
+    // SHOW AIM
+    // =========================================================
+
+    void ShowAimGuide()
+    {
+        UpdateAimGuide();
+    }
+
+
+
+    // =========================================================
+    // HIDE AIM
+    // =========================================================
+
+    void HideAimGuide()
+    {
+        for (int i = 0;
+             i < aimDots.Count;
+             i++)
+        {
+            if (aimDots[i] != null)
+            {
+                aimDots[i].SetActive(false);
+            }
+        }
+    }
+
+
+
+    // =========================================================
+    // RELEASE BALL
+    // =========================================================
 
     void ReleaseBall()
     {
+        controlling = false;
 
-        dragging = false;
-
-
-
-        // Enable physics
-        rb.isKinematic = false;
+        charging = false;
 
 
+        HideAimGuide();
 
 
-        // Remove any jump velocity
-
-        Vector3 currentVelocity = rb.linearVelocity;
-
-
-        currentVelocity.y = 0;
-
-
-        rb.linearVelocity = currentVelocity;
-
-
-
-
-
-        float power = 1f;
-
-
-        if(powerSlider != null)
+        if (ballPrefab == null)
         {
-            power = powerSlider.value;
+            Debug.LogWarning(
+                "Ball Prefab is not assigned."
+            );
+
+            return;
         }
 
 
+        float power =
+            minimumPower;
 
 
-
-
-        if(releaseDirection != null)
+        if (powerSlider != null)
         {
-
-            Vector3 direction = releaseDirection.forward;
-
-
-
-            // Remove vertical direction
-            direction.y = 0;
-
-
-
-            direction.Normalize();
-
-
-
-
-
-            float speed = power * rollSpeed;
-
-
-
-
-            Vector3 velocity = rb.linearVelocity;
-
-
-
-            velocity.x = direction.x * speed;
-
-            velocity.z = direction.z * speed;
-
-            velocity.y = 0;
-
-
-
-
-            rb.linearVelocity = velocity;
-
+            power =
+                powerSlider.value;
         }
 
+
+        power =
+            Mathf.Clamp(
+                power,
+                minimumPower,
+                maximumPower
+            );
+
+
+        Vector3 spawnPosition;
+
+
+        if (ballSpawnPoint != null)
+        {
+            spawnPosition =
+                ballSpawnPoint.position;
+        }
+        else if (controlObject != null)
+        {
+            spawnPosition =
+                controlObject.position;
+        }
+        else
+        {
+            spawnPosition =
+                transform.position;
+        }
+
+
+        GameObject ball =
+            Instantiate(
+                ballPrefab,
+                spawnPosition,
+                Quaternion.identity
+            );
+
+
+        Rigidbody ballRb =
+            ball.GetComponent<Rigidbody>();
+
+
+        if (ballRb == null)
+        {
+            Debug.LogWarning(
+                "Ball Prefab needs Rigidbody."
+            );
+
+            ResetPower();
+
+            return;
+        }
+
+
+        ballRb.isKinematic = false;
+
+        ballRb.useGravity = true;
+
+
+        ballRb.linearVelocity =
+            Vector3.zero;
+
+
+        ballRb.angularVelocity =
+            Vector3.zero;
+
+
+        /*
+         * IMPORTANT:
+         *
+         * Ball only gets DOWNWARD velocity.
+         *
+         * No forward launch.
+         * No horizontal launch.
+         *
+         * After hitting the slope,
+         * Unity physics takes over.
+         */
+
+        float fallSpeed =
+            Mathf.Lerp(
+                minimumFallSpeed,
+                maximumFallSpeed,
+                power
+            );
+
+
+        ballRb.linearVelocity =
+            Vector3.down *
+            fallSpeed;
+
+
+        ResetPower();
     }
 
 
 
+    // =========================================================
+    // SCREEN TO WORLD
+    // =========================================================
 
-
-
-
-
-
-    void FixedUpdate()
+    bool TryGetWorldPosition(
+        Vector2 screenPosition,
+        out Vector3 worldPosition)
     {
-
-        // Safety: prevent flying
-
-        Vector3 velocity = rb.linearVelocity;
+        worldPosition =
+            Vector3.zero;
 
 
-        if(velocity.y > 0)
+        if (gameplayCamera == null)
+            return false;
+
+
+        Ray ray =
+            gameplayCamera.ScreenPointToRay(
+                screenPosition
+            );
+
+
+        float distance;
+
+
+        if (movementPlane.Raycast(
+            ray,
+            out distance))
         {
-            velocity.y = 0;
+            worldPosition =
+                ray.GetPoint(distance);
 
-            rb.linearVelocity = velocity;
+
+            return true;
         }
 
+
+        return false;
     }
 
 
 
+    // =========================================================
+    // INPUT ZONE
+    // =========================================================
 
-
-
-
-
-
-    bool IsInsideZone(Vector2 pos)
+    bool IsInsideZone(
+        Vector2 position)
     {
+        if (inputZone == null)
+            return true;
 
-        return RectTransformUtility.RectangleContainsScreenPoint(
-            inputZone,
-            pos
-        );
 
+        return
+            RectTransformUtility
+            .RectangleContainsScreenPoint(
+                inputZone,
+                position,
+                null
+            );
     }
 
+
+
+    // =========================================================
+    // RESET POWER
+    // =========================================================
+
+    void ResetPower()
+    {
+        if (powerSlider != null)
+        {
+            powerSlider.value = 0f;
+        }
+    }
 }

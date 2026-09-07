@@ -14,7 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_GroupName: Default Local Group
   m_GUID: 5291efad24e86684390b08b2a624c256
-  m_SerializeEntries: []
+  m_SerializeEntries:
+  - m_GUID: 5e2815a959db06947956d086adbf8e97
+    m_Address: Assets/Slope bBreak FAll/Triangle.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: af544ae6bae225f41a22396a41ffa14b, type: 2}
   m_SchemaSet:
