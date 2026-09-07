@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using System.Collections.Generic;
+using UnityEngine.Serialization;
 
 public class BallDropController : MonoBehaviour
 {
@@ -11,6 +12,10 @@ public class BallDropController : MonoBehaviour
     [Header("Ball")]
     public GameObject ballPrefab;
     public Transform ballSpawnPoint;
+
+    [Tooltip("Seconds after release before the spawned ball is destroyed. Zero keeps it forever.")]
+    [Min(0f)]
+    public float ballLifetime = 4f;
 
 
     [Header("Precise Left / Right Movement")]
@@ -28,8 +33,16 @@ public class BallDropController : MonoBehaviour
 
 
     [Header("Ball Fall")]
-    public float minimumFallSpeed = 0f;
-    public float maximumFallSpeed = 5f;
+    public float minimumFallSpeed = 2f;
+    public float maximumFallSpeed = 10f;
+
+    [FormerlySerializedAs("limitRollingSpeedFromSlider")]
+    [Tooltip("Use slider speed as the ball's minimum/base speed. Gravity can still accelerate it on slopes.")]
+    public bool maintainBaseSpeedFromSlider = true;
+
+    [Tooltip("Extra downward acceleration prevents the rolling ball from floating above slopes.")]
+    [Min(0f)]
+    public float extraDownwardAcceleration = 12f;
 
 
     [Header("Input Zone")]
@@ -1086,6 +1099,12 @@ public class BallDropController : MonoBehaviour
             );
 
 
+        if (ballLifetime > 0f)
+        {
+            Destroy(ball, ballLifetime);
+        }
+
+
         Rigidbody ballRb =
             ball.GetComponent<Rigidbody>();
 
@@ -1127,17 +1146,50 @@ public class BallDropController : MonoBehaviour
          * Unity physics takes over.
          */
 
+        float normalizedPower =
+            Mathf.InverseLerp(
+                minimumPower,
+                maximumPower,
+                power
+            );
+
+
         float fallSpeed =
             Mathf.Lerp(
                 minimumFallSpeed,
                 maximumFallSpeed,
-                power
+                normalizedPower
             );
 
 
         ballRb.linearVelocity =
             Vector3.down *
             fallSpeed;
+
+
+        BallSliderSpeed ballSpeed =
+            ball.GetComponent<BallSliderSpeed>();
+
+
+        if (maintainBaseSpeedFromSlider)
+        {
+            if (ballSpeed == null)
+            {
+                ballSpeed =
+                    ball.AddComponent<BallSliderSpeed>();
+            }
+
+
+            ballSpeed.Configure(
+                ballRb,
+                fallSpeed,
+                extraDownwardAcceleration
+            );
+        }
+        else if (ballSpeed != null)
+        {
+            ballSpeed.enabled = false;
+        }
 
 
         ResetPower();

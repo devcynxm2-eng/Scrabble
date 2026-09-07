@@ -16,7 +16,7 @@ GameObject:
   - component: {fileID: 2315266648377585993}
   m_Layer: 0
   m_Name: Sphere
-  m_TagString: Untagged
+  m_TagString: Ball
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -122,20 +122,36 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ecb6c0bae5a233d429fb9e73c34bed7d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  controlObject: {fileID: 0}
   ballPrefab: {fileID: 0}
   ballSpawnPoint: {fileID: 0}
-  dragSpeed: 0.02
+  minXPosition: -5
   maxXPosition: 5
-  smoothMove: 10
   powerSlider: {fileID: 0}
   powerChargeSpeed: 0.5
   minimumPower: 0.2
   maximumPower: 1
-  releaseSpeed: 12
-  releaseDirection: {fileID: 0}
+  minimumFallSpeed: 0
+  maximumFallSpeed: 5
   inputZone: {fileID: 0}
+  gameplayCamera: {fileID: 0}
   stopDelay: 0.15
   movementThreshold: 0.5
+  aimOrigin: {fileID: 0}
+  releaseDirection: {fileID: 0}
+  minimumAimLength: 2
+  maximumAimLength: 8
+  dotSpacing: 0.35
+  dotSize: 0.08
+  aimDotMaterial: {fileID: 0}
+  aimCollisionMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  maximumAimReflections: 3
+  aimBallRadius: 0.1
+  reflectionSurfaceOffset: 0.02
+  slopeDetectionDistance: 20
+  slopeSurfaceOffset: 0.03
 --- !u!54 &2315266648377585993
 Rigidbody:
   m_ObjectHideFlags: 0
