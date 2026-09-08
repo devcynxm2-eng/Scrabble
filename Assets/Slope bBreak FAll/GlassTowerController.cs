@@ -35,6 +35,30 @@ public class GlassTowerController : MonoBehaviour
     [Tooltip("Offset of the tower base from Tower Root.")]
     public Vector3 localOrigin = Vector3.zero;
 
+    [Header("Painted Level (optional)")]
+    [Tooltip("Build the tower from a painted cell mask instead of rows/pyramid.")]
+    public bool useCellMask;
+
+    [Tooltip("Width of the painted grid. Every row uses this same width.")]
+    [Min(1)]
+    public int maskColumns = 5;
+
+    [Min(1)]
+    public int maskRows = 5;
+
+    [Tooltip("Depth of the painted grid. 2 builds a tower two objects thick.")]
+    [Min(1)]
+    public int maskLayers = 1;
+
+    [Tooltip("Z distance between painted layers.")]
+    public float maskLayerSpacing = 0.6f;
+
+    [Tooltip("Objects a painted cell can reference. Empty falls back to Glass Prefab.")]
+    public List<BreakableGlass> maskPalette = new List<BreakableGlass>();
+
+    [Tooltip("Palette index per cell, -1 for empty. Ordered layer, then row, then column.")]
+    public List<int> cellMask = new List<int>();
+
     [Header("Runtime")]
     public bool buildOnStart = true;
 
@@ -108,6 +132,16 @@ public class GlassTowerController : MonoBehaviour
         }
 
         Transform parent = towerRoot != null ? towerRoot : transform;
+
+        // A painted level takes over. Without a mask the original
+        // rows/pyramid path below runs exactly as before.
+        if (UsesCellMask())
+        {
+            BuildMaskedTower(parent);
+            HideMaskTemplatesIfNeeded();
+            return;
+        }
+
         int rowCount = Mathf.Max(1, rows);
         int bottomColumnCount = Mathf.Max(1, baseColumns);
         List<List<BreakableGlass>> towerRows =
@@ -149,15 +183,239 @@ public class GlassTowerController : MonoBehaviour
         HideSceneTemplateIfNeeded();
     }
 
+    public const int EmptyMaskCell = -1;
+
+    public bool UsesCellMask()
+    {
+        return useCellMask &&
+               cellMask != null &&
+               cellMask.Count > 0 &&
+               maskColumns > 0 &&
+               maskRows > 0 &&
+               maskLayers > 0;
+    }
+
+    /// <summary>
+    /// Palette index at a painted cell, or EmptyMaskCell when empty.
+    /// </summary>
+    public int GetMaskCell(int layer, int row, int column)
+    {
+        if (!UsesCellMask() ||
+            layer < 0 || row < 0 || column < 0 ||
+            layer >= maskLayers ||
+            row >= maskRows ||
+            column >= maskColumns)
+        {
+            return EmptyMaskCell;
+        }
+
+        int index = (layer * maskRows + row) * maskColumns + column;
+        return index < cellMask.Count ? cellMask[index] : EmptyMaskCell;
+    }
+
+    /// <summary>
+    /// The object a painted cell spawns. Falls back to Glass Prefab when the
+    /// palette is empty or the index does not resolve, so a level that never
+    /// set up a palette still builds.
+    /// </summary>
+    public BreakableGlass GetMaskPrefab(int definitionIndex)
+    {
+        if (maskPalette == null ||
+            definitionIndex < 0 ||
+            definitionIndex >= maskPalette.Count ||
+            maskPalette[definitionIndex] == null)
+        {
+            return glassPrefab;
+        }
+
+        return maskPalette[definitionIndex];
+    }
+
+    /// <summary>
+    /// Replaces the painted level. Call before BuildTower.
+    /// </summary>
+    public void SetCellMask(
+        int columns,
+        int rows,
+        int layers,
+        float layerSpacing,
+        IReadOnlyList<int> mask,
+        IReadOnlyList<BreakableGlass> palette)
+    {
+        maskColumns = Mathf.Max(1, columns);
+        maskRows = Mathf.Max(1, rows);
+        maskLayers = Mathf.Max(1, layers);
+        maskLayerSpacing = layerSpacing;
+
+        cellMask.Clear();
+        maskPalette.Clear();
+
+        if (palette != null)
+        {
+            for (int i = 0; i < palette.Count; i++)
+            {
+                maskPalette.Add(palette[i]);
+            }
+        }
+
+        if (mask == null)
+        {
+            useCellMask = false;
+            return;
+        }
+
+        for (int i = 0; i < mask.Count; i++)
+        {
+            cellMask.Add(mask[i]);
+        }
+
+        useCellMask = cellMask.Count > 0;
+    }
+
+    /// <summary>
+    /// Builds a painted tower. Every column sits on a fixed lattice, so an
+    /// object is held up by the one directly beneath it in the same layer.
+    /// Painting an object with nothing below leaves it unsupported, and it
+    /// drops on the first support audit exactly like one whose support was
+    /// shattered.
+    /// </summary>
+    private void BuildMaskedTower(Transform parent)
+    {
+        float rowWidth = (maskColumns - 1) * spacing.x;
+        float depthWidth = (maskLayers - 1) * maskLayerSpacing;
+
+        for (int layer = 0; layer < maskLayers; layer++)
+        {
+            List<BreakableGlass[]> grid =
+                new List<BreakableGlass[]>(maskRows);
+
+            for (int row = 0; row < maskRows; row++)
+            {
+                BreakableGlass[] currentRow =
+                    new BreakableGlass[maskColumns];
+
+                for (int column = 0; column < maskColumns; column++)
+                {
+                    int definitionIndex =
+                        GetMaskCell(layer, row, column);
+
+                    if (definitionIndex == EmptyMaskCell)
+                    {
+                        continue;
+                    }
+
+                    BreakableGlass prefab =
+                        GetMaskPrefab(definitionIndex);
+
+                    if (prefab == null)
+                    {
+                        continue;
+                    }
+
+                    BreakableGlass glass = Instantiate(prefab, parent);
+                    glass.name = $"Glass_L{layer}_R{row}_C{column}";
+                    glass.transform.localPosition = localOrigin + new Vector3(
+                        column * spacing.x - rowWidth * 0.5f,
+                        row * spacing.y,
+                        layer * maskLayerSpacing - depthWidth * 0.5f);
+                    glass.transform.localRotation = Quaternion.identity;
+                    glass.transform.localScale =
+                        prefab.transform.localScale * glassScale;
+                    CopyExternalBrokenPartsIfNeeded(glass, parent, prefab);
+                    glass.ConfigureTower(this, row, column);
+
+                    currentRow[column] = glass;
+                    generatedGlasses.Add(glass);
+                    supports.Add(glass, new List<BreakableGlass>(1));
+                }
+
+                grid.Add(currentRow);
+            }
+
+            AssignMaskedSupports(grid);
+        }
+    }
+
+    private void AssignMaskedSupports(List<BreakableGlass[]> grid)
+    {
+        for (int row = 1; row < grid.Count; row++)
+        {
+            BreakableGlass[] lowerRow = grid[row - 1];
+            BreakableGlass[] currentRow = grid[row];
+
+            for (int column = 0; column < currentRow.Length; column++)
+            {
+                BreakableGlass glass = currentRow[column];
+
+                if (glass == null || lowerRow[column] == null)
+                {
+                    continue;
+                }
+
+                supports[glass].Add(lowerRow[column]);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Hides every scene object used as a painted template, plus the
+    /// default Glass Prefab template.
+    /// </summary>
+    private void HideMaskTemplatesIfNeeded()
+    {
+        HideSceneTemplateIfNeeded();
+
+        if (!hideSceneTemplate || maskPalette == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < maskPalette.Count; i++)
+        {
+            BreakableGlass entry = maskPalette[i];
+
+            if (entry == null ||
+                !entry.gameObject.scene.IsValid())
+            {
+                continue;
+            }
+
+            GameObject externalBrokenParts = entry.brokenParts;
+            entry.gameObject.SetActive(false);
+
+            if (externalBrokenParts != null &&
+                externalBrokenParts != entry.gameObject &&
+                !externalBrokenParts.transform.IsChildOf(entry.transform))
+            {
+                externalBrokenParts.SetActive(false);
+            }
+        }
+    }
+
     private void CopyExternalBrokenPartsIfNeeded(
         BreakableGlass glass,
         Transform towerParent)
     {
-        GameObject brokenTemplate = glassPrefab.brokenParts;
+        CopyExternalBrokenPartsIfNeeded(glass, towerParent, glassPrefab);
+    }
+
+    // A painted cell can spawn any palette object, so the broken parts must
+    // be read from the prefab that was actually instantiated.
+    private void CopyExternalBrokenPartsIfNeeded(
+        BreakableGlass glass,
+        Transform towerParent,
+        BreakableGlass sourcePrefab)
+    {
+        if (sourcePrefab == null)
+        {
+            return;
+        }
+
+        GameObject brokenTemplate = sourcePrefab.brokenParts;
 
         if (brokenTemplate == null ||
-            brokenTemplate == glassPrefab.gameObject ||
-            brokenTemplate.transform.IsChildOf(glassPrefab.transform))
+            brokenTemplate == sourcePrefab.gameObject ||
+            brokenTemplate.transform.IsChildOf(sourcePrefab.transform))
         {
             return;
         }
@@ -166,13 +424,13 @@ public class GlassTowerController : MonoBehaviour
         brokenCopy.name = $"{glass.name}_BrokenParts";
         brokenCopy.transform.SetParent(glass.transform, false);
         brokenCopy.transform.localPosition =
-            glassPrefab.transform.InverseTransformPoint(brokenTemplate.transform.position);
+            sourcePrefab.transform.InverseTransformPoint(brokenTemplate.transform.position);
         brokenCopy.transform.localRotation =
-            Quaternion.Inverse(glassPrefab.transform.rotation) *
+            Quaternion.Inverse(sourcePrefab.transform.rotation) *
             brokenTemplate.transform.rotation;
         brokenCopy.transform.localScale = GetRelativeScale(
             brokenTemplate.transform.lossyScale,
-            glassPrefab.transform.lossyScale);
+            sourcePrefab.transform.lossyScale);
         glass.brokenParts = brokenCopy;
     }
 
