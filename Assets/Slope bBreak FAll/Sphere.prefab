@@ -64,10 +64,12 @@ MeshRenderer:
   m_RayTracingAccelStructBuildFlagsOverride: 0
   m_RayTracingAccelStructBuildFlags: 1
   m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+  - {fileID: 2100000, guid: 06f34a4cf5d73d84aa48b2c285d77785, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -85,9 +87,11 @@ MeshRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
+  m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
 --- !u!135 &848935704280255694
 SphereCollider:
@@ -125,6 +129,7 @@ MonoBehaviour:
   controlObject: {fileID: 0}
   ballPrefab: {fileID: 0}
   ballSpawnPoint: {fileID: 0}
+  ballLifetime: 4
   minXPosition: -5
   maxXPosition: 5
   powerSlider: {fileID: 0}
@@ -133,6 +138,8 @@ MonoBehaviour:
   maximumPower: 1
   minimumFallSpeed: 0
   maximumFallSpeed: 5
+  maintainBaseSpeedFromSlider: 1
+  extraDownwardAcceleration: 12
   inputZone: {fileID: 0}
   gameplayCamera: {fileID: 0}
   stopDelay: 0.15
@@ -159,10 +166,10 @@ Rigidbody:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4150701376757159554}
-  serializedVersion: 4
+  serializedVersion: 5
   m_Mass: 1
-  m_Drag: 0
-  m_AngularDrag: 0.05
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
   m_CenterOfMass: {x: 0, y: 0, z: 0}
   m_InertiaTensor: {x: 1, y: 1, z: 1}
   m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}

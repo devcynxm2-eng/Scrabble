@@ -137,6 +137,9 @@ public sealed class SlopeLevelLoader : MonoBehaviour
             level.ObjectPalette
         );
 
+        towerController.maskAutoRowSpacing = level.AutoRowSpacing;
+        towerController.maskRestOnGround = level.RestOnGround;
+
         towerController.glassScale = level.GlassScale;
         towerController.spacing = level.Spacing;
         towerController.localOrigin = level.LocalOrigin;

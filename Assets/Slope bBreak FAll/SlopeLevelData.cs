@@ -91,6 +91,25 @@ public sealed class SlopeLevelData : ScriptableObject
         Vector3.zero;
 
 
+    [Tooltip(
+        "Har row ko neeche wali row ke bilkul upar rakho, objects ki " +
+        "asli height ke hisaab se. Off karne par upar wala Spacing Y " +
+        "use hota hai — agar wo object ki height se match na kare to " +
+        "har row hawa mein latki rehti hai."
+    )]
+    [SerializeField]
+    private bool autoRowSpacing = true;
+
+
+    [Tooltip(
+        "Tower ko neeche wali surface par rakh do, taake sab se " +
+        "neeche wali row zameen par tikke — na zameen mein dhansi ho " +
+        "na hawa mein."
+    )]
+    [SerializeField]
+    private bool restOnGround = true;
+
+
     [Header("Collapse")]
 
     [Tooltip(
@@ -178,6 +197,10 @@ public sealed class SlopeLevelData : ScriptableObject
     public Vector2 Spacing => spacing;
 
     public Vector3 LocalOrigin => localOrigin;
+
+    public bool AutoRowSpacing => autoRowSpacing;
+
+    public bool RestOnGround => restOnGround;
 
     public float CollapseStepDelay => collapseStepDelay;
 

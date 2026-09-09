@@ -28,7 +28,7 @@ public sealed class SlopeLevelDataEditor : Editor
         "Assets/Slope bBreak FAll/SlopeLevelDatabase.asset";
 
     private const string LivePreviewSessionKey =
-        "SlopeBall.LivePreviewEnabled";
+        SlopeLivePreviewLauncher.EnabledKey;
 
     private const float CellSize = 26f;
 
@@ -42,16 +42,6 @@ public sealed class SlopeLevelDataEditor : Editor
     private static readonly Color UnsupportedColor =
         new Color(1f, 0.55f, 0.2f, 1f);
 
-    private static readonly Color[] PaletteColors =
-    {
-        new Color(0.35f, 0.75f, 0.95f, 1f),
-        new Color(1.00f, 0.78f, 0.10f, 1f),
-        new Color(0.55f, 0.85f, 0.35f, 1f),
-        new Color(0.85f, 0.45f, 0.85f, 1f),
-        new Color(1.00f, 0.42f, 0.35f, 1f),
-        new Color(0.45f, 0.95f, 0.85f, 1f)
-    };
-
 
     private SerializedProperty levelNumber;
     private SerializedProperty gridColumns;
@@ -63,6 +53,8 @@ public sealed class SlopeLevelDataEditor : Editor
     private SerializedProperty glassScale;
     private SerializedProperty spacing;
     private SerializedProperty localOrigin;
+    private SerializedProperty autoRowSpacing;
+    private SerializedProperty restOnGround;
 
     private SerializedProperty collapseStepDelay;
     private SerializedProperty usePhysicalSupportCheck;
@@ -80,6 +72,13 @@ public sealed class SlopeLevelDataEditor : Editor
     private SerializedProperty minimumPower;
     private SerializedProperty maximumPower;
 
+
+    /*
+     * Har palette object ka asli rang, uske material se parha hua.
+     * Material lookup har repaint par karna mehnga hai, is liye cache.
+     */
+    private Color[] paletteColorCache;
+    private bool paletteColorsReady;
 
     private int levelNumberToEdit = 1;
     private int paintLayer;
@@ -101,6 +100,8 @@ public sealed class SlopeLevelDataEditor : Editor
         glassScale = serializedObject.FindProperty("glassScale");
         spacing = serializedObject.FindProperty("spacing");
         localOrigin = serializedObject.FindProperty("localOrigin");
+        autoRowSpacing = serializedObject.FindProperty("autoRowSpacing");
+        restOnGround = serializedObject.FindProperty("restOnGround");
 
         collapseStepDelay =
             serializedObject.FindProperty("collapseStepDelay");
@@ -139,6 +140,8 @@ public sealed class SlopeLevelDataEditor : Editor
             (SlopeLevelData)target;
 
         levelData.EnsureCellCapacity();
+
+        EnsurePaletteColorCache(levelData);
 
 
         DrawLiveGamePreviewSection(levelData);
@@ -209,6 +212,20 @@ public sealed class SlopeLevelDataEditor : Editor
                 );
 
                 /*
+                 * Launch flag aur level dono SessionState mein jate
+                 * hain kyunke Play Mode ka domain reload editor ka
+                 * baaki sara state udaa deta hai. Inhi ki madad se
+                 * SlopeLivePreviewLauncher Play Mode shuru hote hi
+                 * pehla tower bana deta hai.
+                 */
+                SessionState.SetBool(
+                    SlopeLivePreviewLauncher.LaunchKey,
+                    true
+                );
+
+                SlopeLivePreviewLauncher.RememberLevel(levelData);
+
+                /*
                  * Working canvas disk par sync hota hai taake Play Mode
                  * domain reload ke baad exact current design parhe.
                  */
@@ -229,6 +246,8 @@ public sealed class SlopeLevelDataEditor : Editor
                     LivePreviewSessionKey,
                     true
                 );
+
+                SlopeLivePreviewLauncher.RememberLevel(levelData);
 
                 QueueLivePreviewRefresh(levelData);
             }
@@ -283,33 +302,30 @@ public sealed class SlopeLevelDataEditor : Editor
             }
 
 
-            /*
-             * Slope game band ho to pehle usay khol lete hain, warna
-             * tower inactive root ke andar hoga aur kuch nazar hi
-             * nahi aayega.
-             */
-            SlopeBallGameButton switcher =
-                FindFirstObjectByType<SlopeBallGameButton>(
-                    FindObjectsInactive.Include
-                );
-
-            if (switcher != null &&
-                !switcher.IsSlopeBallOpen)
-            {
-                switcher.OpenSlopeBallGame();
-            }
-
-
-            SlopeLevelLoader loader =
-                FindFirstObjectByType<SlopeLevelLoader>(
-                    FindObjectsInactive.Include
-                );
-
-            if (loader != null)
-            {
-                loader.RebuildWithLevel(levelData);
-            }
+            SlopeLivePreviewLauncher.RefreshNow(levelData);
         };
+    }
+
+
+    /// <summary>
+    /// Painter aur presets SlopeLevelData ko seedha badalte hain,
+    /// SerializedProperty ke zariye nahi.
+    ///
+    /// Us soorat mein serializedObject ka snapshot purana reh jata
+    /// hai, aur frame ke aakhir mein ApplyModifiedProperties() usi
+    /// purane snapshot ko object par wapis likh sakta hai — yani
+    /// abhi ki gayi painting gayab. Update() se snapshot ko nayi
+    /// halat par le aate hain, phir Repaint() se grid foran naya
+    /// nazar aata hai.
+    /// </summary>
+    private void MarkDesignChanged(
+        SlopeLevelData levelData)
+    {
+        NotifyLevelDesignChanged(levelData);
+
+        serializedObject.Update();
+
+        Repaint();
     }
 
 
@@ -360,6 +376,27 @@ public sealed class SlopeLevelDataEditor : Editor
             "isay alag numbered asset mein save karke database " +
             "mein register karta hai.",
             MessageType.Info
+        );
+
+        /*
+         * User ke liye saaf rehna chahiye ke wo canvas par hai ya
+         * kisi saved level par, warna LOAD ka button dabana bemaani
+         * lagta hai.
+         */
+        bool isSavedLevelAsset =
+            database.FindIndexByLevelNumber(
+                levelData.LevelNumber
+            ) >= 0 &&
+            database.FindByLevelNumber(
+                levelData.LevelNumber
+            ) == levelData;
+
+        EditorGUILayout.LabelField(
+            "Editing",
+            isSavedLevelAsset
+                ? $"{levelData.name}  (saved level — changes seedhe " +
+                  "isi level par lag rahe hain)"
+                : $"{levelData.name}  (working canvas)"
         );
 
         EditorGUILayout.PropertyField(levelNumber);
@@ -524,9 +561,32 @@ public sealed class SlopeLevelDataEditor : Editor
         SlopeLevelData saved =
             database.FindByLevelNumber(number);
 
-        if (saved == null ||
-            saved == workingLevel)
+        if (saved == null)
         {
+            Debug.LogWarning(
+                $"Slope level {number} database mein nahi mila.",
+                workingLevel
+            );
+
+            return;
+        }
+
+
+        /*
+         * Agar user ne saved level asset ko hi khola hua hai to load
+         * karne ko kuch nahi — wo pehle se wahi level edit kar raha
+         * hai. Pehle yahan khamoshi se return ho jata tha, jis se
+         * lagta tha ke button kaam hi nahi kar raha.
+         */
+        if (saved == workingLevel)
+        {
+            Debug.Log(
+                $"Ye asset khud level {number} hai — aap pehle se " +
+                "isay hi edit kar rahe hain. Doosra level laane ke " +
+                "liye SlopeLevelCanvas kholein.",
+                workingLevel
+            );
+
             return;
         }
 
@@ -644,8 +704,7 @@ public sealed class SlopeLevelDataEditor : Editor
         {
             serializedObject.ApplyModifiedProperties();
             levelData.EnsureCellCapacity();
-            NotifyLevelDesignChanged(levelData);
-            serializedObject.Update();
+            MarkDesignChanged(levelData);
         }
     }
 
@@ -673,6 +732,11 @@ public sealed class SlopeLevelDataEditor : Editor
         if (EditorGUI.EndChangeCheck())
         {
             serializedObject.ApplyModifiedProperties();
+
+            // Naye objects ke rang dobara parhne parenge
+            paletteColorCache = null;
+            paletteColorsReady = false;
+
             NotifyLevelDesignChanged(levelData);
             serializedObject.Update();
         }
@@ -769,7 +833,12 @@ public sealed class SlopeLevelDataEditor : Editor
     }
 
 
-    private static Color GetPaletteColor(
+    /// <summary>
+    /// Grid ka cell wahi rang dikhata hai jo asli jar ka hai, taake
+    /// design karte waqt tower ka look andaza ho jaye. Material na
+    /// mile to ek fallback rang.
+    /// </summary>
+    private Color GetPaletteColor(
         int index)
     {
         if (index < 0)
@@ -778,8 +847,96 @@ public sealed class SlopeLevelDataEditor : Editor
         }
 
 
-        return PaletteColors[index % PaletteColors.Length];
+        if (paletteColorCache != null &&
+            index < paletteColorCache.Length)
+        {
+            return paletteColorCache[index];
+        }
+
+
+        return FallbackColor(index);
     }
+
+
+    private static Color FallbackColor(
+        int index)
+    {
+        return SlopeGlassColorUtility.FallbackColor(index);
+    }
+
+
+
+    /// <summary>
+    /// Palette ke rang cache karta hai.
+    ///
+    /// Asset previews Unity background mein banata hai, is liye pehli
+    /// dafa wo tayyar nahi hote. Jab tak sab tayyar na hon, cache ko
+    /// adhoora maan kar agle repaint par dobara banate hain.
+    /// </summary>
+    private void EnsurePaletteColorCache(
+        SlopeLevelData levelData)
+    {
+        int count = Mathf.Max(1, levelData.ObjectPalette.Count);
+
+        if (paletteColorCache != null &&
+            paletteColorCache.Length == count &&
+            paletteColorsReady)
+        {
+            return;
+        }
+
+
+        paletteColorCache = new Color[count];
+        paletteColorsReady = true;
+
+        for (int i = 0; i < count; i++)
+        {
+            paletteColorCache[i] = ReadObjectColor(
+                i < levelData.ObjectPalette.Count
+                    ? levelData.ObjectPalette[i]
+                    : null,
+                i,
+                out bool ready
+            );
+
+            if (!ready)
+            {
+                paletteColorsReady = false;
+            }
+        }
+
+
+        if (!paletteColorsReady)
+        {
+            Repaint();
+        }
+    }
+
+
+    private static Color ReadObjectColor(
+        BreakableGlass prefab,
+        int fallbackIndex,
+        out bool ready)
+    {
+        return SlopeGlassColorUtility.GetObjectColor(
+            prefab,
+            fallbackIndex,
+            out ready
+        );
+    }
+
+
+    private static Color GhostColor(
+        Color source)
+    {
+        return new Color(
+            source.r,
+            source.g,
+            source.b,
+            0.22f
+        );
+    }
+
 
 
     // ==========================
@@ -797,28 +954,28 @@ public sealed class SlopeLevelDataEditor : Editor
         {
             Undo.RecordObject(levelData, "Clear Slope Layer");
             levelData.ClearLayer(paintLayer);
-            NotifyLevelDesignChanged(levelData);
+            MarkDesignChanged(levelData);
         }
 
         if (GUILayout.Button("Fill Layer"))
         {
             Undo.RecordObject(levelData, "Fill Slope Layer");
             levelData.FillLayer(paintLayer, brush);
-            NotifyLevelDesignChanged(levelData);
+            MarkDesignChanged(levelData);
         }
 
         if (GUILayout.Button("Pyramid"))
         {
             Undo.RecordObject(levelData, "Pyramid Slope Layer");
             levelData.ApplyPyramidPreset(paintLayer, brush);
-            NotifyLevelDesignChanged(levelData);
+            MarkDesignChanged(levelData);
         }
 
         if (GUILayout.Button("Clear All"))
         {
             Undo.RecordObject(levelData, "Clear Slope Level");
             levelData.ClearAll();
-            NotifyLevelDesignChanged(levelData);
+            MarkDesignChanged(levelData);
         }
 
         EditorGUILayout.EndHorizontal();
@@ -841,7 +998,7 @@ public sealed class SlopeLevelDataEditor : Editor
                 {
                     Undo.RecordObject(levelData, "Copy Slope Layer");
                     levelData.CopyLayer(paintLayer, other);
-                    NotifyLevelDesignChanged(levelData);
+                    MarkDesignChanged(levelData);
                 }
             }
 
@@ -866,7 +1023,18 @@ public sealed class SlopeLevelDataEditor : Editor
 
             for (int i = 0; i < layerLabels.Length; i++)
             {
-                layerLabels[i] = $"Layer {i + 1}";
+                /*
+                 * Har layer ka count sath likha hai taake pata chale
+                 * kaunsi layer khali hai bina us par switch kiye.
+                 */
+                int layerTotal = 0;
+
+                for (int row = 0; row < levelData.GridRows; row++)
+                {
+                    layerTotal += levelData.GetRowCount(i, row);
+                }
+
+                layerLabels[i] = $"Layer {i + 1}  ({layerTotal})";
             }
 
             EditorGUILayout.LabelField("Depth Layer");
@@ -892,8 +1060,12 @@ public sealed class SlopeLevelDataEditor : Editor
         );
 
         EditorGUILayout.LabelField(
-            "Cell ka number palette index hai. Narangi = neeche " +
-            "kuch nahi, wo girega.",
+            levelData.GridLayers > 1
+                ? "Cell ka number palette index hai. Narangi = neeche " +
+                  "kuch nahi, wo girega. Halka · = doosri layer " +
+                  "par yahan object hai."
+                : "Cell ka number palette index hai. Narangi = neeche " +
+                  "kuch nahi, wo girega.",
             EditorStyles.miniLabel
         );
 
@@ -927,6 +1099,37 @@ public sealed class SlopeLevelDataEditor : Editor
                     row > 0 &&
                     !levelData.IsOccupied(paintLayer, row - 1, column);
 
+                /*
+                 * Doosri layers par is cell par kuch hai ya nahi.
+                 * Khali cell ko halka sa dikha dete hain taake layers
+                 * ek doosre ke sath align ki ja sakein.
+                 */
+                int ghostIndex = SlopeLevelData.EmptyCell;
+
+                if (!occupied &&
+                    levelData.GridLayers > 1)
+                {
+                    for (int other = 0;
+                         other < levelData.GridLayers;
+                         other++)
+                    {
+                        if (other == paintLayer)
+                        {
+                            continue;
+                        }
+
+
+                        int otherIndex =
+                            levelData.GetCell(other, row, column);
+
+                        if (otherIndex != SlopeLevelData.EmptyCell)
+                        {
+                            ghostIndex = otherIndex;
+                            break;
+                        }
+                    }
+                }
+
                 Color previousBackground =
                     GUI.backgroundColor;
 
@@ -935,14 +1138,22 @@ public sealed class SlopeLevelDataEditor : Editor
                         ? UnsupportedColor
                         : occupied
                             ? GetPaletteColor(definitionIndex)
-                            : EmptyColor;
+                            : ghostIndex != SlopeLevelData.EmptyCell
+                                ? GhostColor(GetPaletteColor(ghostIndex))
+                                : EmptyColor;
 
                 GUIContent cellContent =
                     new GUIContent(
-                        occupied ? definitionIndex.ToString() : "",
+                        occupied
+                            ? definitionIndex.ToString()
+                            : ghostIndex != SlopeLevelData.EmptyCell
+                                ? "·"
+                                : "",
                         floating
-                            ? $"L{paintLayer} R{row} C{column} — neeche support nahi"
-                            : $"L{paintLayer} R{row} C{column}"
+                            ? $"L{paintLayer + 1} R{row} C{column} — neeche support nahi"
+                            : ghostIndex != SlopeLevelData.EmptyCell
+                                ? $"L{paintLayer + 1} R{row} C{column} — khali, magar doosri layer par object hai"
+                                : $"L{paintLayer + 1} R{row} C{column}"
                     );
 
                 if (GUILayout.Button(
@@ -964,7 +1175,7 @@ public sealed class SlopeLevelDataEditor : Editor
                             : brushIndex
                     );
 
-                    NotifyLevelDesignChanged(levelData);
+                    MarkDesignChanged(levelData);
                 }
 
                 GUI.backgroundColor = previousBackground;
@@ -999,8 +1210,29 @@ public sealed class SlopeLevelDataEditor : Editor
         );
 
         EditorGUILayout.PropertyField(glassScale);
-        EditorGUILayout.PropertyField(spacing);
         EditorGUILayout.PropertyField(localOrigin);
+
+        EditorGUILayout.PropertyField(restOnGround);
+        EditorGUILayout.PropertyField(autoRowSpacing);
+
+        /*
+         * Spacing.y sirf tab lagti hai jab auto stacking band ho.
+         * Auto on ho to rows object ki asli height se stack hoti hain.
+         */
+        using (new EditorGUI.DisabledScope(autoRowSpacing.boolValue))
+        {
+            EditorGUILayout.PropertyField(spacing);
+        }
+
+        if (autoRowSpacing.boolValue)
+        {
+            EditorGUILayout.HelpBox(
+                "Rows objects ki asli height par stack ho rahi hain, " +
+                "is liye Spacing Y ka Y hissa ignore hai. Sirf Spacing X " +
+                "(columns ka faasla) chal raha hai.",
+                MessageType.None
+            );
+        }
     }
 
 

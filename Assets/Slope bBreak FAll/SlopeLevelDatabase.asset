@@ -14,3 +14,4 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SlopeLevelDatabase
   savedLevels:
   - {fileID: 11400000, guid: 06641dc3e9422ee4f842902ebeed1d0d, type: 2}
+  - {fileID: 11400000, guid: 663413586e117314d82bab8bef4e6d81, type: 2}

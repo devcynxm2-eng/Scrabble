@@ -53,6 +53,20 @@ public class GlassTowerController : MonoBehaviour
     [Tooltip("Z distance between painted layers.")]
     public float maskLayerSpacing = 0.6f;
 
+    [Tooltip(
+        "Stack each painted row directly on top of the one below using the " +
+        "real object heights, instead of the fixed Spacing Y. Spacing Y that " +
+        "does not match the object height leaves every row hanging in the air.")]
+    public bool maskAutoRowSpacing = true;
+
+    [Tooltip(
+        "Drop the painted tower onto the surface underneath it so the bottom " +
+        "row starts resting on the ground instead of sunk into it or floating.")]
+    public bool maskRestOnGround = true;
+
+    [Tooltip("Surfaces the painted tower is allowed to rest on.")]
+    public LayerMask maskGroundMask = ~0;
+
     [Tooltip("Objects a painted cell can reference. Empty falls back to Glass Prefab.")]
     public List<BreakableGlass> maskPalette = new List<BreakableGlass>();
 
@@ -284,6 +298,13 @@ public class GlassTowerController : MonoBehaviour
         float rowWidth = (maskColumns - 1) * spacing.x;
         float depthWidth = (maskLayers - 1) * maskLayerSpacing;
 
+        // Where the bottom of row 0 starts, in the tower's local space.
+        float baseY = maskRestOnGround
+            ? FindGroundLocalY(parent)
+            : localOrigin.y;
+
+        float[] rowBottom = BuildRowBottoms(baseY);
+
         for (int layer = 0; layer < maskLayers; layer++)
         {
             List<BreakableGlass[]> grid =
@@ -314,10 +335,19 @@ public class GlassTowerController : MonoBehaviour
 
                     BreakableGlass glass = Instantiate(prefab, parent);
                     glass.name = $"Glass_L{layer}_R{row}_C{column}";
-                    glass.transform.localPosition = localOrigin + new Vector3(
-                        column * spacing.x - rowWidth * 0.5f,
-                        row * spacing.y,
-                        layer * maskLayerSpacing - depthWidth * 0.5f);
+
+                    /*
+                     * The object is positioned by its BOTTOM, not its centre,
+                     * so it lands exactly on the row beneath it. Placing by
+                     * centre is what left the tower floating and then dropping.
+                     */
+                    float centreY =
+                        rowBottom[row] - GetScaledLocalBottom(prefab);
+
+                    glass.transform.localPosition = new Vector3(
+                        localOrigin.x + column * spacing.x - rowWidth * 0.5f,
+                        centreY,
+                        localOrigin.z + layer * maskLayerSpacing - depthWidth * 0.5f);
                     glass.transform.localRotation = Quaternion.identity;
                     glass.transform.localScale =
                         prefab.transform.localScale * glassScale;
@@ -335,6 +365,228 @@ public class GlassTowerController : MonoBehaviour
             AssignMaskedSupports(grid);
         }
     }
+
+    /// <summary>
+    /// Local Y where each row's bottom sits. With auto spacing every row
+    /// rests on the tallest object of the row below, so nothing hangs in
+    /// the air; otherwise the authored Spacing Y is used.
+    /// </summary>
+    private float[] BuildRowBottoms(float baseY)
+    {
+        float[] rowBottom = new float[maskRows];
+        float cursor = baseY;
+
+        for (int row = 0; row < maskRows; row++)
+        {
+            if (!maskAutoRowSpacing)
+            {
+                rowBottom[row] = baseY + row * spacing.y;
+                continue;
+            }
+
+            rowBottom[row] = cursor;
+            cursor += GetRowHeight(row);
+        }
+
+        return rowBottom;
+    }
+
+    /// <summary>
+    /// Tallest painted object in a row, across every layer. An empty row
+    /// falls back to Spacing Y so a deliberate gap still reads as a gap.
+    /// </summary>
+    private float GetRowHeight(int row)
+    {
+        float tallest = 0f;
+
+        for (int layer = 0; layer < maskLayers; layer++)
+        {
+            for (int column = 0; column < maskColumns; column++)
+            {
+                int definitionIndex = GetMaskCell(layer, row, column);
+
+                if (definitionIndex == EmptyMaskCell)
+                {
+                    continue;
+                }
+
+                BreakableGlass prefab = GetMaskPrefab(definitionIndex);
+
+                if (prefab == null)
+                {
+                    continue;
+                }
+
+                tallest = Mathf.Max(tallest, GetScaledLocalHeight(prefab));
+            }
+        }
+
+        return tallest > 0.0001f ? tallest : Mathf.Abs(spacing.y);
+    }
+
+    private float GetScaledLocalHeight(BreakableGlass prefab)
+    {
+        if (!TryGetPrefabBounds(prefab, out Bounds bounds))
+        {
+            return Mathf.Abs(spacing.y);
+        }
+
+        return bounds.size.y * prefab.transform.localScale.y * glassScale;
+    }
+
+    /// <summary>
+    /// Distance from the object's pivot down to its lowest point, scaled.
+    /// Meshes are not always centred on their pivot, so this is what keeps
+    /// the bottom row flush with the ground.
+    /// </summary>
+    private float GetScaledLocalBottom(BreakableGlass prefab)
+    {
+        if (!TryGetPrefabBounds(prefab, out Bounds bounds))
+        {
+            return 0f;
+        }
+
+        return bounds.min.y * prefab.transform.localScale.y * glassScale;
+    }
+
+    private static bool TryGetPrefabBounds(
+        BreakableGlass prefab,
+        out Bounds bounds)
+    {
+        bounds = default;
+
+        if (prefab == null)
+        {
+            return false;
+        }
+
+        MeshFilter filter = prefab.GetComponent<MeshFilter>();
+
+        if (filter == null || filter.sharedMesh == null)
+        {
+            return false;
+        }
+
+        bounds = filter.sharedMesh.bounds;
+        return true;
+    }
+
+    /// <summary>
+    /// Local Y of the surface under the tower.
+    ///
+    /// Colliders belonging to the tower itself are skipped: ClearTower uses
+    /// Destroy, which only takes effect at the end of the frame, so on a
+    /// rebuild the previous tower is still physically present and would
+    /// otherwise be mistaken for the ground.
+    /// </summary>
+    private float FindGroundLocalY(Transform parent)
+    {
+        /*
+         * The tower is often rebuilt in the same call stack that just
+         * switched games off, and the physics scene still holds the
+         * colliders of the objects that were disabled a moment ago.
+         * Without this sync the probe lands on a floor that is already
+         * gone, and the tower is built high up in the air.
+         */
+        Physics.SyncTransforms();
+
+        Vector3 probeWorld = parent.TransformPoint(
+            new Vector3(localOrigin.x, localOrigin.y + GroundProbeHeight, localOrigin.z));
+
+        RaycastHit[] hits = Physics.RaycastAll(
+            probeWorld,
+            Vector3.down,
+            GroundProbeHeight + GroundProbeDepth,
+            maskGroundMask,
+            QueryTriggerInteraction.Ignore);
+
+        /*
+         * The floor has to belong to this game. Sharing a scene with
+         * another game means its floor can sit right above ours, and a
+         * physics sync alone cannot be trusted the frame that game was
+         * switched off.
+         */
+        Transform gameRoot = parent.root;
+
+        bool found = false;
+        float highestLocalY = 0f;
+
+        for (int i = 0; i < hits.Length; i++)
+        {
+            Transform hitTransform = hits[i].collider.transform;
+
+            if (hitTransform.root != gameRoot ||
+                hitTransform.IsChildOf(parent) ||
+                hitTransform.GetComponentInParent<BreakableGlass>() != null ||
+                hitTransform.GetComponentInParent<BreakableGlassPiece>() != null ||
+                IsTemplateGeometry(hitTransform))
+            {
+                continue;
+            }
+
+            float localY = parent.InverseTransformPoint(hits[i].point).y;
+
+            if (!found || localY > highestLocalY)
+            {
+                highestLocalY = localY;
+                found = true;
+            }
+        }
+
+        return found ? highestLocalY : localOrigin.y;
+    }
+
+    /// <summary>
+    /// True for the scene objects that only exist as templates to copy from.
+    ///
+    /// They are still active while the tower is being built (a copy taken
+    /// from a disabled object would itself be disabled), so the ground probe
+    /// has to ignore them by hand — otherwise the loose broken pieces lying
+    /// in the scene read as a floor and the tower is built on top of them.
+    /// </summary>
+    private bool IsTemplateGeometry(Transform candidate)
+    {
+        if (IsPartOfTemplate(candidate, glassPrefab))
+        {
+            return true;
+        }
+
+        if (maskPalette == null)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < maskPalette.Count; i++)
+        {
+            if (IsPartOfTemplate(candidate, maskPalette[i]))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool IsPartOfTemplate(
+        Transform candidate,
+        BreakableGlass template)
+    {
+        if (template == null)
+        {
+            return false;
+        }
+
+        if (candidate.IsChildOf(template.transform))
+        {
+            return true;
+        }
+
+        return template.brokenParts != null &&
+               candidate.IsChildOf(template.brokenParts.transform);
+    }
+
+    private const float GroundProbeHeight = 5f;
+    private const float GroundProbeDepth = 50f;
 
     private void AssignMaskedSupports(List<BreakableGlass[]> grid)
     {

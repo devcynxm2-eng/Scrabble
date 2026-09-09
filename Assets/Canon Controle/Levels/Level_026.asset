@@ -19,7 +19,7 @@ MonoBehaviour:
   tableRotationEuler: {x: 0, y: 0, z: 0}
   tablePlacements:
   - prefab: {fileID: 3767945316376700881, guid: b7b94326cb608794c97210e1c40ec165, type: 3}
-    positionOffset: {x: 0.81, y: 0, z: 0}
+    positionOffset: {x: 0.9080987, y: 0, z: 0}
     rotationEuler: {x: 0, y: 50.56, z: 0}
     enableRuntimeRotation: 0
     runtimeRotationAxis: {x: 0, y: 1, z: 0}
@@ -34,7 +34,7 @@ MonoBehaviour:
     movementReleaseVelocityMultiplier: 1
     sizeMultiplier: {x: 0.8, y: 1, z: 1}
   - prefab: {fileID: 3767945316376700881, guid: b7b94326cb608794c97210e1c40ec165, type: 3}
-    positionOffset: {x: -0.77, y: 0, z: 0}
+    positionOffset: {x: -0.86809874, y: 0, z: 0}
     rotationEuler: {x: 0, y: -54.8, z: 0}
     enableRuntimeRotation: 0
     runtimeRotationAxis: {x: 0, y: 1, z: 0}

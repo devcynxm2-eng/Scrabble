@@ -28,8 +28,8 @@ Transform:
   m_GameObject: {fileID: 2708546139759696231}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0.22328, y: 0.50121, z: 0.2711}
+  m_LocalPosition: {x: 0, y: -0.036084957, z: 0.000000023317204}
+  m_LocalScale: {x: 0.08054834, y: 0.17085204, z: 0.09779944}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1319983129005708199}
@@ -41,7 +41,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2708546139759696231}
-  m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+  m_Mesh: {fileID: -6647523343985606905, guid: 03d6d1dcea49de7418ea2884aeef4abd, type: 3}
 --- !u!23 &4388034878788358407
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -62,10 +62,12 @@ MeshRenderer:
   m_RayTracingAccelStructBuildFlagsOverride: 0
   m_RayTracingAccelStructBuildFlags: 1
   m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+  - {fileID: 2100000, guid: a4d0ad2541be6cf44beb955f9405028e, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -83,9 +85,11 @@ MeshRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
+  m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
 --- !u!65 &1050549227096502810
 BoxCollider:
@@ -106,8 +110,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 1, y: 1, z: 1}
-  m_Center: {x: 0, y: 0, z: 0}
+  m_Size: {x: 2.772, y: 2.933591, z: 2.7719996}
+  m_Center: {x: 0, y: 0.2112059, z: -0.00000023841858}
 --- !u!1 &3108844121113888075
 GameObject:
   m_ObjectHideFlags: 0
@@ -136,8 +140,8 @@ Transform:
   m_GameObject: {fileID: 3108844121113888075}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.284, z: 0}
-  m_LocalScale: {x: 2.1327467, y: 0.068391, z: 0.57852}
+  m_LocalPosition: {x: 0, y: 0.24980451, z: 0}
+  m_LocalScale: {x: 4.1294756, y: 1.9953319, z: 3.4271455}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1319983129005708199}
@@ -149,7 +153,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3108844121113888075}
-  m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+  m_Mesh: {fileID: 4185675743113982831, guid: 242038bd32b02eb449ad57458fb44994, type: 3}
 --- !u!23 &6573734790127958889
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -170,10 +174,12 @@ MeshRenderer:
   m_RayTracingAccelStructBuildFlagsOverride: 0
   m_RayTracingAccelStructBuildFlags: 1
   m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+  - {fileID: 2100000, guid: a4d0ad2541be6cf44beb955f9405028e, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -191,9 +197,11 @@ MeshRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
+  m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
 --- !u!65 &5490118529197586441
 BoxCollider:
@@ -214,8 +222,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 1, y: 1, z: 1}
-  m_Center: {x: 0, y: 0, z: 0}
+  m_Size: {x: 0.5164691, y: 0.034275502, z: 0.16880521}
+  m_Center: {x: 0, y: 0.017137751, z: 0}
 --- !u!1 &7474142405030834673
 GameObject:
   m_ObjectHideFlags: 0
@@ -263,3 +271,4 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   towerSurfaceCollider: {fileID: 5490118529197586441}
+  rotatingRoot: {fileID: 0}
