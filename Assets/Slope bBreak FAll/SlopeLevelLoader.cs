@@ -17,6 +17,45 @@ public sealed class SlopeLevelLoader : MonoBehaviour
     [Tooltip("Jo level load karna hai. Khali chhorne par kuch nahi hota.")]
     [SerializeField]
     private SlopeLevelData level;
+    [SerializeField] private SlopeLevelData[] levels;
+    [SerializeField] private int currentLevelIndex;
+    private float completionTime = -1f;
+
+    private void Update()
+    {
+        if (towerController == null || !towerController.isActiveAndEnabled ||
+            level == null || levels == null || towerController.GeneratedGlasses.Count == 0)
+            return;
+
+        foreach (var glass in towerController.GeneratedGlasses)
+        {
+            // A toppled glass counts even when it lands intact below break speed.
+            if (glass != null && glass.IsSupporting)
+            {
+                completionTime = -1f;
+                return;
+            }
+        }
+        if (completionTime < 0f)
+            completionTime = Time.time + 0.75f;
+        if (Time.time < completionTime)
+            return;
+
+        int index = System.Array.IndexOf(levels, level);
+        if (index < 0)
+            return;
+        for (int i = index + 1; i < levels.Length; i++)
+        {
+            if (levels[i] == null)
+                continue;
+            currentLevelIndex = i;
+            if (ballController != null) ballController.ClearReleasedBalls();
+            RebuildWithLevel(levels[i]);
+            return;
+        }
+    }
+
+    private void OnDisable() => completionTime = -1f;
 
 
     [Header("Scene References")]
@@ -48,6 +87,7 @@ public sealed class SlopeLevelLoader : MonoBehaviour
     [ContextMenu("Apply Level")]
     public void ApplyLevel()
     {
+        completionTime = -1f;
         if (level == null)
         {
             Debug.LogWarning(

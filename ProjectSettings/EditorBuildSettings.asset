@@ -8,10 +8,10 @@ EditorBuildSettings:
   - enabled: 0
     path: Assets/Scenes/Scrable.unity
     guid: 99c9720ab356a0642a771bea13969a05
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/baLL fALL BREAK.unity
     guid: 592a5e10713de8d489c9c80351c53464
-  - enabled: 0
+  - enabled: 1
     path: Assets/Scenes/Canon_Controller.unity
     guid: 8b3eded9aa4b5eb43894d548fd9ae321
   - enabled: 0

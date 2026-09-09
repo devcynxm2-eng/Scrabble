@@ -32,12 +32,12 @@ Material:
     - _Glint: 0.4
     - _HeadBulge: 0.4
     - _Neck: 0.22
-    - _RefractionStrength: 0.018
-    - _RimBoost: 1.3
-    - _Tinting: 0.8
+    - _RefractionStrength: 0.008
+    - _RimBoost: 0.35
+    - _Tinting: 0.2
     - _WaveScale: 7
-    - _WaveStrength: 0.3
-    - _Width: 0.92
+    - _WaveStrength: 0.12
+    - _Width: 0.6
     m_Colors:
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
   m_BuildTextureStacks: []

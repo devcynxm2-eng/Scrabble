@@ -81,11 +81,13 @@ Shader "Slope Ball/Water Fall"
             #pragma target 3.0
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareOpaqueTexture.hlsl"
 
             struct Attributes
             {
                 float4 positionOS : POSITION;
+                float3 normalOS : NORMAL;
                 // .xy = quad UV, .z = particle age 0..1 (custom vertex stream)
                 float3 uv         : TEXCOORD0;
                 half4  color      : COLOR;
@@ -96,6 +98,8 @@ Shader "Slope Ball/Water Fall"
                 float4 positionCS : SV_POSITION;
                 float3 uv         : TEXCOORD0;
                 float4 screenPos  : TEXCOORD1;
+                float3 positionWS : TEXCOORD2;
+                half3 normalWS : TEXCOORD3;
                 half4  color      : COLOR;
             };
 
@@ -122,6 +126,8 @@ Shader "Slope Ball/Water Fall"
 
                 output.positionCS = TransformObjectToHClip(input.positionOS.xyz);
                 output.screenPos = ComputeScreenPos(output.positionCS);
+                output.positionWS = TransformObjectToWorld(input.positionOS.xyz);
+                output.normalWS = TransformObjectToWorldNormal(input.normalOS);
                 output.uv = input.uv;
                 output.color = input.color;
 
@@ -203,13 +209,13 @@ Shader "Slope Ball/Water Fall"
                     wave * _RefractionStrength,
                     -front * _RefractionStrength * 0.4h);
 
-                half3 behind = SampleSceneColor(refractUV);
+                half3 behind = SampleSceneColor(saturate(refractUV));
 
                 half4 tint = _BaseColor * input.color;
 
                 half3 waterBody = lerp(
                     behind,
-                    behind * tint.rgb * 1.6h,
+                    behind * lerp(half3(0.88h, 0.97h, 1.0h), tint.rgb, 0.3h),
                     _Tinting
                 );
 
@@ -224,6 +230,22 @@ Shader "Slope Ball/Water Fall"
 
                 half alpha = tint.a * shape * lerp(_BodyAlpha, 1.0h, rim);
 
+                // Animated surface normals create view-dependent wet highlights.
+                float phase = _Time.y * _FlowSpeed;
+                half3 normal = normalize(input.normalWS + half3(
+                    sin(input.uv.x * 28.0 + phase * 1.4) * 0.12,
+                    0.02,
+                    cos(input.uv.y * 24.0 - phase) * 0.12));
+                half3 viewDir = GetWorldSpaceNormalizeViewDir(input.positionWS);
+                if (dot(normal, viewDir) < 0) normal = -normal;
+                half fresnel = 0.02h + 0.98h * pow(1.0h - saturate(dot(normal, viewDir)), 5.0h);
+                Light light = GetMainLight();
+                half3 halfDir = SafeNormalize(light.direction + viewDir);
+                half specular = pow(saturate(dot(normal, halfDir)), 96.0h);
+                half3 reflection = GlossyEnvironmentReflection(
+                    reflect(-viewDir, normal), 0.12h, 1.0h);
+                rgb = lerp(rgb, reflection, fresnel * 0.65h)
+                    + light.color * specular * 0.8h;
                 return half4(rgb, alpha);
             }
             ENDHLSL

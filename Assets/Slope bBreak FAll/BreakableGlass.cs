@@ -136,7 +136,10 @@ public class BreakableGlass : MonoBehaviour
         BreakableGlassPiece[] foundPieces =
             brokenParts.GetComponentsInChildren<BreakableGlassPiece>(true);
 
-        if (foundPieces.Length == 0)
+        pieces.AddRange(foundPieces);
+
+        // Mixed prefabs can have scripts on only some shards. Register every
+        // shard body so none is left kinematic when the glass is released.
         {
             Rigidbody[] bodies =
                 brokenParts.GetComponentsInChildren<Rigidbody>(true);
@@ -151,12 +154,9 @@ public class BreakableGlass : MonoBehaviour
                     piece = bodies[i].gameObject.AddComponent<BreakableGlassPiece>();
                 }
 
-                pieces.Add(piece);
+                if (!pieces.Contains(piece))
+                    pieces.Add(piece);
             }
-        }
-        else
-        {
-            pieces.AddRange(foundPieces);
         }
 
         for (int i = 0; i < pieces.Count; i++)
@@ -269,6 +269,12 @@ public class BreakableGlass : MonoBehaviour
             return;
         }
 
+        if (fractured)
+        {
+            Shatter(contactPoint);
+            return;
+        }
+
         fallingAsWhole = true;
         structuralSupportLost = true;
         transform.SetParent(null, true);
@@ -345,6 +351,14 @@ public class BreakableGlass : MonoBehaviour
 
     private void BeginFracture(Vector3 impactPoint)
     {
+        // A falling glass has no fixed base: all shards must keep falling.
+        // The partial-fracture path deliberately pins supported pieces.
+        if (fallingAsWhole || structuralSupportLost)
+        {
+            Shatter(impactPoint);
+            return;
+        }
+
         fractured = true;
         fallingAsWhole = false;
         nextPieceHitTime = Time.time + pieceHitCooldown;
@@ -941,6 +955,20 @@ public class BreakableGlass : MonoBehaviour
         CompleteShatter();
     }
 
+    public void DestroyWithPieces()
+    {
+        CompleteShatter();
+        foreach (var piece in pieces)
+        {
+            if (piece == null)
+                continue;
+            piece.gameObject.SetActive(false);
+            Destroy(piece.gameObject);
+        }
+        gameObject.SetActive(false);
+        Destroy(gameObject);
+    }
+
     private void CompleteShatter()
     {
         if (broken)
@@ -955,6 +983,20 @@ public class BreakableGlass : MonoBehaviour
         {
             tower.NotifyGlassShattered(this);
         }
+    }
+
+    internal static void StabilizeFallingBody(Rigidbody body)
+    {
+        // Convex glass shapes and freshly released shards can overlap. Limit
+        // the solver's separation speed so contacts cannot launch the pile.
+        body.maxDepenetrationVelocity = 1f;
+        body.constraints = RigidbodyConstraints.None;
+        body.solverIterations = Mathf.Max(body.solverIterations, 12);
+        body.solverVelocityIterations = Mathf.Max(body.solverVelocityIterations, 4);
+        body.linearDamping = Mathf.Max(body.linearDamping, 0.15f);
+        body.angularDamping = Mathf.Max(body.angularDamping, 0.8f);
+        body.maxAngularVelocity = Mathf.Min(body.maxAngularVelocity, 6f);
+        body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
     }
 
     private void SetWholeGlassGravity(bool enabled)
@@ -994,12 +1036,12 @@ public class BreakableGlass : MonoBehaviour
 
         if (enabled)
         {
+            StabilizeFallingBody(wholeGlassRigidbody);
             wholeGlassRigidbody.WakeUp();
         }
         else
         {
-            wholeGlassRigidbody.linearVelocity = Vector3.zero;
-            wholeGlassRigidbody.angularVelocity = Vector3.zero;
+            wholeGlassRigidbody.collisionDetectionMode = CollisionDetectionMode.Discrete;
         }
     }
 

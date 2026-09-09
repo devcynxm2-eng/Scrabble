@@ -102,6 +102,8 @@ public class GlassTowerController : MonoBehaviour
     private bool clearingTower;
 
     public IReadOnlyList<BreakableGlass> GeneratedGlasses => generatedGlasses;
+    [Min(0.1f)] public float destroyBelowGroundDistance = 2f;
+    private float groundWorldY;
 
     private void Start()
     {
@@ -113,6 +115,12 @@ public class GlassTowerController : MonoBehaviour
 
     private void FixedUpdate()
     {
+        foreach (var glass in generatedGlasses)
+        {
+            if (glass != null && glass.transform.position.y < groundWorldY - destroyBelowGroundDistance)
+                glass.DestroyWithPieces();
+        }
+
         if (collapseRoutine != null || supports.Count == 0)
         {
             return;
@@ -146,6 +154,8 @@ public class GlassTowerController : MonoBehaviour
         }
 
         Transform parent = towerRoot != null ? towerRoot : transform;
+        groundWorldY = parent.TransformPoint(new Vector3(
+            localOrigin.x, FindGroundLocalY(parent), localOrigin.z)).y;
 
         // A painted level takes over. Without a mask the original
         // rows/pyramid path below runs exactly as before.
@@ -807,12 +817,21 @@ public class GlassTowerController : MonoBehaviour
         {
             BreakableGlass glass = entry.Key;
 
-            if (glass == null || !glass.IsSupporting || glass.TowerRow <= 0)
+            if (glass == null || !glass.IsSupporting)
             {
                 continue;
             }
 
             List<BreakableGlass> glassSupports = entry.Value;
+
+            // The bottom row also needs a real floor; it has no lower grid row.
+            if (glass.TowerRow <= 0)
+            {
+                if (!glass.HasPhysicalSupport(physicalSupportDistance,
+                        physicalSupportProbeRadius, physicalSupportMask))
+                    result.Add(glass);
+                continue;
+            }
 
             if (usePhysicalSupportCheck &&
                 !glass.HasPhysicalSupport(
@@ -864,7 +883,7 @@ public class GlassTowerController : MonoBehaviour
 
             if (glass != null)
             {
-                Destroy(glass.gameObject);
+                glass.DestroyWithPieces();
             }
         }
 

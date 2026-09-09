@@ -28,15 +28,15 @@ Material:
     - _CoreAlpha: 0.92
     - _Depth: 0.3
     - _EdgeWobble: 0.1
-    - _FlowSpeed: 1.4
+    - _FlowSpeed: 0.65
     - _Glint: 0.45
-    - _RefractionStrength: 0.022
-    - _RimBoost: 1.5
+    - _RefractionStrength: 0.006
+    - _RimBoost: 0.28
     - _RimTightness: 4.5
     - _RippleScale: 17
-    - _RippleStrength: 0.55
+    - _RippleStrength: 0.18
     - _Softness: 0.22
-    - _Tinting: 0.55
+    - _Tinting: 0.22
     - _WobbleFrequency: 9
     m_Colors:
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}

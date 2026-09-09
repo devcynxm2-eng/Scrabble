@@ -184,6 +184,7 @@ public class BreakableGlassPiece : MonoBehaviour
         cachedRigidbody.isKinematic = false;
         cachedRigidbody.useGravity = true;
         cachedRigidbody.interpolation = RigidbodyInterpolation.Interpolate;
+        BreakableGlass.StabilizeFallingBody(cachedRigidbody);
         cachedRigidbody.WakeUp();
 
         if (force <= 0f)

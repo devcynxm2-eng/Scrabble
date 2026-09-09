@@ -17,7 +17,7 @@ public class BallDropController : MonoBehaviour
     [Min(0f)]
     public float ballLifetime = 4f;
 
-
+private Vector3 releasePosition;
     [Header("Precise Left / Right Movement")]
     public float minXPosition = -5f;
     public float maxXPosition = 5f;
@@ -51,6 +51,22 @@ public class BallDropController : MonoBehaviour
 
     [Header("Camera")]
     public Camera gameplayCamera;
+    private float cameraFollowOffsetX;
+    private bool cameraFollowReady;
+    private Vector3 dragCameraOrigin;
+
+    private void LateUpdate()
+    {
+        // if (gameplayCamera == null || controlObject == null) return;
+        // if (!cameraFollowReady)
+        // {
+        //     cameraFollowOffsetX = gameplayCamera.transform.position.x - controlObject.position.x;
+        //     cameraFollowReady = true;
+        // }
+        // var position = gameplayCamera.transform.position;
+        // position.x = controlObject.position.x + cameraFollowOffsetX;
+        // gameplayCamera.transform.position = position;
+    }
 
 
     [Header("Power Charge")]
@@ -92,6 +108,21 @@ public class BallDropController : MonoBehaviour
 
 
     private bool controlling;
+    private readonly List<GameObject> releasedBalls = new List<GameObject>();
+
+    public void ClearReleasedBalls()
+    {
+        foreach (var ball in releasedBalls)
+        {
+            if (ball == null) continue;
+            ball.SetActive(false);
+            Destroy(ball);
+        }
+        releasedBalls.Clear();
+        controlling = false;
+        charging = false;
+        ResetPower();
+    }
     private bool charging;
 
     private Vector3 targetPosition;
@@ -168,83 +199,113 @@ public class BallDropController : MonoBehaviour
     // INPUT
     // =========================================================
 
-    void HandleInput()
+    // void HandleInput()
+    // {
+    //     // MOUSE DOWN
+    //     if (Input.GetMouseButtonDown(0))
+    //     {
+    //         Vector2 mousePosition =
+    //             Input.mousePosition;
+
+
+    //         if (IsInsideZone(mousePosition))
+    //         {
+    //             StartControl(mousePosition);
+    //         }
+    //     }
+
+
+    //     // MOUSE DRAG
+    //     if (Input.GetMouseButton(0) && controlling)
+    //     {
+    //         UpdateControlPosition(
+    //             Input.mousePosition
+    //         );
+    //     }
+
+
+    //     // MOUSE RELEASE
+    //     if (Input.GetMouseButtonUp(0))
+    //     {
+    //         if (controlling)
+    //         {
+    //             ReleaseBall();
+    //         }
+    //     }
+
+
+    //     // TOUCH
+    //     if (Input.touchCount > 0)
+    //     {
+    //         Touch touch =
+    //             Input.GetTouch(0);
+
+
+    //         if (touch.phase ==
+    //             TouchPhase.Began)
+    //         {
+    //             if (IsInsideZone(
+    //                 touch.position))
+    //             {
+    //                 StartControl(
+    //                     touch.position
+    //                 );
+    //             }
+    //         }
+
+
+    //         if (touch.phase ==
+    //             TouchPhase.Moved &&
+    //             controlling)
+    //         {
+    //             UpdateControlPosition(
+    //                 touch.position
+    //             );
+    //         }
+
+
+    //         if (touch.phase ==
+    //                 TouchPhase.Ended ||
+    //             touch.phase ==
+    //                 TouchPhase.Canceled)
+    //         {
+    //             if (controlling)
+    //             {
+    //                 ReleaseBall();
+    //             }
+    //         }
+    //     }
+    // }
+
+
+void HandleInput()
+{
+    if (Input.GetMouseButtonDown(0))
     {
-        // MOUSE DOWN
-        if (Input.GetMouseButtonDown(0))
+        Vector2 mousePosition = Input.mousePosition;
+
+        if (IsInsideZone(mousePosition))
         {
-            Vector2 mousePosition =
-                Input.mousePosition;
-
-
-            if (IsInsideZone(mousePosition))
-            {
-                StartControl(mousePosition);
-            }
+            StartControl(mousePosition);
+            ReleaseBall();
         }
+    }
 
 
-        // MOUSE DRAG
-        if (Input.GetMouseButton(0) && controlling)
+    if (Input.touchCount > 0)
+    {
+        Touch touch = Input.GetTouch(0);
+
+        if (touch.phase == TouchPhase.Began)
         {
-            UpdateControlPosition(
-                Input.mousePosition
-            );
-        }
-
-
-        // MOUSE RELEASE
-        if (Input.GetMouseButtonUp(0))
-        {
-            if (controlling)
+            if (IsInsideZone(touch.position))
             {
+                StartControl(touch.position);
                 ReleaseBall();
             }
         }
-
-
-        // TOUCH
-        if (Input.touchCount > 0)
-        {
-            Touch touch =
-                Input.GetTouch(0);
-
-
-            if (touch.phase ==
-                TouchPhase.Began)
-            {
-                if (IsInsideZone(
-                    touch.position))
-                {
-                    StartControl(
-                        touch.position
-                    );
-                }
-            }
-
-
-            if (touch.phase ==
-                TouchPhase.Moved &&
-                controlling)
-            {
-                UpdateControlPosition(
-                    touch.position
-                );
-            }
-
-
-            if (touch.phase ==
-                    TouchPhase.Ended ||
-                touch.phase ==
-                    TouchPhase.Canceled)
-            {
-                if (controlling)
-                {
-                    ReleaseBall();
-                }
-            }
-        }
     }
+}
 
 
 
@@ -252,51 +313,100 @@ public class BallDropController : MonoBehaviour
     // START CONTROL
     // =========================================================
 
-    void StartControl(
-        Vector2 screenPosition)
+    // void StartControl(
+    //     Vector2 screenPosition)
+    // {
+    //     if (controlObject == null)
+    //         return;
+
+
+    //     controlling = true;
+    //     if (gameplayCamera != null) dragCameraOrigin = gameplayCamera.transform.position;
+
+    //     charging = false;
+
+    //     stopTimer = 0f;
+
+
+    //     movementPlane =
+    //         new Plane(
+    //             Vector3.up,
+    //             controlObject.position
+    //         );
+
+
+    //     Vector3 worldPosition;
+
+
+    //     if (TryGetWorldPosition(
+    //         screenPosition,
+    //         out worldPosition))
+    //     {
+    //         xOffset =
+    //             controlObject.position.x -
+    //             worldPosition.x;
+    //     }
+
+
+    //     targetPosition =
+    //         controlObject.position;
+
+
+    //     ResetPower();
+
+    //     ShowAimGuide();
+    // }
+
+
+void StartControl(Vector2 screenPosition)
+{
+    if (controlObject == null)
+        return;
+
+
+    controlling = true;
+
+
+    if (gameplayCamera != null)
+        dragCameraOrigin = gameplayCamera.transform.position;
+
+
+    charging = false;
+    stopTimer = 0f;
+
+
+    movementPlane = new Plane(
+        Vector3.up,
+        controlObject.position
+    );
+
+
+    Vector3 worldPosition;
+
+
+    if (TryGetWorldPosition(
+        screenPosition,
+        out worldPosition))
     {
-        if (controlObject == null)
-            return;
+        // Save click/touch position
+        releasePosition = worldPosition;
 
 
-        controlling = true;
-
-        charging = false;
-
-        stopTimer = 0f;
-
-
-        movementPlane =
-            new Plane(
-                Vector3.up,
-                controlObject.position
-            );
-
-
-        Vector3 worldPosition;
-
-
-        if (TryGetWorldPosition(
-            screenPosition,
-            out worldPosition))
-        {
-            xOffset =
-                controlObject.position.x -
-                worldPosition.x;
-        }
-
-
-        targetPosition =
-            controlObject.position;
-
-
-        ResetPower();
-
-        ShowAimGuide();
+        // Keep old movement calculation
+        xOffset =
+            controlObject.position.x -
+            worldPosition.x;
     }
 
 
+    targetPosition =
+        controlObject.position;
 
+
+    ResetPower();
+
+    ShowAimGuide();
+}
     // =========================================================
     // PRECISE MOVEMENT
     // =========================================================
@@ -642,11 +752,15 @@ public class BallDropController : MonoBehaviour
                  * the ball naturally rolls/falls.
                  */
 
-                Vector3 downhillDirection =
-                    Vector3.ProjectOnPlane(
-                        Physics.gravity,
-                        hit.normal
-                    );
+                // Vector3 downhillDirection =
+                //     Vector3.ProjectOnPlane(
+                //         Physics.gravity,
+                //         hit.normal
+                //     );
+
+
+Vector3 downhillDirection = Vector3.down;
+
 
 
                 if (downhillDirection.sqrMagnitude >
@@ -1071,26 +1185,26 @@ public class BallDropController : MonoBehaviour
             );
 
 
-        Vector3 spawnPosition;
+        // Vector3 spawnPosition;
 
 
-        if (ballSpawnPoint != null)
-        {
-            spawnPosition =
-                ballSpawnPoint.position;
-        }
-        else if (controlObject != null)
-        {
-            spawnPosition =
-                controlObject.position;
-        }
-        else
-        {
-            spawnPosition =
-                transform.position;
-        }
+        // if (ballSpawnPoint != null)
+        // {
+        //     spawnPosition =
+        //         ballSpawnPoint.position;
+        // }
+        // else if (controlObject != null)
+        // {
+        //     spawnPosition =
+        //         controlObject.position;
+        // }
+        // else
+        // {
+        //     spawnPosition =
+        //         transform.position;
+        // }
 
-
+Vector3 spawnPosition = releasePosition;
         GameObject ball =
             Instantiate(
                 ballPrefab,
@@ -1098,6 +1212,9 @@ public class BallDropController : MonoBehaviour
                 Quaternion.identity
             );
 
+
+        releasedBalls.RemoveAll(releasedBall => releasedBall == null);
+        releasedBalls.Add(ball);
 
         if (ballLifetime > 0f)
         {
@@ -1220,6 +1337,10 @@ public class BallDropController : MonoBehaviour
 
 
         float distance;
+        // Freeze the drag's projection origin while the view follows the ramp;
+        // otherwise camera movement feeds back into the pointer's world position.
+        if (controlling)
+            ray.origin += dragCameraOrigin - gameplayCamera.transform.position;
 
 
         if (movementPlane.Raycast(
