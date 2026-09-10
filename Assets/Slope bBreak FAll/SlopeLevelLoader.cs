@@ -29,8 +29,8 @@ public sealed class SlopeLevelLoader : MonoBehaviour
 
         foreach (var glass in towerController.GeneratedGlasses)
         {
-            // A toppled glass counts even when it lands intact below break speed.
-            if (glass != null && glass.IsSupporting)
+            // Falling or losing support is not completion; every bottle must shatter.
+            if (glass != null && !glass.IsBroken)
             {
                 completionTime = -1f;
                 return;
@@ -212,8 +212,8 @@ public sealed class SlopeLevelLoader : MonoBehaviour
         ballController.minimumFallSpeed = level.MinimumFallSpeed;
         ballController.maximumFallSpeed = level.MaximumFallSpeed;
 
-        ballController.extraDownwardAcceleration =
-            level.ExtraDownwardAcceleration;
+        // ballController.extraDownwardAcceleration =
+        //     level.ExtraDownwardAcceleration;
 
         ballController.powerChargeSpeed = level.PowerChargeSpeed;
         ballController.minimumPower = level.MinimumPower;
