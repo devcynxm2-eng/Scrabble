@@ -359,6 +359,7 @@ public class BreakableGlass : MonoBehaviour
             return;
         }
 
+        PlayWaterBreakEffect(impactPoint);
         fractured = true;
         fallingAsWhole = false;
         nextPieceHitTime = Time.time + pieceHitCooldown;
@@ -926,6 +927,7 @@ public class BreakableGlass : MonoBehaviour
             return;
         }
 
+        PlayWaterBreakEffect(impactPoint);
         fractured = true;
         fallingAsWhole = false;
         SetWholeGlassGravity(false);
@@ -953,6 +955,16 @@ public class BreakableGlass : MonoBehaviour
         }
 
         CompleteShatter();
+    }
+
+    private void PlayWaterBreakEffect(Vector3 impactPoint)
+    {
+        // Scene-template glasses may not have the liquid component found on jar prefabs.
+        SlopeGlassLiquid liquid = GetComponent<SlopeGlassLiquid>();
+        if (liquid == null)
+            liquid = gameObject.AddComponent<SlopeGlassLiquid>();
+
+        liquid.NotifyBreak(impactPoint);
     }
 
     public void DestroyWithPieces()
